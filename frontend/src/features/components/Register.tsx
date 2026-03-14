@@ -11,7 +11,7 @@ function Register(){
     return(
         //bg with gradient
         <div 
-        className = "min-h-screen bg-size-[1138]"
+        className = "min-h-screen bg-size-[1138] overflow-hidden"
         style = {{
             backgroundImage: `linear-gradient(to right, transparent -11%, rgba(34, 34, 34, 0.9), #222222 50%), url(${bg})`,
         }}
@@ -30,124 +30,130 @@ function Register(){
                 </svg>
             </div>
 
-            <div>
+            {/*Radial spotlight*/}
+            <div className = "absolute w-190 h-170 translate-x-113 -mt-110 bg-radial from-[#FFE2A0]/80 via-[#FFE2A0]/20 to-transparent rounded-full blur-3xl opacity-60"></div>
+        
+
+            <div className = "motion-preset-slide-right motion-duration-800">
                 <h1 className = "font-['Playfair_Display'] translate-x-30 mt-95 text-[80px] absolute font-bold text-[#FBFAF8] max-w-120 leading-tight rombo">
                     Discover Local <span className = "text-[#FFE2A0]">Gems</span> in Pampanga
                 </h1>
             </div>
             
             {/*Form*/}
-            <div className = "ml-180 mt-15 absolute">
-                <h1 className = "font-['Playfair_Display'] text-[#FBFAF8] text-5xl font-bold mb-2.5">
-                    Register Now<span className = "text-[#FFE2A0]">.</span>
-                </h1>
-                <p className = "text-[#FBFAF8] text-s">Create your account to get started.</p>
-            </div>
-
-            {/*First and Last Name*/}
-            <div className = "translate-x-180 mt-45 absolute">
-                <div className = "flex flex-col gap-2 absolute w-73">
-                    <label className = "text-[#FBFAF8] text-md">
-                        First Name
-                    </label>
-                    <input
-                        type = "text"
-                        placeholder = "eg. Juan"
-                        className = "bg-[#2E2E2E] text-white placeholder-gray-500 px-4 py-3 rounded-lg border-none focus:ring-1 focus:ring-white outline-none"
-                    />
+            <div className = "motion-preset-slide-left motion-duration-800">
+                <div className = "ml-180 mt-15 absolute">
+                    <h1 className = "font-['Playfair_Display'] text-[#FBFAF8] text-5xl font-bold mb-2.5">
+                        Register Now<span className = "text-[#FFE2A0]">.</span>
+                    </h1>
+                    <p className = "text-[#FBFAF8] text-s">Create your account to get started.</p>
                 </div>
-            </div>
 
-            <div className = "translate-x-258 mt-45 absolute">
-                <div className = "flex flex-col gap-2 absolute w-73">
-                    <label className = "text-[#FBFAF8] text-md">
-                        Last Name
-                    </label>
-                    <input
-                        type = "text"
-                        placeholder = "eg. Dela Cruz"
-                        className = "bg-[#2E2E2E] text-white placeholder-gray-500 px-4 py-3 rounded-lg border-none focus:ring-1 focus:ring-white outline-none"
-                    />
+                {/*First and Last Name*/}
+                <div className = "translate-x-180 mt-45 absolute">
+                    <div className = "flex flex-col gap-2 absolute w-73">
+                        <label className = "text-[#FBFAF8] text-md">
+                            First Name
+                        </label>
+                        <input
+                            type = "text"
+                            placeholder = "eg. Juan"
+                            className = "bg-[#2E2E2E] text-white placeholder-gray-500 px-4 py-3 rounded-lg border-none focus:ring-1 focus:ring-white outline-none"
+                        />
+                    </div>
                 </div>
-            </div>
 
-            {/*Email*/}
-            <div className = "translate-x-180 mt-70 absolute">
-                <div className = "flex flex-col gap-2 absolute w-150">
-                    <label className = "text-[#FBFAF8] text-md">
-                        Email
-                    </label>
-                    <input
-                        type = "text"
-                        placeholder = "eg. juan.dc@gmail.com"
-                        className = "bg-[#2E2E2E] text-white placeholder-gray-500 px-4 py-3 rounded-lg border-none focus:ring-1 focus:ring-white outline-none"
-                    />
+                <div className = "translate-x-258 mt-45 absolute">
+                    <div className = "flex flex-col gap-2 absolute w-73">
+                        <label className = "text-[#FBFAF8] text-md">
+                            Last Name
+                        </label>
+                        <input
+                            type = "text"
+                            placeholder = "eg. Dela Cruz"
+                            className = "bg-[#2E2E2E] text-white placeholder-gray-500 px-4 py-3 rounded-lg border-none focus:ring-1 focus:ring-white outline-none"
+                        />
+                    </div>
                 </div>
-            </div>
-            
-            {/*Password*/}
-            <div className = "translate-x-180 mt-95 absolute">
-                <div className = "flex flex-col gap-2 absolute w-150">
-                    <label className = "text-[#FBFAF8] text-md">
-                        Password
-                    </label>
-                    <input
-                        type = {showPassword ? "text" : "password"}
-                        placeholder = "************"
-                        className = "bg-[#2E2E2E] text-white placeholder-gray-500 px-4 py-3 rounded-lg border-none focus:ring-1 focus:ring-white outline-none"
-                    />
-                    <button
-                        type="button"
-                        onClick = {() => setShowPassword(!showPassword)}
-                        className="absolute right-4 text-gray-500 hover:text-white transition-colors cursor-pointer"
-                        >
-                        {showPassword ? (
-                            <EyeOff size={20} /> // "Hide" icon
-                        ) : (
-                            <Eye size={20} />    // "Show" icon
-                        )}
+
+                {/*Email*/}
+                <div className = "translate-x-180 mt-70 absolute">
+                    <div className = "flex flex-col gap-2 absolute w-150">
+                        <label className = "text-[#FBFAF8] text-md">
+                            Email
+                        </label>
+                        <input
+                            type = "text"
+                            placeholder = "eg. juan.dc@gmail.com"
+                            className = "bg-[#2E2E2E] text-white placeholder-gray-500 px-4 py-3 rounded-lg border-none focus:ring-1 focus:ring-white outline-none"
+                        />
+                    </div>
+                </div>
+                
+                {/*Password*/}
+                <div className = "translate-x-180 mt-95 absolute">
+                    <div className = "flex flex-col gap-2 absolute w-150">
+                        <label className = "text-[#FBFAF8] text-md">
+                            Password
+                        </label>
+                        <input
+                            type = {showPassword ? "text" : "password"}
+                            placeholder = "************"
+                            className = "bg-[#2E2E2E] text-white placeholder-gray-500 px-4 py-3 rounded-lg border-none focus:ring-1 focus:ring-white outline-none"
+                        />
+                        <button
+                            type="button"
+                            onClick = {() => setShowPassword(!showPassword)}
+                            className="absolute right-4 text-gray-500 hover:text-white transition-colors cursor-pointer"
+                            >
+                            {showPassword ? (
+                                <EyeOff size={20} /> // "Hide" icon
+                            ) : (
+                                <Eye size={20} />    // "Show" icon
+                            )}
+                        </button>
+                    </div>
+                </div>
+
+                {/*Signup Button*/}
+                <div className = "translate-x-180 mt-125 absolute">
+                    <button className = "px-4 py-3 bg-[#FFE2A0] hover:bg-[#fcd789] w-150 rounded-lg cursor-pointer font-semibold text-[#222222]">
+                        Signup
                     </button>
                 </div>
-            </div>
 
-            {/*Signup Button*/}
-            <div className = "translate-x-180 mt-125 absolute">
-                <button className = "px-4 py-3 bg-[#FFE2A0] hover:bg-[#fcd789] w-150 rounded-lg cursor-pointer font-semibold text-[#222222]">
-                    Signup
-                </button>
-            </div>
-
-            {/*Have an Account*/}
-            <div className = "translate-x-180 mt-142 absolute">
-                <p className = "text-[#FBFAF8]">
-                    Aleardy hava an Account? 
-                    <Link to = "/Signin">
-                        <span className = "text-[#FFE2A0] cursor-pointer"> Sign in</span>.
-                    </Link>
-                </p>
-            </div>
-
-            <div className = "absolute translate-x-180 mt-147 w-150">
-                <div className = "flex items-center my-4">
-                    <div className = "grow border-t border-gray-600"></div>
-                        <span className = "shrink mx-4 text-gray-400">Or</span>
-                    <div className = "grow border-t border-gray-600"></div>
+                {/*Have an Account*/}
+                <div className = "translate-x-180 mt-142 absolute">
+                    <p className = "text-[#FBFAF8]">
+                        Aleardy hava an Account? 
+                        <Link to = "/Signin">
+                            <span className = "text-[#FFE2A0] cursor-pointer"> Sign in</span>.
+                        </Link>
+                    </p>
                 </div>
-            </div>
 
-            {/*Other methods (Google or Facebook)*/}
-            <div className = "translate-x-180 mt-165 absolute">
-                <button className = "px-4 py-3 bg-[#222222] border border-gray-600 w-73 rounded-lg cursor-pointer text-white flex justify-center items-center gap-2">
-                    <img src = {google}/>
-                    Google
-                </button>
-            </div>
+                <div className = "absolute translate-x-180 mt-147 w-150">
+                    <div className = "flex items-center my-4">
+                        <div className = "grow border-t border-gray-600"></div>
+                            <span className = "shrink mx-4 text-gray-400">Or</span>
+                        <div className = "grow border-t border-gray-600"></div>
+                    </div>
+                </div>
 
-            <div className = "translate-x-258 mt-165 absolute">
-                <button className = "px-4 py-3 bg-[#222222] border border-gray-600 w-73 rounded-lg cursor-pointer text-white flex justify-center items-center gap-2">
-                    <img src = {facebook} />
-                    FaceBook
-                </button>
+                {/*Other methods (Google or Facebook)*/}
+                <div className = "translate-x-180 mt-165 absolute">
+                    <button className = "px-4 py-3 bg-[#222222] border border-gray-600 w-73 rounded-lg cursor-pointer text-white flex justify-center items-center gap-2">
+                        <img src = {google}/>
+                        Google
+                    </button>
+                </div>
+
+                <div className = "translate-x-258 mt-165 absolute">
+                    <button className = "px-4 py-3 bg-[#222222] border border-gray-600 w-73 rounded-lg cursor-pointer text-white flex justify-center items-center gap-2">
+                        <img src = {facebook} />
+                        FaceBook
+                    </button>
+                </div>
             </div>
         </div>
     );
