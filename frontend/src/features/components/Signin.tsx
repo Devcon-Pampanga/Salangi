@@ -89,18 +89,18 @@ function Signin(){
 
                 {/*Sign in Button*/}
                 <div className = "translate-x-180 mt-110 absolute">
-                    <button className = "px-4 py-3 bg-[#FFE2A0] hover:bg-[#fcd789] w-150 rounded-lg cursor-pointer font-semibold text-[#222222]">
-                        Sign in
-                    </button>
+                    <Link to = "/Homepage">
+                        <button className = "px-4 py-3 bg-[#FFE2A0] hover:bg-[#fcd789] w-150 rounded-lg cursor-pointer font-semibold text-[#222222]">
+                            Sign in
+                        </button>
+                    </Link>
                 </div>
 
                 {/*Don't have an Account*/}
                 <div className = "translate-x-180 mt-126 absolute">
                     <p className = "text-[#FBFAF8]">
                         Don't have an Account? 
-                        <Link to = "/">
-                            <span className = "text-[#FFE2A0] cursor-pointer"> Sign up</span>.
-                        </Link>
+                        <span className = "text-[#FFE2A0] cursor-pointer"> Sign up</span>.
                     </p>
                 </div>
 

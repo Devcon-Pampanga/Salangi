@@ -5,14 +5,15 @@ import type { RouteObject } from 'react-router-dom';
 
 const routes: RouteObject[] = [
     {
-      path: "/",
+      index: true,
       element: <Register />
     },
 
     {
       path: "/Signin",
       element: <Signin />
-    }
+    },
+    
   ];
 
 const router = createBrowserRouter(routes);
