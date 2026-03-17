@@ -1,5 +1,5 @@
-import Register from './features/components/Register';
-import Signin from './features/components/Signin';
+import Register from './features/auth/components/Register';
+import Signin from './features/auth/components/Signin';
 import {createBrowserRouter, RouterProvider,} from 'react-router-dom';
 import type { RouteObject } from 'react-router-dom';
 

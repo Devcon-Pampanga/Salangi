@@ -1,11 +1,11 @@
 import {useState} from 'react';
 import {Eye, EyeOff} from 'lucide-react';
 import {Link} from 'react-router-dom'
-import google from '../../assets/google.png';
-import facebook from '../../assets/facebook.png';
-import bg from '../../assets/bg.png';
+import google from '@assets/google.png';
+import facebook from '@assets/facebook.png';
+import bg from '@assets/bg.png';
 
-function Register(){
+function Signin(){
     const [showPassword, setShowPassword] = useState(false);
 
     return(
@@ -31,53 +31,25 @@ function Register(){
             </div>
 
             {/*Radial spotlight*/}
-            <div className = "absolute w-190 h-170 translate-x-113 -mt-110 bg-radial from-[#FFE2A0]/80 via-[#FFE2A0]/20 to-transparent rounded-full blur-3xl opacity-60"></div>
-        
+            <div className = "absolute w-190 h-170 translate-x-113 -mt-97 bg-radial from-[#FFE2A0]/80 via-[#FFE2A0]/20 to-transparent rounded-full blur-3xl opacity-60"></div>
 
             <div className = "motion-preset-slide-right motion-duration-800">
-                <h1 className = "font-['Playfair_Display'] translate-x-30 mt-95 text-[80px] absolute font-bold text-[#FBFAF8] max-w-120 leading-tight rombo">
-                    Discover Local <span className = "text-[#FFE2A0]">Gems</span> in Pampanga
+                <h1 className = "font-['Playfair_Display'] translate-x-30 mt-70 text-[80px] absolute font-bold text-[#FBFAF8] max-w-120 leading-tight">
+                    Continue your Pampanga <span className = "text-[#FFE2A0]">Journey</span>
                 </h1>
             </div>
             
             {/*Form*/}
             <div className = "motion-preset-slide-left motion-duration-800">
-                <div className = "ml-180 mt-15 absolute">
+                <div className = "ml-180 mt-25 absolute">
                     <h1 className = "font-['Playfair_Display'] text-[#FBFAF8] text-5xl font-bold mb-2.5">
-                        Register Now<span className = "text-[#FFE2A0]">.</span>
+                        Sign in<span className = "text-[#FFE2A0]">.</span>
                     </h1>
                     <p className = "text-[#FBFAF8] text-s">Create your account to get started.</p>
                 </div>
 
-                {/*First and Last Name*/}
-                <div className = "translate-x-180 mt-45 absolute">
-                    <div className = "flex flex-col gap-2 absolute w-73">
-                        <label className = "text-[#FBFAF8] text-md">
-                            First Name
-                        </label>
-                        <input
-                            type = "text"
-                            placeholder = "eg. Juan"
-                            className = "bg-[#2E2E2E] text-white placeholder-gray-500 px-4 py-3 rounded-lg border-none focus:ring-1 focus:ring-white outline-none"
-                        />
-                    </div>
-                </div>
-
-                <div className = "translate-x-258 mt-45 absolute">
-                    <div className = "flex flex-col gap-2 absolute w-73">
-                        <label className = "text-[#FBFAF8] text-md">
-                            Last Name
-                        </label>
-                        <input
-                            type = "text"
-                            placeholder = "eg. Dela Cruz"
-                            className = "bg-[#2E2E2E] text-white placeholder-gray-500 px-4 py-3 rounded-lg border-none focus:ring-1 focus:ring-white outline-none"
-                        />
-                    </div>
-                </div>
-
                 {/*Email*/}
-                <div className = "translate-x-180 mt-70 absolute">
+                <div className = "translate-x-180 mt-53 absolute">
                     <div className = "flex flex-col gap-2 absolute w-150">
                         <label className = "text-[#FBFAF8] text-md">
                             Email
@@ -91,7 +63,7 @@ function Register(){
                 </div>
                 
                 {/*Password*/}
-                <div className = "translate-x-180 mt-95 absolute">
+                <div className = "translate-x-180 mt-79 absolute">
                     <div className = "flex flex-col gap-2 absolute w-150">
                         <label className = "text-[#FBFAF8] text-md">
                             Password
@@ -115,24 +87,24 @@ function Register(){
                     </div>
                 </div>
 
-                {/*Signup Button*/}
-                <div className = "translate-x-180 mt-125 absolute">
-                    <button className = "px-4 py-3 bg-[#FFE2A0] hover:bg-[#fcd789] w-150 rounded-lg cursor-pointer font-semibold text-[#222222]">
-                        Signup
-                    </button>
+                {/*Sign in Button*/}
+                <div className = "translate-x-180 mt-110 absolute">
+                    <Link to = "/Homepage">
+                        <button className = "px-4 py-3 bg-[#FFE2A0] hover:bg-[#fcd789] w-150 rounded-lg cursor-pointer font-semibold text-[#222222]">
+                            Sign in
+                        </button>
+                    </Link>
                 </div>
 
-                {/*Have an Account*/}
-                <div className = "translate-x-180 mt-142 absolute">
+                {/*Don't have an Account*/}
+                <div className = "translate-x-180 mt-126 absolute">
                     <p className = "text-[#FBFAF8]">
-                        Aleardy hava an Account? 
-                        <Link to = "/Signin">
-                            <span className = "text-[#FFE2A0] cursor-pointer"> Sign in</span>.
-                        </Link>
+                        Don't have an Account? 
+                        <span className = "text-[#FFE2A0] cursor-pointer"> Sign up</span>.
                     </p>
                 </div>
 
-                <div className = "absolute translate-x-180 mt-147 w-150">
+                <div className = "absolute translate-x-180 mt-130 w-150">
                     <div className = "flex items-center my-4">
                         <div className = "grow border-t border-gray-600"></div>
                             <span className = "shrink mx-4 text-gray-400">Or</span>
@@ -141,14 +113,14 @@ function Register(){
                 </div>
 
                 {/*Other methods (Google or Facebook)*/}
-                <div className = "translate-x-180 mt-165 absolute">
+                <div className = "translate-x-180 mt-148 absolute">
                     <button className = "px-4 py-3 bg-[#222222] border border-gray-600 w-73 rounded-lg cursor-pointer text-white flex justify-center items-center gap-2">
                         <img src = {google}/>
                         Google
                     </button>
                 </div>
 
-                <div className = "translate-x-258 mt-165 absolute">
+                <div className = "translate-x-258 mt-148 absolute">
                     <button className = "px-4 py-3 bg-[#222222] border border-gray-600 w-73 rounded-lg cursor-pointer text-white flex justify-center items-center gap-2">
                         <img src = {facebook} />
                         FaceBook
@@ -159,4 +131,4 @@ function Register(){
     );
 }
 
-export default Register;
+export default Signin;
