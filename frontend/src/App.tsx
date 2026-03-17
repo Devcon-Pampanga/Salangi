@@ -1,7 +1,7 @@
 import Register from './features/auth/components/Register';
 import Signin from './features/auth/components/Signin';
-import Navigator from './features/components/Navigator';
-import Homepage from './features/components/Homepage';
+import Navigator from './features/dashboard/components/Navigator';
+import Homepage from './features/dashboard/components/Homepage';
 import {createBrowserRouter, RouterProvider,} from 'react-router-dom';
 import type { RouteObject } from 'react-router-dom';
 

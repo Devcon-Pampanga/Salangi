@@ -1,14 +1,14 @@
 import {NavLink, Outlet} from 'react-router-dom'
 
 //icons
-import homeBtn from '../../assets/homeBtn.png';
-import locBtn from '../../assets/locBtn.png';
-import saveBtn from '../../assets/saveBtn.png';
+import homeBtn from '@assets/homeBtn.png';
+import locBtn from '@assets/locBtn.png';
+import saveBtn from '@assets/saveBtn.png';
 
 //colored icons
-import homeBtnSelected from '../../assets/homeBtnSelected.png';
-import locBtnSelected from '../../assets/locBtnSelected.png';
-import saveBtnSelected from '../../assets/saveBtnSelected.png';
+import homeBtnSelected from '@assets/homeBtnSelected.png';
+import locBtnSelected from '@assets/locBtnSelected.png';
+import saveBtnSelected from '@assets/saveBtnSelected.png';
 
 function Navigator() {
     return (
