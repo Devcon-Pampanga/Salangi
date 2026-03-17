@@ -28,26 +28,25 @@ function Homepage() {
                         </h1>
 
                         <div className="flex gap-4 mb-5">
-                            <button className="flex items-center gap-2 p-3 px-5 bg-[#373737] rounded-lg hover:bg-[#454545] transition-colors">
+                            <button className="flex items-center cursor-pointer gap-2 p-3 px-5 bg-[#373737] rounded-lg hover:bg-[#454545] transition-colors">
                                 <img src={grid} alt="all"/>
                                 <p>All</p>
                             </button>
-                            <button className="flex items-center gap-2 p-3 px-4 bg-[#373737] rounded-lg hover:bg-[#454545] transition-colors">
+                            <button className="flex items-center cursor-pointer gap-2 p-3 px-4 bg-[#373737] rounded-lg hover:bg-[#454545] transition-colors">
                                 <img src={resto} alt="resto"/>
                                 <p>Resto</p>
                             </button>
-                            <button className="flex items-center gap-2 p-3 px-4 bg-[#373737] rounded-lg hover:bg-[#454545] transition-colors">
+                            <button className="flex items-center cursor-pointer gap-2 p-3 px-4 bg-[#373737] rounded-lg hover:bg-[#454545] transition-colors">
                                 <img src={cafe} alt="cafe"/>
                                 <p>Cafe</p>
                             </button>
-                            <button className="flex items-center gap-2 p-3 px-4 bg-[#373737] rounded-lg hover:bg-[#454545] transition-colors">
+                            <button className="flex items-center cursor-pointer gap-2 p-3 px-4 bg-[#373737] rounded-lg hover:bg-[#454545] transition-colors">
                                 <img src={activities} alt="activities"/>
                                 <p>Activities</p>
                             </button>
                         </div>
                     </div>
 
-                    {/* scrollable section */}
                     <div className="flex-1 overflow-y-auto scrollbar-hide pr-2 flex flex-col gap-6 pb-10">
                         {/* Card */}
                         <div className="w-full max-w-120 bg-[#373737] rounded-xl cursor-pointer overflow-hidden shrink-0">
