@@ -1,5 +1,7 @@
 import Register from './features/auth/components/Register';
 import Signin from './features/auth/components/Signin';
+import Navigator from './features/components/Navigator';
+import Homepage from './features/components/Homepage';
 import {createBrowserRouter, RouterProvider,} from 'react-router-dom';
 import type { RouteObject } from 'react-router-dom';
 
@@ -13,7 +15,16 @@ const routes: RouteObject[] = [
       path: "/Signin",
       element: <Signin />
     },
-    
+    {
+      path: "/",
+      element: <Navigator />,
+      children: [
+        {
+          path: "/Homepage",
+          element: <Homepage />
+        },
+      ],
+    },
   ];
 
 const router = createBrowserRouter(routes);
