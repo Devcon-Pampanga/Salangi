@@ -1,19 +1,19 @@
 //icons
-import locBtnSelected from '../../assets/locBtnSelected.png';
-import verified from '../../assets/verified.png';
-import heart from '../../assets/heart.png';
-import search from '../../assets/search.png';
-import settings from '../../assets/Settings.png';
-import time from '../../assets/time.png';
-import call from '../../assets/call.png';
-import email from '../../assets/email.png';
-import facebook from '../../assets/facebook.png';
-import website from '../../assets/website.png';
-import star from '../../assets/star.png';
-import comment from '../../assets/comment.png';
+import locBtnSelected from '@assets/locBtnSelected.png';
+import verified from '@assets/verified.png';
+import heart from '@assets/heart.png';
+import search from '@assets/search.png';
+import settings from '@assets/Settings.png';
+import time from '@assets/time.png';
+import call from '@assets/call.png';
+import email from '@assets/email.png';
+import facebook from '@assets/facebook.png';
+import website from '@assets/website.png';
+import star from '@assets/star.png';
+import comment from '@assets/comment.png';
 
 //image
-import sampleimage from '../../assets/imagesample.png';
+import sampleimage from '@assets/imagesample.png';
 
 function Locationpage() {
     return (
