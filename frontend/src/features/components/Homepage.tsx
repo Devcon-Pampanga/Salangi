@@ -17,11 +17,9 @@ import sampleimage from '../../assets/imagesample.png'
 function Homepage() {
     return (
         <div className="relative w-full h-full bg-[#1A1A1A] text-[#FBFAF8] overflow-hidden">
-            {/* Background Glow */}
             <div className="absolute top-0 left-0 w-190 h-170 -translate-x-100 -translate-y-110 bg-radial from-[#FFE2A0]/80 via-[#FFE2A0]/20 to-transparent rounded-full blur-3xl opacity-60 pointer-events-none"></div>
             
             <div className="relative z-10 h-full flex px-6 py-6 gap-6">
-                
                 <div className="flex-1 h-full flex flex-col overflow-hidden">
                     
                     <div className="shrink-0">
@@ -118,8 +116,7 @@ function Homepage() {
                     </div>
                 </div>
 
-                {/*Map*/}
-                <div className="">
+                <div>
                     <div className="flex ml-75 items-center w-110 px-4 py-3 bg-[#2D2D2D] rounded-lg border border-transparent focus-within:border-gray-500 transition-all">
                         <img src={search} className="cursor-pointer" alt="search"/>
                         <input
@@ -130,6 +127,7 @@ function Homepage() {
                         <img src={settings} width="16" className="cursor-pointer" alt="settings"/>
                     </div>    
 
+                    {/*Map*/}
                     <div className="w-185 flex flex-col h-165">
                         <div className="mt-6 flex-1 bg-[#222222] rounded-xl border border-zinc-800 flex items-center justify-center">
                         </div>
