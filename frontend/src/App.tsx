@@ -1,8 +1,10 @@
+
 import Register from './features/auth/components/Register';
 import Signin from './features/auth/components/Signin';
 import Navigator from './features/dashboard/components/Navigator';
 import Homepage from './features/dashboard/components/Homepage';
 import Locationpage from './features/dashboard/components/Locationpage';
+import Savepage from './features/components/Savepage';
 import {createBrowserRouter, RouterProvider,} from 'react-router-dom';
 import type { RouteObject } from 'react-router-dom';
 
@@ -27,6 +29,10 @@ const routes: RouteObject[] = [
         {
           path: "/Locationpage",
           element: <Locationpage />
+        },
+        {
+          path: "/Savepage",
+          element: <Savepage />
         },
       ],
     },
