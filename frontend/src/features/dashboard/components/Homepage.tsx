@@ -12,7 +12,7 @@ import settings from '@assets/Settings.png'
 import time from '@assets/time.png'
 
 //image
-import sampleimage from '../../assets/imagesample.png'
+import sampleimage from '@assets/imagesample.png'
 
 function Homepage() {
     return (
