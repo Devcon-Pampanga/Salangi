@@ -15,10 +15,11 @@ interface SpotCardProps {
     description: string;
     images: string[];
     isVerified?: boolean;
+    initialSaved?: boolean;
 }
 
-function SpotCard({ title, location, hours, description, images, isVerified = false }: SpotCardProps) {
-    const [isSaved, setIsSaved] = useState(false);
+function SpotCard({ title, location, hours, description, images, isVerified = false, initialSaved = false }: SpotCardProps) {
+    const [isSaved, setIsSaved] = useState(initialSaved);
     const [currentIndex, setCurrentIndex] = useState(0);
 
     const nextImage = (e: React.MouseEvent) => {
