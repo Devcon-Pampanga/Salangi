@@ -1,16 +1,12 @@
-//icons
-import grid from '@assets/png-files/grid.png'
-import resto from '@assets/png-files/resto.png'
-import cafe from '@assets/png-files/cafe.png'
-import activities from '@assets/png-files/activities.png'
-import search from '@assets/png-files/search.png'
-import settings from '@assets/png-files/Settings.png'
+import search from '@assets/icons/search-btn-default.svg'
 
 //image
 import sampleimage from '@assets/png-files/imagesample.png'
 
 //components
 import SpotCard from '../components/SpotCard';
+import CategoryFilters from '../components/CategoryFilters';
+import SearchBar from '../components/SearchBar';
 
 const SAVED_SPOTS = [
     {
@@ -67,34 +63,14 @@ function Savepage() {
 
                 {/* Navigation/Search Bar*/}
                 <div className="flex justify-between items-center mb-8 z-10 gap-4">
-                    <div className="flex gap-3">
-                        <button className="flex items-center gap-2 p-2.5 px-5 bg-[#373737] rounded-xl border border-zinc-700/30 cursor-pointer">
-                            <img src={grid} className="w-4" alt="all" />
-                            <span className="text-sm font-medium">All</span>
-                        </button>
-                        <button className="flex items-center gap-2 p-2.5 px-5 bg-[#373737] rounded-xl border border-zinc-700/30 cursor-pointer">
-                            <img src={resto} className="w-4" alt="resto" />
-                            <span className="text-sm font-medium">Resto</span>
-                        </button>
-                        <button className="flex items-center gap-2 p-2.5 px-5 bg-[#373737] rounded-xl border border-zinc-700/30 cursor-pointer">
-                            <img src={cafe} className="w-4" alt="cafe" />
-                            <span className="text-sm font-medium">Cafe</span>
-                        </button>
-                        <button className="flex items-center gap-2 p-2.5 px-5 bg-[#373737] rounded-xl border border-zinc-700/30 cursor-pointer">
-                            <img src={activities} className="w-4" alt="activities" />
-                            <span className="text-sm font-medium">Activities</span>
-                        </button>
-                    </div>
+                    <CategoryFilters className="z-10" />
 
-                    <div className="flex items-center w-full max-w-md px-4 py-3 bg-[#2D2D2D]/60 backdrop-blur-md rounded-xl border border-zinc-700/50">
-                        <img src={search} className="w-4 opacity-40" alt="search" />
-                        <input
-                            type="text"
-                            placeholder="Explore local spots"
-                            className="flex-1 px-3 bg-transparent text-gray-200 placeholder-zinc-500 outline-none text-sm"
-                        />
-                        <img src={settings} className="w-4 cursor-pointer opacity-40" alt="settings" />
-                    </div>
+                    <SearchBar 
+                        glass 
+                        searchIcon={search} 
+                        className="w-110 py-3" 
+                        placeholder="Explore local spots"
+                    />
                 </div>
 
                 {/*For the cards*/}

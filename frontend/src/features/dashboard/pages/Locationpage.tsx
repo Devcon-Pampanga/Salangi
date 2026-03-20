@@ -1,10 +1,10 @@
-import search from '@assets/png-files/search.png';
-import settings from '@assets/png-files/Settings.png';
+import search from '@assets/icons/search-back-btn.svg';
 import sampleimage from '@assets/png-files/imagesample.png';
 import bg from '@assets/images/bg.png';
 
 //components
 import SpotDetailCard from '../components/SpotDetailCard';
+import SearchBar from '../components/SearchBar';
 
 const SPOT_DETAIL = {
     title: "Holy Rosary Parish Church",
@@ -44,17 +44,10 @@ function Locationpage() {
         <div className="flex h-full w-full bg-[#1A1A1A] text-[#FBFAF8] overflow-hidden">
             <div className="w-125 h-full overflow-y-auto border-r border-zinc-800 flex flex-col items-center px-6 py-6 scrollbar-hide">
                 
-                <div className="w-full mb-6 shrink-0">
-                    <div className="flex items-center px-4 py-2 bg-[#2D2D2D] rounded-lg border border-transparent focus-within:border-gray-500 transition-all">
-                        <img src={search} className="cursor-pointer" alt="search"/>
-                        <input
-                            type="text"
-                            placeholder="Explore local spots"
-                            className="flex-1 px-3 bg-transparent text-gray-200 placeholder-gray-500 outline-none text-sm"
-                        />
-                        <img src={settings} width="16" className="cursor-pointer" alt="settings"/>
-                    </div>
-                </div>
+                <SearchBar 
+                    searchIcon={search} 
+                    containerClassName="w-full mb-6 shrink-0" 
+                />
 
                 {/* Card */}
                 <SpotDetailCard {...SPOT_DETAIL} />
