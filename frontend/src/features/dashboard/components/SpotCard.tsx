@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import locBtn from '@assets/png-files/locBtn.png';
-import locBtnSelected from '@assets/png-files/locBtnSelected.png';
-import verified from '@assets/png-files/verified.png';
+import locBtn from '@assets/icons/map-btn-default.svg';
+import locBtnSelected from '@assets/icons/map-btn-active.svg';
+import verified from '@assets/icons/verified-btn.svg';
 import saveInactive from '@assets/icons/save-btn-inactive.svg';
 import saveActive from '@assets/icons/save-btn-active.svg';
-import time from '@assets/png-files/time.png';
+import time from '@assets/icons/time-btn.svg';
 
 interface SpotCardProps {
     title: string;
