@@ -25,7 +25,7 @@
     "noUncheckedSideEffectImports": true,
     "baseUrl": ".",
     "paths": {
-      "@assets/*": ["./src/assets/png-files/*"]
+      "@assets/*": ["./src/assets/*"]
     }
   },
   "include": ["src"]

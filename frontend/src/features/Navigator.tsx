@@ -1,14 +1,14 @@
 import {NavLink, Outlet} from 'react-router-dom'
 
 //icons
-import homeBtn from '@assets/homeBtn.png';
-import locBtn from '@assets/locBtn.png';
-import saveBtn from '@assets/saveBtn.png';
+import homeBtn from '@assets/png-files/homeBtn.png';
+import locBtn from '@assets/png-files/locBtn.png';
+import saveBtn from '@assets/png-files/saveBtn.png';
 
 //colored icons
-import homeBtnSelected from '@assets/homeBtnSelected.png';
-import locBtnSelected from '@assets/locBtnSelected.png';
-import saveBtnSelected from '@assets/saveBtnSelected.png';
+import homeBtnSelected from '@assets/png-files/homeBtnSelected.png';
+import locBtnSelected from '@assets/png-files/locBtnSelected.png';
+import saveBtnSelected from '@assets/png-files/saveBtnSelected.png';
 
 function Navigator() {
     return (
@@ -25,7 +25,7 @@ function Navigator() {
 
                 {/*Home, Loc, Save*/}
                 <div className="flex flex-col items-center py-10 gap-6">
-                    <NavLink to="/Homepage" end>
+                    <NavLink to="/home-page" end>
                         {({ isActive }) => (
                             <div className={`flex items-center justify-center w-13 h-13 rounded-lg transition-all duration-200 ${
                                 isActive ? 'bg-[#2E2E2E] shadow-lg' : 'bg-transparent'
@@ -35,7 +35,7 @@ function Navigator() {
                         )}
                     </NavLink>
 
-                    <NavLink to="/Locationpage">
+                    <NavLink to="/location-page">
                         {({ isActive }) => (
                             <div className={`flex items-center justify-center w-12 h-12 rounded-xl transition-all duration-200 ${
                                 isActive ? 'bg-[#2E2E2E] shadow-lg' : 'bg-transparent'
@@ -45,7 +45,7 @@ function Navigator() {
                         )}
                     </NavLink>
                     
-                    <NavLink to="/Savepage">
+                    <NavLink to="/save-page">
                         {({ isActive }) => (
                             <div className={`flex items-center justify-center w-12 h-12 rounded-xl transition-all duration-200 ${
                                 isActive ? 'bg-[#2E2E2E] shadow-lg' : 'bg-transparent'

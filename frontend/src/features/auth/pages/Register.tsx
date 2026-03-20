@@ -1,9 +1,9 @@
 import {useState} from 'react';
 import {Eye, EyeOff} from 'lucide-react';
 import {Link} from 'react-router-dom'
-import google from '@assets/google.png';
-import facebook from '@assets/facebook.png';
-import bg from '@assets/bg.png';
+import google from '@assets/icons/google-icon.svg';
+import facebook from '@assets/icons/facebook-icon.svg';
+import bg from '@assets/images/bg.png';
 
 function Register(){
     const [showPassword, setShowPassword] = useState(false);
@@ -11,7 +11,7 @@ function Register(){
     return(
         //bg with gradient
         <div 
-        className = "min-h-screen bg-size-[1138] overflow-hidden"
+        className = "min-h-screen bg-cover bg-center bg-no-repeat overflow-hidden"
         style = {{
             backgroundImage: `linear-gradient(to right, transparent -11%, rgba(34, 34, 34, 0.9), #222222 50%), url(${bg})`,
         }}
@@ -35,7 +35,7 @@ function Register(){
         
 
             <div className = "motion-preset-slide-right motion-duration-800">
-                <h1 className = "font-['Playfair_Display'] translate-x-30 mt-95 text-[80px] absolute font-bold text-[#FBFAF8] max-w-120 leading-tight rombo">
+                <h1 className = "font-['Playfair_Display'] translate-x-30 mt-95 text-[80px] absolute font-bold text-[#FBFAF8] max-w-120 leading-none rombo">
                     Discover Local <span className = "text-[#FFE2A0]">Gems</span> in Pampanga
                 </h1>
             </div>
@@ -96,29 +96,31 @@ function Register(){
                         <label className = "text-[#FBFAF8] text-md">
                             Password
                         </label>
-                        <input
-                            type = {showPassword ? "text" : "password"}
-                            placeholder = "************"
-                            className = "bg-[#2E2E2E] text-white placeholder-gray-500 px-4 py-3 rounded-lg border-none focus:ring-1 focus:ring-white outline-none"
-                        />
-                        <button
-                            type="button"
-                            onClick = {() => setShowPassword(!showPassword)}
-                            className="absolute right-4 text-gray-500 hover:text-white transition-colors cursor-pointer"
-                            >
-                            {showPassword ? (
-                                <EyeOff size={20} /> // "Hide" icon
-                            ) : (
-                                <Eye size={20} />    // "Show" icon
-                            )}
-                        </button>
+                        <div className = "relative flex items-center">
+                            <input
+                                type = {showPassword ? "text" : "password"}
+                                placeholder = "************"
+                                className = "bg-[#2E2E2E] text-white placeholder-gray-500 px-4 py-3 rounded-lg border-none focus:ring-1 focus:ring-white outline-none w-full"
+                            />
+                            <button
+                                type="button"
+                                onClick = {() => setShowPassword(!showPassword)}
+                                className="absolute right-4 text-gray-500 hover:text-white transition-colors cursor-pointer"
+                                >
+                                {showPassword ? (
+                                    <EyeOff size={20} /> // "Hide" icon
+                                ) : (
+                                    <Eye size={20} />    // "Show" icon
+                                )}
+                            </button>
+                        </div>
                     </div>
                 </div>
 
                 {/*Signup Button*/}
                 <div className = "translate-x-180 mt-125 absolute">
                     <button className = "px-4 py-3 bg-[#FFE2A0] hover:bg-[#fcd789] w-150 rounded-lg cursor-pointer font-semibold text-[#222222]">
-                        Signup
+                        SIGN UP
                     </button>
                 </div>
 
@@ -126,7 +128,7 @@ function Register(){
                 <div className = "translate-x-180 mt-142 absolute">
                     <p className = "text-[#FBFAF8]">
                         Aleardy hava an Account? 
-                        <Link to = "/Signin">
+                        <Link to = "/sign-in">
                             <span className = "text-[#FFE2A0] cursor-pointer"> Sign in</span>.
                         </Link>
                     </p>
@@ -151,7 +153,7 @@ function Register(){
                 <div className = "translate-x-258 mt-165 absolute">
                     <button className = "px-4 py-3 bg-[#222222] border border-gray-600 w-73 rounded-lg cursor-pointer text-white flex justify-center items-center gap-2">
                         <img src = {facebook} />
-                        FaceBook
+                        Facebook
                     </button>
                 </div>
             </div>

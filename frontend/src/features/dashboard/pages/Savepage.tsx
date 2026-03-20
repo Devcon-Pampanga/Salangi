@@ -1,18 +1,18 @@
 //icons
-import locBtn from '@assets/locBtn.png';
-import locBtnSelected from '@assets/locBtnSelected.png';
-import verified from '@assets/verified.png';
-import grid from '@assets/grid.png'
-import resto from '@assets/resto.png'
-import cafe from '@assets/cafe.png'
-import activities from '@assets/activities.png'
-import heart from '@assets/heart.png'
-import search from '@assets/search.png'
-import settings from '@assets/Settings.png'
-import time from '@assets/time.png'
+import locBtn from '@assets/png-files/locBtn.png';
+import locBtnSelected from '@assets/png-files/locBtnSelected.png';
+import verified from '@assets/png-files/verified.png';
+import grid from '@assets/png-files/grid.png'
+import resto from '@assets/png-files/resto.png'
+import cafe from '@assets/png-files/cafe.png'
+import activities from '@assets/png-files/activities.png'
+import heart from '@assets/png-files/heart.png'
+import search from '@assets/png-files/search.png'
+import settings from '@assets/png-files/Settings.png'
+import time from '@assets/png-files/time.png'
 
 //image
-import sampleimage from '@assets/imagesample.png'
+import sampleimage from '@assets/png-files/imagesample.png'
 
 const SAVED_SPOTS = [
     {
