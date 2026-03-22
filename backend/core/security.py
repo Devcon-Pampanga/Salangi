@@ -26,11 +26,11 @@ def create_token(user_id: int, email: str) -> str:
     return jwt.encode(payload, JWT_SECRET, algorithm=ALGORITHM)
 
 def generate_verification_token(email: str) -> str:
-    s = URLSafeTimedSerializer(os.getenv("SECRET_KEY", "your-secret-key"))
+    s = URLSafeTimedSerializer(os.getenv("JWT_SECRET", "your-secret-key"))
     return s.dumps(email, salt="email-verify")
 
 def confirm_verification_token(token: str, expiration=86400):
-    s = URLSafeTimedSerializer(os.getenv("SECRET_KEY", "your-secret-key"))
+    s = URLSafeTimedSerializer(os.getenv("JWT_SECRET", "your-secret-key"))
     try:
         email = s.loads(token, salt="email-verify", max_age=expiration)
     except Exception:

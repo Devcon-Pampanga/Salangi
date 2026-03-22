@@ -52,7 +52,11 @@ def register_user(request: RegisterRequest, db: Session):
     db.refresh(new_user)
 
     verification_token = generate_verification_token(new_user.email)
+    try:
     send_verification_email(new_user.email, verification_token)
+    
+except Exception as e:
+    print(f"Email sending failed: {e}")
 
     return {"message": "Registration successful. Please check your email to verify your account."}
 
@@ -72,3 +76,14 @@ def verify_email(token: str, db: Session):
     db.commit()
 
     return {"message": "Email verified successfully. You can now log in."}
+
+def login_user(request: LoginRequest, db: Session):
+    user = db.query(User).filter(User.email == request.email).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+    if not verify_password(request.password, user.password):
+        raise HTTPException(status_code=401, detail="Incorrect password.")
+    if not user.is_verified:
+        raise HTTPException(status_code=403, detail="Email not verified.")
+    token = create_token(user.user_id, user.email)
+    return {"token": token, "user_id": user.user_id, "first_name": user.first_name, "last_name": user.last_name, "email": user.email}
