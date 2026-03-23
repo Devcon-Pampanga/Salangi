@@ -1,21 +1,22 @@
 
-import Register from './features/auth/components/Register';
-import Signin from './features/auth/components/Signin';
-import Navigator from './features/dashboard/components/Navigator';
-import Homepage from './features/dashboard/components/Homepage';
-import Locationpage from './features/dashboard/components/Locationpage';
-import Savepage from './features/components/Savepage';
+import Register from './features/auth/pages/Register';
+import Signin from './features/auth/pages/Signin';
+import Navigator from './features/Navigator';
+import Homepage from './features/dashboard/pages/Homepage';
+import Locationpage from './features/dashboard/pages/Locationpage';
+import Savepage from './features/dashboard/pages/Savepage';
 import {createBrowserRouter, RouterProvider,} from 'react-router-dom';
 import type { RouteObject } from 'react-router-dom';
 
 const routes: RouteObject[] = [
     {
       index: true,
+      path: "/sign-up",
       element: <Register />
     },
 
     {
-      path: "/Signin",
+      path: "/sign-in",
       element: <Signin />
     },
     {
@@ -23,15 +24,15 @@ const routes: RouteObject[] = [
       element: <Navigator />,
       children: [
         {
-          path: "/Homepage",
+          path: "/home-page",
           element: <Homepage />
         },
         {
-          path: "/Locationpage",
+          path: "/location-page",
           element: <Locationpage />
         },
         {
-          path: "/Savepage",
+          path: "/save-page",
           element: <Savepage />
         },
       ],
