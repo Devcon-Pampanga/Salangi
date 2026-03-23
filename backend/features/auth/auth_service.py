@@ -1,9 +1,10 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import Column, Integer, String, Boolean
-from db.database import Base
-from core.security import hash_password, create_token, generate_verification_token, confirm_verification_token
-from core.email import send_verification_email
-from features.auth.auth_schema import RegisterRequest
+from backend.db.database import Base
+from backend.core.security import hash_password, verify_password, create_token, generate_verification_token, confirm_verification_token
+from backend.core.email import send_verification_email
+from backend.features.auth.auth_schema import RegisterRequest, LoginRequest
+
 from fastapi import HTTPException
 import dns.resolver
 import os
@@ -72,3 +73,24 @@ def verify_email(token: str, db: Session):
     db.commit()
 
     return {"message": "Email verified successfully. You can now log in."}
+
+
+def login_user(request: LoginRequest, db: Session):
+    user = db.query(User).filter(User.email == request.email).first()
+
+    if not user or not verify_password(request.password, user.password):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    if not user.is_verified:
+        raise HTTPException(status_code=403, detail="Email not verified. Please check your email.")
+
+    token = create_token(user.user_id, user.email)
+
+    return {
+        "token": token,
+        "user_id": user.user_id,
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "email": user.email
+    }
+

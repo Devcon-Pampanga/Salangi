@@ -1,33 +1,40 @@
-import os
-import bcrypt
-import jwt
+from jose import jwt
 from datetime import datetime, timedelta
+import bcrypt
+from pathlib import Path
 from dotenv import load_dotenv
 from itsdangerous import URLSafeTimedSerializer
+import os
 
-load_dotenv()
+env_path = Path(__file__).resolve().parent.parent.parent / ".env"
+load_dotenv(dotenv_path=env_path)
 
-JWT_SECRET = os.getenv("JWT_SECRET")
-ALGORITHM = "HS256"
-TOKEN_EXPIRE_DAYS = 7
+SECRET_KEY = os.getenv("SECRET_KEY")
+ALGORITHM = os.getenv("ALGORITHM", "HS256")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 30))
 
-def hash_password(plain_password: str) -> str:
-    return bcrypt.hashpw(plain_password.encode(), bcrypt.gensalt()).decode()
+if not SECRET_KEY:
+    raise ValueError("SECRET_KEY not found in .env")
+
+
+def hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return bcrypt.checkpw(plain_password.encode(), hashed_password.encode())
+    return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
+
 
 def create_token(user_id: int, email: str) -> str:
-    payload = {
-        "user_id": user_id,
-        "email": email,
-        "exp": datetime.utcnow() + timedelta(days=TOKEN_EXPIRE_DAYS)
-    }
-    return jwt.encode(payload, JWT_SECRET, algorithm=ALGORITHM)
+    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    payload = {"sub": email, "user_id": user_id, "exp": expire}
+    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+
 
 def generate_verification_token(email: str) -> str:
     s = URLSafeTimedSerializer(os.getenv("SECRET_KEY", "your-secret-key"))
     return s.dumps(email, salt="email-verify")
+
 
 def confirm_verification_token(token: str, expiration=86400):
     s = URLSafeTimedSerializer(os.getenv("SECRET_KEY", "your-secret-key"))
@@ -36,3 +43,4 @@ def confirm_verification_token(token: str, expiration=86400):
     except Exception:
         return None
     return email
+

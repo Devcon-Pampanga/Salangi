@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from features.auth.auth_router import router as auth_router
-from db.database import Base, engine
+from backend.db.database import Base, engine
+from backend.features.auth.auth_router import router as auth_router
 
 Base.metadata.create_all(bind=engine)
 
