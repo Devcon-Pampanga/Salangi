@@ -9,7 +9,7 @@
 import type { Listing } from '../Data/Listings';
 
 // Asset imports — adjust path to match your project structure
-import locBtnSelected from '../../assets/locBtnSelected.png';
+import locBtnSelected from '@assets/png-files/locBtnSelected.png';
 
 interface MapViewProps {
   selectedListing: Listing | null;

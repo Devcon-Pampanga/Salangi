@@ -3,11 +3,11 @@
 import type { Listing } from '../Data/Listings';
 
 // Asset imports — adjust paths to match your project structure
-import locBtnSelected from '../../assets/locBtnSelected.png';
-import locBtn from '../../assets/locBtn.png';
-import verified from '../../assets/verified.png';
-import heart from '../../assets/heart.png';
-import time from '../../assets/time.png';
+import locBtnSelected from '@assets/png-files/locBtnSelected.png';
+import locBtn from '@assets/png-files/locBtn.png';
+import verified from '@assets/png-files/verified.png';
+import heart from '@assets/png-files/heart.png';
+import time from '@assets/png-files/time.png';
 
 interface BusinessCardProps {
   listing: Listing;
@@ -52,10 +52,10 @@ function BusinessCard({ listing, onSelect, isSelected }: BusinessCardProps) {
 
         {/* Name + verified badge */}
         <div className="flex items-center gap-2 my-1">
-          <p className="text-[#FBFAF8] font-semibold text-lg">{listing.name}</p>
           {listing.verified && (
             <img src={verified} width="15" alt="verified" title="Verified business" />
           )}
+          <p className="text-[#FBFAF8] font-semibold text-lg">{listing.name}</p>
         </div>
 
         {/* Description */}
