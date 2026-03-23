@@ -53,7 +53,10 @@ def register_user(request: RegisterRequest, db: Session):
     db.refresh(new_user)
 
     verification_token = generate_verification_token(new_user.email)
-    send_verification_email(new_user.email, verification_token)
+    try:
+        send_verification_email(new_user.email, verification_token)
+    except Exception as e:
+        print(f"Email sending failed: {e}")
 
     return {"message": "Registration successful. Please check your email to verify your account."}
 
@@ -73,7 +76,6 @@ def verify_email(token: str, db: Session):
     db.commit()
 
     return {"message": "Email verified successfully. You can now log in."}
-
 
 def login_user(request: LoginRequest, db: Session):
     user = db.query(User).filter(User.email == request.email).first()
