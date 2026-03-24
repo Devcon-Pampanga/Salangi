@@ -4,7 +4,7 @@ import Navigator from './features/Navigator';
 import Homepage from './features/dashboard/pages/Homepage';
 import Locationpage from './features/dashboard/pages/Locationpage';
 import Savepage from './features/dashboard/pages/Savepage';
-import ListBusiness from './features/components/ListBusiness'
+import ListBusiness from './features/dashboard/components/ListBusiness'
 import {createBrowserRouter, RouterProvider,} from 'react-router-dom';
 import type { RouteObject } from 'react-router-dom';
 

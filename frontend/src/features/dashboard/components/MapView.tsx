@@ -6,7 +6,7 @@
 //   2. Replace the <div> placeholder below with <GoogleMap> or <MapContainer>
 //   3. Use selectedListing.coordinates to set center + place a <Marker>
 
-import type { Listing } from '../Data/Listings';
+import type { Listing } from '../../Data/Listings';
 
 // Asset imports — adjust path to match your project structure
 import locBtnSelected from '@assets/png-files/locBtnSelected.png';

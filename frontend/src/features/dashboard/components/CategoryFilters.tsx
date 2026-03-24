@@ -1,4 +1,7 @@
 import { useState } from 'react';
+import { CATEGORIES } from '../../Data/Listings';
+import type { Category } from '../../Data/Listings';
+
 import grid from '@assets/icons/all-btn-default.svg';
 import gridHover from '@assets/icons/all-btn-hover.svg';
 import gridActive from '@assets/icons/all-btn-active.svg';
@@ -14,17 +17,18 @@ import activitiesActive from '@assets/icons/act-btn-active.svg';
 
 interface CategoryFiltersProps {
     className?: string;
+    activeCategory: Category;
+    onCategoryChange: (category: Category) => void;
 }
 
-const CategoryFilters = ({ className = "" }: CategoryFiltersProps) => {
-    const [activeCategory, setActiveCategory] = useState('all');
+const CategoryFilters = ({ className = "", activeCategory, onCategoryChange }: CategoryFiltersProps) => {
     const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
 
     const categories = [
-        { key: 'all', label: 'All', default: grid, hover: gridHover, active: gridActive },
-        { key: 'resto', label: 'Resto', default: resto, hover: restoHover, active: restoActive },
-        { key: 'cafe', label: 'Cafe', default: cafe, hover: cafeHover, active: cafeActive },
-        { key: 'activities', label: 'Activities', default: activities, hover: activitiesHover, active: activitiesActive },
+        { key: CATEGORIES.ALL as Category, label: 'All', default: grid, hover: gridHover, active: gridActive },
+        { key: CATEGORIES.RESTO as Category, label: 'Resto', default: resto, hover: restoHover, active: restoActive },
+        { key: CATEGORIES.CAFE as Category, label: 'Cafe', default: cafe, hover: cafeHover, active: cafeActive },
+        { key: CATEGORIES.ACTIVITIES as Category, label: 'Activities', default: activities, hover: activitiesHover, active: activitiesActive },
     ];
 
     return (
@@ -43,7 +47,7 @@ const CategoryFilters = ({ className = "" }: CategoryFiltersProps) => {
                         key={cat.key}
                         onMouseEnter={() => setHoveredCategory(cat.key)}
                         onMouseLeave={() => setHoveredCategory(null)}
-                        onClick={() => setActiveCategory(cat.key)}
+                        onClick={() => onCategoryChange(cat.key)}
                         className={`flex items-center cursor-pointer gap-2 p-2.5 px-5 rounded-lg border transition-all duration-200 
                             ${isActive 
                                 ? 'bg-[#FFE2A0] text-[#222222] border-[#FFE2A0]' 

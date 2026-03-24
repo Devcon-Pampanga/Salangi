@@ -10,6 +10,8 @@ interface SearchBarProps {
     className?: string;
     containerClassName?: string;
     glass?: boolean;
+    value?: string;
+    onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
 const SearchBar = ({ 
@@ -17,7 +19,9 @@ const SearchBar = ({
     placeholder = "Explore local spots",
     className = "",
     containerClassName = "",
-    glass = false
+    glass = false,
+    value,
+    onChange
 }: SearchBarProps) => {
     const [isHovered, setIsHovered] = useState(false);
     const [isFocused, setIsFocused] = useState(false);
@@ -40,6 +44,8 @@ const SearchBar = ({
                 <img src={currentSearchIcon} className="cursor-pointer" alt="search"/>
                 <input
                     type="text"
+                    value={value}
+                    onChange={onChange}
                     onFocus={() => setIsFocused(true)}
                     onBlur={() => setIsFocused(false)}
                     placeholder={placeholder}

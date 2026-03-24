@@ -3,7 +3,7 @@ import sampleimage from '@assets/png-files/imagesample.png';
 import bg from '@assets/images/bg.png';
 
 //components
-import SpotDetailCard from '../components/SpotDetailCard';
+import DetailedBusinessCard from '../components/DetailedBusinessCard';
 import SearchBar from '../components/SearchBar';
 
 const SPOT_DETAIL = {
@@ -50,7 +50,7 @@ function Locationpage() {
                 />
 
                 {/* Card */}
-                <SpotDetailCard {...SPOT_DETAIL} />
+                <DetailedBusinessCard {...SPOT_DETAIL} />
 
             </div>
 

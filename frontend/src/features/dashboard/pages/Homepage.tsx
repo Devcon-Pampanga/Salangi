@@ -3,38 +3,17 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
  
-import BusinessCard from '../../components/BusinessCard';
-import MapView from '../../components/MapView';
+import BusinessCard from '../components/BusinessCard';
+import MapView from '../components/MapView';
  
 import { listings, CATEGORIES } from '../../Data/Listings';
 import type { Listing, Category } from '../../Data/Listings';
  
+import CategoryFilters from '../components/CategoryFilters';
 import locBtn from '@assets/png-files/locBtn.png';
-import grid from '@assets/png-files/grid.png';
-import resto from '@assets/png-files/resto.png';
-import cafe from '@assets/png-files/cafe.png';
-import activities from '@assets/png-files/activities.png';
 import search from '@assets/png-files/search.png';
 import settings from '@assets/png-files/Settings.png';
  
-// ── Types ─────────────────────────────────────────────────────────────────────
- 
-interface CategoryButton {
-  label: Category;
-  icon: string;
-  alt: string;
-}
- 
-// ── Category button config ────────────────────────────────────────────────────
- 
-const CATEGORY_BUTTONS: CategoryButton[] = [
-  { label: CATEGORIES.ALL as Category,        icon: grid,       alt: 'all'        },
-  { label: CATEGORIES.RESTO as Category,      icon: resto,      alt: 'resto'      },
-  { label: CATEGORIES.CAFE as Category,       icon: cafe,       alt: 'cafe'       },
-  { label: CATEGORIES.ACTIVITIES as Category, icon: activities, alt: 'activities' },
-];
- 
-// ── Component ─────────────────────────────────────────────────────────────────
  
 function Homepage() {
   const navigate = useNavigate();
@@ -95,23 +74,11 @@ function Homepage() {
               Discover the <span className="text-[#FFE2A0]">heart</span> of Pampanga.
             </h1>
  
-            {/* Category filter buttons */}
-            <div className="flex gap-3 mb-5">
-              {CATEGORY_BUTTONS.map(({ label, icon, alt }: CategoryButton) => (
-                <button
-                  key={label}
-                  onClick={() => handleCategoryChange(label)}
-                  className={`flex items-center cursor-pointer gap-2 py-2 px-4 rounded-lg transition-colors text-sm whitespace-nowrap ${
-                    activeCategory === label
-                      ? 'bg-[#FFE2A0] text-[#1A1A1A] font-semibold'
-                      : 'bg-[#373737] text-[#FBFAF8] hover:bg-[#454545]'
-                  }`}
-                >
-                  <img src={icon} alt={alt} style={{ width: '16px', height: '16px' }} />
-                  <p>{label}</p>
-                </button>
-              ))}
-            </div>
+            <CategoryFilters 
+              activeCategory={activeCategory} 
+              onCategoryChange={handleCategoryChange} 
+              className="mb-5"
+            />
           </div>
  
           {/* Scrollable card list */}

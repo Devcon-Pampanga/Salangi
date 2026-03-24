@@ -76,7 +76,7 @@ function ReviewForm({ onSubmit, onCancel }: ReviewFormProps) {
                     <button
                         type="submit"
                         disabled={rating === 0}
-                        className="bg-[#FFE2A0] text-[#373737] px-6 py-2 rounded-lg text-sm hover:brightness-110 active:scale-95 transition-all shadow-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:brightness-100 disabled:active:scale-100"
+                        className="bg-[#FFE2A0] font-bold text-[#373737] px-6 py-2 rounded-lg text-sm hover:brightness-110 active:scale-95 transition-all shadow-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:brightness-100 disabled:active:scale-100"
                     >
                         Submit Review
                     </button>

@@ -25,7 +25,7 @@ interface Review {
     comment: string;
 }
 
-interface SpotDetailCardProps {
+interface DetailedBusinessCardProps {
     title: string;
     location: string;
     hours: string;
@@ -42,7 +42,7 @@ interface SpotDetailCardProps {
     initialSaved?: boolean;
 }
 
-function SpotDetailCard({
+function DetailedBusinessCard({
     title,
     location,
     hours,
@@ -57,7 +57,7 @@ function SpotDetailCard({
     reviews,
     isVerified = false,
     initialSaved = false
-}: SpotDetailCardProps) {
+}: DetailedBusinessCardProps) {
     const [isSaved, setIsSaved] = useState(initialSaved);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [localReviews, setLocalReviews] = useState(reviews);
@@ -270,4 +270,4 @@ function SpotDetailCard({
     );
 }
 
-export default SpotDetailCard;
+export default DetailedBusinessCard;
