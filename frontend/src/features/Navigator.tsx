@@ -133,7 +133,7 @@ function Navigator() {
                                 className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-[#3D3D3D] transition-colors cursor-pointer text-[#FBFAF8]/90 hover:text-white"
                             >
                                 <Settings size={18} className="opacity-70" />
-                                <span className="text-sm font-medium">Settings & Business</span>
+                                <span className="text-sm font-medium">Settings</span>
                             </button>
 
                             {/* Logout */}
