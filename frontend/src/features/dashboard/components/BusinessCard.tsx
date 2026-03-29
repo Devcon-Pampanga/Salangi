@@ -14,10 +14,11 @@ interface BusinessCardProps {
   listing: Listing;
   onSelect: (listing: Listing) => void;
   isSelected: boolean;
+  isSaved: boolean; 
+  onToggleSave: (id: number) => void;
 }
 
-function BusinessCard({ listing, onSelect, isSelected }: BusinessCardProps) {
-  const [isSaved, setIsSaved] = useState(false);
+function BusinessCard({ listing, onSelect, isSelected, isSaved, onToggleSave }: BusinessCardProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const navigate = useNavigate();
 
@@ -42,18 +43,16 @@ function BusinessCard({ listing, onSelect, isSelected }: BusinessCardProps) {
       }`}
     >
       <div className="relative group">
-        {/* Save button */}
         <button
           onClick={(e) => {
             e.stopPropagation();
-            setIsSaved(!isSaved);
+            onToggleSave(listing.id);
           }}
           className="absolute top-3 left-3 flex items-center justify-center w-10 h-10 bg-[#222222]/80 backdrop-blur-sm rounded-full z-20 cursor-pointer hover:scale-110 active:scale-95"
         >
           <img src={isSaved ? saveActive : saveInactive} width="20" alt="heart" />
         </button>
 
-        {/* Image Carousel */}
         <div className="relative w-full h-72 overflow-hidden bg-zinc-800">
           <img
             src={listing.images[currentIndex]}
@@ -61,7 +60,6 @@ function BusinessCard({ listing, onSelect, isSelected }: BusinessCardProps) {
             alt={`${listing.name} - ${currentIndex + 1}`}
           />
 
-          {/* Navigation Arrows */}
           {listing.images.length > 1 && (
             <>
               <button
@@ -79,7 +77,6 @@ function BusinessCard({ listing, onSelect, isSelected }: BusinessCardProps) {
             </>
           )}
 
-          {/* Pagination Dots */}
           {listing.images.length > 1 && (
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
               {listing.images.map((_, idx) => (
@@ -96,19 +93,16 @@ function BusinessCard({ listing, onSelect, isSelected }: BusinessCardProps) {
       </div>
 
       <div className="p-5">
-        {/* Location */}
         <div className="flex items-center gap-2 mt-4">
           <img src={locBtnSelected} width="13" alt="loc" />
           <p className="text-[#FBFAF8]/50 text-sm">{listing.location}</p>
         </div>
 
-        {/* Hours */}
         <div className="flex items-center gap-2 mt-2">
           <img src={time} width="13" alt="time" />
           <p className="text-[#FBFAF8]/50 text-sm">{listing.hours}</p>
         </div>
 
-        {/* Name + verified badge */}
         <div className="flex items-center gap-2 my-1">
           {listing.verified && (
             <img src={verified} width="15" alt="verified" title="Verified business" />
@@ -116,12 +110,10 @@ function BusinessCard({ listing, onSelect, isSelected }: BusinessCardProps) {
           <p className="text-[#FBFAF8] font-semibold text-lg">{listing.name}</p>
         </div>
 
-        {/* Description */}
         <p className="text-sm text-zinc-300 line-clamp-2 mb-1">
           {listing.description}
         </p>
 
-        {/* See more */}
         <span
           onClick={(e) => {
             e.stopPropagation();
@@ -132,7 +124,6 @@ function BusinessCard({ listing, onSelect, isSelected }: BusinessCardProps) {
           See more.
         </span>
 
-        {/* CTA */}
         <div className="flex justify-end py-3 mt-2">
           <button
             onClick={(e) => { e.stopPropagation(); onSelect(listing); }}
