@@ -54,11 +54,14 @@ function Locationpage() {
 
   const fetchReviews = async (listingId: number) => {
     setReviewsLoading(true);
-    const { data, error } = await supabase
-      .from('reviews')
-      .select('*, users(first_name, last_name)')
-      .eq('listing_id', listingId)
-      .order('created_at', { ascending: false });
+   const { data, error } = await supabase
+        .from('reviews')
+        .select(`
+          *,
+          users!inner(first_name, last_name)
+        `)
+        .eq('listing_id', listingId)
+        .order('created_at', { ascending: false });
 
     if (!error && data) {
       const mapped: Review[] = data.map((r: any) => {
