@@ -1,24 +1,49 @@
 // ListBusiness.jsx — 3-step business listing form
-// Step 1: Business details  |  Step 2: Verification  |  Step 3: Review & Submit
+// Step 1: Business details + draggable pin  |  Step 2: Verification  |  Step 3: Review & Submit
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: markerIcon2x,
+  iconUrl: markerIcon,
+  shadowUrl: markerShadow,
+});
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
 type Category = 'Resto' | 'Cafe' | 'Activities' | '';
+type OperatingDays =
+  | 'Daily'
+  | 'Monday – Saturday'
+  | 'Monday – Friday'
+  | 'Weekends Only'
+  | 'Tuesday – Sunday'
+  | 'Wednesday – Sunday'
+  | '';
 
 interface FormState {
   name: string;
   category: Category;
   description: string;
+  operatingDays: OperatingDays;
   openingTime: string;
   closingTime: string;
   city: string;
   barangay: string;
   street: string;
   otherDetails: string;
+  phone: string;
+  facebook: string;
+  website: string;
   images: File[];
   imagePreviews: string[];
   businessPermit: File | null;
@@ -27,6 +52,8 @@ interface FormState {
   idPreview: string | null;
   selfie: File | null;
   selfiePreview: string | null;
+  lat: number | null;
+  lng: number | null;
 }
 
 interface StepBarProps { current: number; }
@@ -43,6 +70,15 @@ interface TextInputProps {
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const CATEGORIES: Category[] = ['Resto', 'Cafe', 'Activities'];
+
+const OPERATING_DAYS: OperatingDays[] = [
+  'Daily',
+  'Monday – Saturday',
+  'Monday – Friday',
+  'Weekends Only',
+  'Tuesday – Sunday',
+  'Wednesday – Sunday',
+];
 
 const STEPS = [
   { id: 1, label: 'Business Details' },
@@ -93,12 +129,16 @@ const INITIAL_FORM: FormState = {
   name: '',
   category: '',
   description: '',
+  operatingDays: '',
   openingTime: '',
   closingTime: '',
   city: '',
   barangay: '',
   street: '',
   otherDetails: '',
+  phone: '',
+  facebook: '',
+  website: '',
   images: [],
   imagePreviews: [],
   businessPermit: null,
@@ -107,6 +147,8 @@ const INITIAL_FORM: FormState = {
   idPreview: null,
   selfie: null,
   selfiePreview: null,
+  lat: null,
+  lng: null,
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -117,6 +159,109 @@ function readFileAsDataURL(file: File): Promise<string> {
     reader.onload = (e: ProgressEvent<FileReader>) => resolve(e.target?.result as string);
     reader.readAsDataURL(file);
   });
+}
+
+async function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
+  try {
+    const encoded = encodeURIComponent(address);
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${encoded}&format=json&limit=1&countrycodes=ph`,
+      { headers: { 'Accept-Language': 'en' } }
+    );
+    const data = await res.json();
+    if (!data || data.length === 0) return null;
+    return {
+      lat: parseFloat(data[0].lat),
+      lng: parseFloat(data[0].lon),
+    };
+  } catch {
+    return null;
+  }
+}
+
+// ── Upload images to Supabase Storage ─────────────────────────────────────────
+
+async function uploadImages(files: File[]): Promise<string[]> {
+  const urls: string[] = [];
+  for (const file of files) {
+    const ext = file.name.split('.').pop();
+    const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const { data, error } = await supabase.storage
+      .from('listings-images')
+      .upload(fileName, file, { cacheControl: '3600', upsert: false });
+
+    if (error) {
+      console.error('Image upload error:', error);
+      continue;
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('listings-images')
+      .getPublicUrl(data.path);
+
+    urls.push(publicUrl);
+  }
+  return urls;
+}
+
+// ── Draggable Pin Map ─────────────────────────────────────────────────────────
+
+interface DraggableMapProps {
+  lat: number;
+  lng: number;
+  onPinMove: (lat: number, lng: number) => void;
+}
+
+function DraggableMap({ lat, lng, onPinMove }: DraggableMapProps) {
+  const mapRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<L.Map | null>(null);
+  const markerRef = useRef<L.Marker | null>(null);
+
+  useEffect(() => {
+    if (!mapRef.current) return;
+
+    if (!mapInstanceRef.current) {
+      const map = L.map(mapRef.current).setView([lat, lng], 17);
+      mapInstanceRef.current = map;
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors',
+        maxZoom: 19,
+      }).addTo(map);
+
+      const marker = L.marker([lat, lng], { draggable: true }).addTo(map);
+      markerRef.current = marker;
+
+      marker.on('dragend', () => {
+        const pos = marker.getLatLng();
+        onPinMove(pos.lat, pos.lng);
+      });
+    }
+
+    return () => {
+      mapInstanceRef.current?.remove();
+      mapInstanceRef.current = null;
+      markerRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!mapInstanceRef.current || !markerRef.current) return;
+    markerRef.current.setLatLng([lat, lng]);
+    mapInstanceRef.current.flyTo([lat, lng], 17, { animate: true, duration: 1 });
+  }, [lat, lng]);
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div
+        ref={mapRef}
+        style={{ height: '220px', width: '100%', borderRadius: '12px', overflow: 'hidden' }}
+      />
+      <p className="text-xs text-[#FBFAF8]/40 text-center">
+        📍 Drag the pin to set the exact location of your business
+      </p>
+    </div>
+  );
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -198,16 +343,68 @@ function ListBusiness() {
   const [submitted, setSubmitted] = useState<boolean>(false);
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [submitError, setSubmitError] = useState<string>('');
+  const [geocoding, setGeocoding] = useState<boolean>(false);
+  const geocodeTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const update = <K extends keyof FormState>(key: K, value: FormState[K]): void => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
+  // Auto-geocode whenever street, barangay, or city changes
+  useEffect(() => {
+    if (!form.city) return;
+
+    if (geocodeTimeout.current) clearTimeout(geocodeTimeout.current);
+
+    geocodeTimeout.current = setTimeout(async () => {
+      setGeocoding(true);
+
+      const attempts = [
+        form.street
+          ? `${form.street}, ${form.barangay}, ${form.city}, Pampanga, Philippines`
+          : null,
+        form.barangay
+          ? `${form.barangay}, ${form.city}, Pampanga, Philippines`
+          : null,
+        `${form.city}, Pampanga, Philippines`,
+      ].filter(Boolean) as string[];
+
+      let coords: { lat: number; lng: number } | null = null;
+      for (const address of attempts) {
+        coords = await geocodeAddress(address);
+        if (coords) break;
+      }
+
+      if (!coords) {
+        coords = CITY_COORDS[form.city] ?? { lat: 15.1450, lng: 120.5887 };
+      }
+
+      setForm((prev) => ({ ...prev, lat: coords!.lat, lng: coords!.lng }));
+      setGeocoding(false);
+    }, 800);
+
+    return () => {
+      if (geocodeTimeout.current) clearTimeout(geocodeTimeout.current);
+    };
+  }, [form.street, form.barangay, form.city]);
+
   const handleImages = async (e: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
-    const files = Array.from(e.target.files ?? []);
-    const previews = await Promise.all(files.map(readFileAsDataURL));
-    update('images', files);
-    update('imagePreviews', previews);
+    const newFiles = Array.from(e.target.files ?? []);
+    const newPreviews = await Promise.all(newFiles.map(readFileAsDataURL));
+    // Append to existing images
+    setForm((prev) => ({
+      ...prev,
+      images: [...prev.images, ...newFiles],
+      imagePreviews: [...prev.imagePreviews, ...newPreviews],
+    }));
+  };
+
+  const removeImage = (index: number): void => {
+    setForm((prev) => ({
+      ...prev,
+      images: prev.images.filter((_, i) => i !== index),
+      imagePreviews: prev.imagePreviews.filter((_, i) => i !== index),
+    }));
   };
 
   const handleDoc = async (
@@ -226,11 +423,14 @@ function ListBusiness() {
     form.name.trim() !== '' &&
     form.category !== '' &&
     form.description.trim() !== '' &&
+    form.operatingDays !== '' &&
     form.openingTime !== '' &&
     form.closingTime !== '' &&
     form.city !== '' &&
     form.barangay !== '' &&
-    form.street.trim() !== '';
+    form.street.trim() !== '' &&
+    form.lat !== null &&
+    form.lng !== null;
 
   const step2Valid: boolean = form.businessPermit !== null && form.governmentId !== null;
 
@@ -238,8 +438,15 @@ function ListBusiness() {
     setSubmitting(true);
     setSubmitError('');
     try {
-      const hours = `${form.openingTime} – ${form.closingTime}`;
-      const coords = CITY_COORDS[form.city];
+      // Format hours string: "Daily, 8:00 AM – 9:00 PM"
+      const fmt = (t: string) => {
+        const [h, m] = t.split(':').map(Number);
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        const hour = h % 12 || 12;
+        return `${hour}:${String(m).padStart(2, '0')} ${ampm}`;
+      };
+      const hours = `${form.operatingDays}, ${fmt(form.openingTime)} – ${fmt(form.closingTime)}`;
+
       const location = [
         form.street,
         form.barangay,
@@ -248,16 +455,28 @@ function ListBusiness() {
         form.otherDetails ? `(${form.otherDetails})` : '',
       ].filter(Boolean).join(', ');
 
+      const lat = form.lat ?? CITY_COORDS[form.city]?.lat ?? 15.1450;
+      const lng = form.lng ?? CITY_COORDS[form.city]?.lng ?? 120.5887;
+
+      // Upload images to Supabase Storage
+      let imageUrls: string[] = [];
+      if (form.images.length > 0) {
+        imageUrls = await uploadImages(form.images);
+      }
+
       const { error } = await supabase.from('listings').insert({
         name: form.name,
         category: form.category,
         description: form.description,
-        hours: hours,
-        location: location,
-        lat: coords.lat,
-        lng: coords.lng,
-        images: [],
+        hours,
+        location,
+        lat,
+        lng,
+        images: imageUrls,
         verified: false,
+        phone: form.phone.trim() || null,
+        facebook: form.facebook.trim() || null,
+        website: form.website.trim() || null,
       });
 
       if (error) throw error;
@@ -319,6 +538,8 @@ function ListBusiness() {
         {/* ── STEP 1 ── */}
         {step === 1 && (
           <div className="flex flex-col gap-5">
+
+            {/* Business Name */}
             <Field label="Business Name *">
               <TextInput
                 value={form.name}
@@ -327,6 +548,7 @@ function ListBusiness() {
               />
             </Field>
 
+            {/* Category */}
             <Field label="Category *">
               <div className="flex gap-3">
                 {CATEGORIES.map((cat) => (
@@ -345,6 +567,7 @@ function ListBusiness() {
               </div>
             </Field>
 
+            {/* Description */}
             <Field label="Description *">
               <textarea
                 value={form.description}
@@ -355,6 +578,26 @@ function ListBusiness() {
               />
             </Field>
 
+            {/* Operating Days */}
+            <Field label="Operating Days *">
+              <div className="flex flex-wrap gap-2">
+                {OPERATING_DAYS.map((day) => (
+                  <button
+                    key={day}
+                    onClick={() => update('operatingDays', day)}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-all border ${
+                      form.operatingDays === day
+                        ? 'bg-[#FFE2A0] text-[#1A1A1A] border-[#FFE2A0]'
+                        : 'bg-[#2D2D2D] text-[#FBFAF8]/70 border-transparent hover:border-[#FFE2A0]/40'
+                    }`}
+                  >
+                    {day}
+                  </button>
+                ))}
+              </div>
+            </Field>
+
+            {/* Opening / Closing Time */}
             <div className="flex gap-4">
               <Field label="Opening Time *">
                 <TextInput type="time" value={form.openingTime} onChange={(e) => update('openingTime', e.target.value)} />
@@ -364,6 +607,7 @@ function ListBusiness() {
               </Field>
             </div>
 
+            {/* City */}
             <Field label="City *">
               <select
                 value={form.city}
@@ -377,6 +621,7 @@ function ListBusiness() {
               </select>
             </Field>
 
+            {/* Barangay */}
             {form.city && (
               <Field label="Barangay *">
                 <select
@@ -392,6 +637,7 @@ function ListBusiness() {
               </Field>
             )}
 
+            {/* Street */}
             <Field label="Street / Building No. *">
               <TextInput
                 value={form.street}
@@ -400,6 +646,7 @@ function ListBusiness() {
               />
             </Field>
 
+            {/* Other Details */}
             <Field label="Other Details (optional)">
               <TextInput
                 value={form.otherDetails}
@@ -408,10 +655,87 @@ function ListBusiness() {
               />
             </Field>
 
-            <Field label="Business Photos (optional)">
+            {/* Draggable Pin Map */}
+            {form.lat !== null && form.lng !== null && (
+              <Field label="Pin Location *">
+                {geocoding && (
+                  <p className="text-xs text-[#FFE2A0]/70 mb-2 animate-pulse">📡 Finding location...</p>
+                )}
+                <DraggableMap
+                  lat={form.lat}
+                  lng={form.lng}
+                  onPinMove={(lat, lng) => setForm((prev) => ({ ...prev, lat, lng }))}
+                />
+              </Field>
+            )}
+
+            {/* ── Contact & Social ── */}
+            <div className="border-t border-[#373737] pt-5">
+              <p className="text-xs text-[#FFE2A0]/70 font-semibold uppercase tracking-wider mb-4">
+                Contact & Social (optional)
+              </p>
+
+              <div className="flex flex-col gap-4">
+                {/* Phone */}
+                <div className="flex items-center gap-3">
+                  <span className="text-lg w-8 text-center">📞</span>
+                  <div className="flex-1">
+                    <TextInput
+                      value={form.phone}
+                      onChange={(e) => update('phone', e.target.value)}
+                      placeholder="e.g. +63 912 345 6789"
+                      type="tel"
+                    />
+                  </div>
+                </div>
+
+                {/* Facebook */}
+                <div className="flex items-center gap-3">
+                  <span className="text-lg w-8 text-center">🌐</span>
+                  <div className="flex-1">
+                    <TextInput
+                      value={form.facebook}
+                      onChange={(e) => update('facebook', e.target.value)}
+                      placeholder="facebook.com/yourbusiness"
+                    />
+                  </div>
+                </div>
+
+                {/* Website */}
+                <div className="flex items-center gap-3">
+                  <span className="text-lg w-8 text-center">🔗</span>
+                  <div className="flex-1">
+                    <TextInput
+                      value={form.website}
+                      onChange={(e) => update('website', e.target.value)}
+                      placeholder="www.yourbusiness.com"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Business Photos */}
+            <div className="border-t border-[#373737] pt-5">
+              <p className="text-xs text-[#FFE2A0]/70 font-semibold uppercase tracking-wider mb-4">
+                Business Photos (optional)
+              </p>
               <div className="flex gap-3 flex-wrap">
                 {form.imagePreviews.map((src, i) => (
-                  <img key={i} src={src} alt={`preview-${i}`} className="w-24 h-24 object-cover rounded-lg border border-[#FFE2A0]/20" />
+                  <div key={i} className="relative group">
+                    <img
+                      src={src}
+                      alt={`preview-${i}`}
+                      className="w-24 h-24 object-cover rounded-lg border border-[#FFE2A0]/20"
+                    />
+                    {/* Remove button */}
+                    <button
+                      onClick={() => removeImage(i)}
+                      className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                    >
+                      ✕
+                    </button>
+                  </div>
                 ))}
                 <label className="w-24 h-24 flex flex-col items-center justify-center border-2 border-dashed border-[#373737] hover:border-[#FFE2A0]/40 rounded-lg cursor-pointer transition-colors text-center text-xs text-[#FBFAF8]/40">
                   <span className="text-xl">+</span>
@@ -419,7 +743,10 @@ function ListBusiness() {
                   <input type="file" accept="image/*" multiple className="hidden" onChange={handleImages} />
                 </label>
               </div>
-            </Field>
+              <p className="text-xs text-[#FBFAF8]/30 mt-2">
+                JPG, PNG, WEBP · Max 5MB each · Hover photo to remove
+              </p>
+            </div>
 
             <button
               onClick={() => { if (step1Valid) setStep(2); }}
@@ -489,6 +816,8 @@ function ListBusiness() {
         {/* ── STEP 3 ── */}
         {step === 3 && (
           <div className="flex flex-col gap-6">
+
+            {/* Business Details Card */}
             <div className="bg-[#2D2D2D] rounded-xl p-5 border border-zinc-700">
               <p className="text-[#FFE2A0] font-semibold text-sm mb-4">Business Details</p>
               <div className="grid grid-cols-2 gap-4 text-sm">
@@ -499,6 +828,10 @@ function ListBusiness() {
                 <div>
                   <p className="text-[#FBFAF8]/40 text-xs mb-1">Category</p>
                   <p className="text-[#FBFAF8] font-medium">{form.category}</p>
+                </div>
+                <div>
+                  <p className="text-[#FBFAF8]/40 text-xs mb-1">Operating Days</p>
+                  <p className="text-[#FBFAF8] font-medium">{form.operatingDays}</p>
                 </div>
                 <div>
                   <p className="text-[#FBFAF8]/40 text-xs mb-1">Hours</p>
@@ -517,7 +850,7 @@ function ListBusiness() {
                   <p className="text-[#FBFAF8] font-medium">{form.street}</p>
                 </div>
                 {form.otherDetails && (
-                  <div className="col-span-2">
+                  <div>
                     <p className="text-[#FBFAF8]/40 text-xs mb-1">Other Details</p>
                     <p className="text-[#FBFAF8] font-medium">{form.otherDetails}</p>
                   </div>
@@ -527,9 +860,30 @@ function ListBusiness() {
                 <p className="text-[#FBFAF8]/40 text-xs mb-1">Description</p>
                 <p className="text-[#FBFAF8] text-sm">{form.description}</p>
               </div>
+
+              {/* Contact & Social review */}
+              {(form.phone || form.facebook || form.website) && (
+                <div className="mt-4 border-t border-zinc-700 pt-4">
+                  <p className="text-[#FBFAF8]/40 text-xs mb-3">Contact & Social</p>
+                  <div className="flex flex-col gap-1 text-sm">
+                    {form.phone && (
+                      <p className="text-[#FBFAF8]/80">📞 {form.phone}</p>
+                    )}
+                    {form.facebook && (
+                      <p className="text-[#FBFAF8]/80">🌐 {form.facebook}</p>
+                    )}
+                    {form.website && (
+                      <p className="text-[#FBFAF8]/80">🔗 {form.website}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {form.imagePreviews.length > 0 && (
-                <div className="mt-4">
-                  <p className="text-[#FBFAF8]/40 text-xs mb-2">Photos</p>
+                <div className="mt-4 border-t border-zinc-700 pt-4">
+                  <p className="text-[#FBFAF8]/40 text-xs mb-2">
+                    Photos ({form.imagePreviews.length})
+                  </p>
                   <div className="flex gap-2 flex-wrap">
                     {form.imagePreviews.map((src, i) => (
                       <img key={i} src={src} alt={`photo-${i}`} className="w-16 h-16 object-cover rounded-lg" />
@@ -539,6 +893,7 @@ function ListBusiness() {
               )}
             </div>
 
+            {/* Verification Documents Card */}
             <div className="bg-[#2D2D2D] rounded-xl p-5 border border-zinc-700">
               <p className="text-[#FFE2A0] font-semibold text-sm mb-4">Verification Documents</p>
               <div className="flex gap-4">
@@ -570,8 +925,20 @@ function ListBusiness() {
 
             {submitError && <p className="text-red-400 text-sm text-center">{submitError}</p>}
 
+            {submitting && (
+              <div className="text-center">
+                <p className="text-[#FFE2A0]/70 text-sm animate-pulse">
+                  ⏳ Uploading images and submitting your listing...
+                </p>
+              </div>
+            )}
+
             <div className="flex gap-3">
-              <button onClick={() => setStep(2)} className="flex-1 py-4 rounded-xl font-bold text-sm bg-[#373737] text-[#FBFAF8]/70 hover:bg-[#454545] transition-all cursor-pointer">
+              <button
+                onClick={() => setStep(2)}
+                disabled={submitting}
+                className="flex-1 py-4 rounded-xl font-bold text-sm bg-[#373737] text-[#FBFAF8]/70 hover:bg-[#454545] transition-all cursor-pointer disabled:opacity-50"
+              >
                 ← Back
               </button>
               <button
