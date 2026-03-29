@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import search from '@assets/icons/search-back-btn.svg';
 import sampleImage from '@assets/png-files/imagesample.png';
@@ -7,7 +7,7 @@ import DetailedBusinessCard from '../components/DetailedBusinessCard';
 import SearchBar from '../components/SearchBar';
 import MapView from '../../../map/MapView';
 import type { Listing } from '../../Data/Listings';
-import { listings } from '../../Data/Listings';
+import { getListings } from '../../Data/Listings';
 
 const DEFAULT_SPOT = {
   title: "Holy Rosary Parish Church",
@@ -58,8 +58,14 @@ function Locationpage() {
   const { state } = useLocation();
   const listing: Listing = state?.listing ?? DEFAULT_LISTING;
 
+  const [listings, setListings] = useState<Listing[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedListing, setSelectedListing] = useState<Listing>(listing);
+
+  // Fetch listings from Supabase for search
+  useEffect(() => {
+    getListings().then(setListings).catch(console.error);
+  }, []);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);

@@ -5,23 +5,31 @@ import { useNavigate } from 'react-router-dom';
  
 import BusinessCard from '../components/BusinessCard';
 import MapView from '../../../map/MapView';
+import SearchBar from '../components/SearchBar';
  
-import { listings, CATEGORIES } from '../../Data/Listings';
+import { getListings, CATEGORIES } from '../../Data/Listings';
 import type { Listing, Category } from '../../Data/Listings';
  
 import CategoryFilters from '../components/CategoryFilters';
-import locBtn from '@assets/png-files/locBtn.png';
-import search from '@assets/png-files/search.png';
-import settings from '@assets/png-files/Settings.png';
  
 function Homepage() {
   const navigate = useNavigate();
  
+  const [listings, setListings]               = useState<Listing[]>([]);
+  const [isLoading, setIsLoading]             = useState(true);
   const [activeCategory, setActiveCategory]   = useState<Category>(CATEGORIES.ALL as Category);
   const [searchQuery,    setSearchQuery]       = useState<string>('');
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
 
-  // 1. Logic for saving/loading from LocalStorage
+  // Fetch listings from Supabase on mount
+  useEffect(() => {
+    getListings()
+      .then(setListings)
+      .catch(console.error)
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  // Saving/loading from LocalStorage
   const [savedIds, setSavedIds] = useState<number[]>(() => {
     const saved = localStorage.getItem('salangi_saved_spots');
     return saved ? JSON.parse(saved) : [];
@@ -46,7 +54,7 @@ function Homepage() {
         .includes(searchQuery.toLowerCase());
       return matchesCategory && matchesSearch;
     });
-  }, [activeCategory, searchQuery]);
+  }, [listings, activeCategory, searchQuery]);
  
   const handleCardSelect = (listing: Listing): void => {
     setSelectedListing((prev: Listing | null) =>
@@ -63,7 +71,6 @@ function Homepage() {
     setSearchQuery(e.target.value);
   };
 
-  // Scroll to selected card when selected from map pin
   useEffect(() => {
     if (!selectedListing) return;
     const el = document.getElementById(`listing-card-${selectedListing.id}`);
@@ -73,7 +80,6 @@ function Homepage() {
   return (
     <div className="relative w-full h-full bg-[#1A1A1A] text-[#FBFAF8] overflow-hidden">
  
-      {/* Ambient glow — matches original */}
       <div
         className="absolute top-0 left-0 rounded-full blur-3xl opacity-60 pointer-events-none"
         style={{
@@ -86,7 +92,7 @@ function Homepage() {
  
       <div className="relative z-10 h-full flex px-6 py-6 gap-6">
  
-        {/* ── LEFT COLUMN: fixed width, title + filters + scrollable cards ── */}
+        {/* ── LEFT COLUMN ── */}
         <div
           className="h-full flex flex-col overflow-hidden shrink-0"
           style={{ width: '480px' }}
@@ -108,14 +114,17 @@ function Homepage() {
             className="flex-1 overflow-y-auto flex flex-col gap-6 pb-10 pr-2 pl-1 pt-1"
             style={{ scrollbarWidth: 'none' }}
           >
-            {filteredListings.length > 0 ? (
+            {isLoading ? (
+              <div className="flex flex-col items-center justify-center py-20 text-center">
+                <p className="text-[#FBFAF8]/50 text-sm animate-pulse">Loading listings...</p>
+              </div>
+            ) : filteredListings.length > 0 ? (
               filteredListings.map((listing: Listing) => (
                 <BusinessCard
                   key={listing.id}
                   listing={listing}
                   onSelect={handleCardSelect}
                   isSelected={selectedListing?.id === listing.id}
-                  // ADD THESE TWO PROPS TO FIX THE ERROR
                   isSaved={savedIds.includes(listing.id)}
                   onToggleSave={toggleSave}
                 />
@@ -132,34 +141,29 @@ function Homepage() {
           </div>
         </div>
  
-        {/* ── RIGHT COLUMN: flex-1 fills remaining space, search bar + map ── */}
+        {/* ── RIGHT COLUMN ── */}
         <div className="flex-1 flex flex-col overflow-hidden min-w-0">
- 
+
           {/* Search bar row */}
           <div className="flex items-center gap-3 shrink-0">
-            <div className="flex-1 flex items-center px-4 py-3 bg-[#2D2D2D] rounded-lg border border-transparent focus-within:border-gray-500 transition-all">
-              <img src={search} alt="search" className="cursor-pointer" style={{ width: '16px' }} />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={handleSearchChange}
-                placeholder="Explore local spots"
-                className="flex-1 px-3 bg-transparent text-gray-200 placeholder-gray-500 outline-none text-sm"
-              />
-              <img src={settings} alt="settings" className="cursor-pointer" style={{ width: '16px' }} />
-            </div>
- 
+            <SearchBar
+              placeholder="Explore local spots"
+              value={searchQuery}
+              onChange={handleSearchChange}
+              className="py-1"
+              containerClassName="flex-1"
+            />
+
             {/* List Your Business button */}
             <button
               onClick={() => navigate('/listbusiness')}
               className="flex items-center gap-2 px-4 py-3 bg-[#FFE2A0] text-[#1A1A1A] rounded-lg font-semibold text-sm whitespace-nowrap cursor-pointer hover:bg-[#f5d880] transition-colors"
             >
-              <img src={locBtn} alt="pin" style={{ width: '13px' }} />
-              List Your Business
+              📍 List Your Business
             </button>
           </div>
  
-          {/* Map — fills all remaining vertical space below search bar */}
+          {/* Map */}
           <div className="flex-1 min-h-0">
             <MapView
               listings={filteredListings}
@@ -167,7 +171,6 @@ function Homepage() {
               onSelect={handleCardSelect}
             />
           </div>
- 
         </div>
       </div>
     </div>

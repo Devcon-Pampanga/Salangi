@@ -7,6 +7,8 @@ import Savepage from './features/dashboard/pages/Savepage';
 import ListBusiness from './features/dashboard/components/ListBusiness';
 import MapView from './map/MapView';
 import ProtectedRoute from './components/ProtectedRoute';
+import AdminLogin from './features/admin/pages/AdminLogin';
+import AdminDashboard from './features/admin/pages/AdminDashboard';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import type { RouteObject } from 'react-router-dom';
 
@@ -21,6 +23,14 @@ const routes: RouteObject[] = [
     element: <Signin />,
   },
   {
+    path: '/admin',
+    element: <AdminLogin />,
+  },
+  {
+    path: '/admin/dashboard',
+    element: <AdminDashboard />,
+  },
+  {
     path: '/',
     element: (
       <ProtectedRoute>
@@ -28,26 +38,11 @@ const routes: RouteObject[] = [
       </ProtectedRoute>
     ),
     children: [
-      {
-        path: '/home-page',
-        element: <Homepage />,
-      },
-      {
-        path: '/location-page',
-        element: <Locationpage />,
-      },
-      {
-        path: '/save-page',
-        element: <Savepage />,
-      },
-      {
-        path: '/listbusiness',
-        element: <ListBusiness />,
-      },
-      {
-        path: '/map-page',
-        element: <MapView />,
-      },
+      { path: '/home-page', element: <Homepage /> },
+      { path: '/location-page', element: <Locationpage /> },
+      { path: '/save-page', element: <Savepage /> },
+      { path: '/listbusiness', element: <ListBusiness /> },
+      { path: '/map-page', element: <MapView /> },
     ],
   },
 ];
@@ -55,11 +50,7 @@ const routes: RouteObject[] = [
 const router = createBrowserRouter(routes);
 
 function App() {
-  return (
-    <>
-      <RouterProvider router={router} />
-    </>
-  );
+  return <RouterProvider router={router} />;
 }
 
 export default App;

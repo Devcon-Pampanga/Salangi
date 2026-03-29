@@ -3,22 +3,24 @@
 
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/lib/supabase';
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// ── Types ────────────────────────────────────────────────────────────────────
 
 type Category = 'Resto' | 'Cafe' | 'Activities' | '';
 
 interface FormState {
-  // Step 1
   name: string;
   category: Category;
   description: string;
   openingTime: string;
   closingTime: string;
-  address: string;
+  city: string;
+  barangay: string;
+  street: string;
+  otherDetails: string;
   images: File[];
   imagePreviews: string[];
-  // Step 2
   businessPermit: File | null;
   permitPreview: string | null;
   governmentId: File | null;
@@ -27,31 +29,18 @@ interface FormState {
   selfiePreview: string | null;
 }
 
-interface StepBarProps {
-  current: number;
-}
-
+interface StepBarProps { current: number; }
 interface FileUploadAreaProps {
-  label: string;
-  accept: string;
-  preview: string | null;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  hint?: string;
+  label: string; accept: string; preview: string | null;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; hint?: string;
 }
-
-interface FieldProps {
-  label: string;
-  children: React.ReactNode;
-}
-
+interface FieldProps { label: string; children: React.ReactNode; }
 interface TextInputProps {
-  value: string;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  placeholder?: string;
-  type?: string;
+  value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  placeholder?: string; type?: string;
 }
 
-// ── Constants ─────────────────────────────────────────────────────────────────
+// ── Constants ────────────────────────────────────────────────────────────────
 
 const CATEGORIES: Category[] = ['Resto', 'Cafe', 'Activities'];
 
@@ -61,13 +50,55 @@ const STEPS = [
   { id: 3, label: 'Review & Submit' },
 ];
 
+const LOCATIONS: Record<string, string[]> = {
+  'Angeles City': [
+    'Balibago', 'Capaya', 'Claro M. Recto', 'Cuayan', 'Cutcut',
+    'Lourdes North West', 'Lourdes Sur', 'Malabanias', 'Pampang',
+    'Pulung Cacutud', 'Pulung Maragul', 'Salapungan', 'San Jose',
+    'Santa Trinidad', 'Santo Cristo', 'Santo Domingo', 'Santo Rosario',
+    'Telecom', 'Agapito del Rosario', 'Anunas', 'Margot', 'Mining',
+    'Ninoy Aquino', 'Pandan', 'Pulungbulo', 'Virgen Delos Remedios',
+  ],
+  'San Fernando': [
+    'Alasas', 'Baliti', 'Bulaon', 'Calulut', 'Del Carmen',
+    'Del Pilar', 'Del Rosario', 'Dolores', 'Juliana', 'Lara',
+    'Lourdes', 'Magliman', 'Maimpis', 'Malino', 'Malpitic',
+    'Pandaras', 'Panipuan', 'Pulung Bulu', 'Quebiawan', 'Saguin',
+    'San Agustin', 'San Felipe', 'San Isidro', 'San Jose',
+    'San Nicolas', 'San Pedro', 'Santa Lucia', 'Santa Teresita',
+    'Santiago', 'Sindalan', 'Telabastagan',
+  ],
+  'Mabalacat': [
+    'Atlu-Bola', 'Bical', 'Bundagul', 'Cacutud', 'Calumpang',
+    'Camachiles', 'Dapdap', 'Dau', 'Dolores', 'Duquit',
+    'Lakandula', 'Mabiga', 'Macapagal', 'Mamatitang', 'Mangalit',
+    'Marcos Village', 'Mawaque', 'Paralayunan', 'Poblacion',
+    'San Francisco', 'San Joaquin', 'Santa Ines', 'Santa Maria',
+    'Santo Rosario', 'Sapang Balen', 'Sapang Biabas', 'Tabun',
+  ],
+  'Clark': [
+    'Clark Freeport Zone', 'Hadrian', 'Jose Abad Santos',
+    'Leonico', 'Marcos', 'Philippine-American Friendship',
+  ],
+};
+
+const CITY_COORDS: Record<string, { lat: number; lng: number }> = {
+  'Angeles City': { lat: 15.1450, lng: 120.5887 },
+  'San Fernando':  { lat: 15.0289, lng: 120.6898 },
+  'Mabalacat':     { lat: 15.2167, lng: 120.5833 },
+  'Clark':         { lat: 15.1860, lng: 120.5540 },
+};
+
 const INITIAL_FORM: FormState = {
   name: '',
   category: '',
   description: '',
   openingTime: '',
   closingTime: '',
-  address: '',
+  city: '',
+  barangay: '',
+  street: '',
+  otherDetails: '',
   images: [],
   imagePreviews: [],
   businessPermit: null,
@@ -78,14 +109,12 @@ const INITIAL_FORM: FormState = {
   selfiePreview: null,
 };
 
-// ── Helper: read file as data URL ─────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function readFileAsDataURL(file: File): Promise<string> {
   return new Promise((resolve) => {
     const reader = new FileReader();
-    reader.onload = (e: ProgressEvent<FileReader>) => {
-      resolve(e.target?.result as string);
-    };
+    reader.onload = (e: ProgressEvent<FileReader>) => resolve(e.target?.result as string);
     reader.readAsDataURL(file);
   });
 }
@@ -98,29 +127,17 @@ function StepBar({ current }: StepBarProps) {
       {STEPS.map((step, i) => (
         <div key={step.id} className="flex items-center flex-1">
           <div className="flex flex-col items-center">
-            <div
-              className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
-                current >= step.id
-                  ? 'bg-[#FFE2A0] text-[#1A1A1A]'
-                  : 'bg-[#373737] text-[#FBFAF8]/40'
-              }`}
-            >
+            <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
+              current >= step.id ? 'bg-[#FFE2A0] text-[#1A1A1A]' : 'bg-[#373737] text-[#FBFAF8]/40'
+            }`}>
               {current > step.id ? '✓' : step.id}
             </div>
-            <p
-              className={`text-xs mt-2 whitespace-nowrap ${
-                current >= step.id ? 'text-[#FFE2A0]' : 'text-[#FBFAF8]/30'
-              }`}
-            >
+            <p className={`text-xs mt-2 whitespace-nowrap ${current >= step.id ? 'text-[#FFE2A0]' : 'text-[#FBFAF8]/30'}`}>
               {step.label}
             </p>
           </div>
           {i < STEPS.length - 1 && (
-            <div
-              className={`flex-1 h-px mx-2 mb-5 transition-all ${
-                current > step.id ? 'bg-[#FFE2A0]' : 'bg-[#373737]'
-              }`}
-            />
+            <div className={`flex-1 h-px mx-2 mb-5 transition-all ${current > step.id ? 'bg-[#FFE2A0]' : 'bg-[#373737]'}`} />
           )}
         </div>
       ))}
@@ -130,7 +147,6 @@ function StepBar({ current }: StepBarProps) {
 
 function FileUploadArea({ label, accept, preview, onChange, hint }: FileUploadAreaProps) {
   const inputRef = useRef<HTMLInputElement>(null);
-
   return (
     <div>
       <label className="block text-sm text-[#FBFAF8]/70 mb-2">{label}</label>
@@ -144,19 +160,13 @@ function FileUploadArea({ label, accept, preview, onChange, hint }: FileUploadAr
           <img src={preview} alt="preview" className="w-full h-full object-cover rounded-xl" />
         ) : (
           <div className="flex flex-col items-center gap-2 p-4 text-center">
-            <span className="text-2xl">📎</span>
+            <span className="text-2xl">🔎</span>
             <p className="text-[#FBFAF8]/50 text-sm">Click to upload</p>
             {hint && <p className="text-[#FBFAF8]/30 text-xs">{hint}</p>}
           </div>
         )}
       </div>
-      <input
-        ref={inputRef}
-        type="file"
-        accept={accept}
-        className="hidden"
-        onChange={onChange}
-      />
+      <input ref={inputRef} type="file" accept={accept} className="hidden" onChange={onChange} />
     </div>
   );
 }
@@ -173,10 +183,7 @@ function Field({ label, children }: FieldProps) {
 function TextInput({ value, onChange, placeholder, type = 'text' }: TextInputProps) {
   return (
     <input
-      type={type}
-      value={value}
-      onChange={onChange}
-      placeholder={placeholder}
+      type={type} value={value} onChange={onChange} placeholder={placeholder}
       className="w-full bg-[#2D2D2D] text-[#FBFAF8] text-sm rounded-lg px-4 py-3 outline-none border border-transparent focus:border-[#FFE2A0]/40 placeholder-[#FBFAF8]/30 transition-all"
     />
   );
@@ -189,13 +196,13 @@ function ListBusiness() {
   const [step, setStep] = useState<number>(1);
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
   const [submitted, setSubmitted] = useState<boolean>(false);
+  const [submitting, setSubmitting] = useState<boolean>(false);
+  const [submitError, setSubmitError] = useState<string>('');
 
-  // Generic field updater — key must be a key of FormState
   const update = <K extends keyof FormState>(key: K, value: FormState[K]): void => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
-  // Handle multiple image uploads
   const handleImages = async (e: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
     const files = Array.from(e.target.files ?? []);
     const previews = await Promise.all(files.map(readFileAsDataURL));
@@ -203,7 +210,6 @@ function ListBusiness() {
     update('imagePreviews', previews);
   };
 
-  // Handle single document upload
   const handleDoc = async (
     e: React.ChangeEvent<HTMLInputElement>,
     fileKey: 'businessPermit' | 'governmentId' | 'selfie',
@@ -216,22 +222,52 @@ function ListBusiness() {
     update(previewKey, preview);
   };
 
-  // Validation gates
   const step1Valid: boolean =
     form.name.trim() !== '' &&
     form.category !== '' &&
     form.description.trim() !== '' &&
     form.openingTime !== '' &&
     form.closingTime !== '' &&
-    form.address.trim() !== '';
+    form.city !== '' &&
+    form.barangay !== '' &&
+    form.street.trim() !== '';
 
-  const step2Valid: boolean =
-    form.businessPermit !== null && form.governmentId !== null;
+  const step2Valid: boolean = form.businessPermit !== null && form.governmentId !== null;
 
-  const handleSubmit = (): void => {
-    // TODO: replace with your API call e.g. axios.post('/api/listings', form)
-    console.log('Submitting listing:', form);
-    setSubmitted(true);
+  const handleSubmit = async (): Promise<void> => {
+    setSubmitting(true);
+    setSubmitError('');
+    try {
+      const hours = `${form.openingTime} – ${form.closingTime}`;
+      const coords = CITY_COORDS[form.city];
+      const location = [
+        form.street,
+        form.barangay,
+        form.city,
+        'Pampanga',
+        form.otherDetails ? `(${form.otherDetails})` : '',
+      ].filter(Boolean).join(', ');
+
+      const { error } = await supabase.from('listings').insert({
+        name: form.name,
+        category: form.category,
+        description: form.description,
+        hours: hours,
+        location: location,
+        lat: coords.lat,
+        lng: coords.lng,
+        images: [],
+        verified: false,
+      });
+
+      if (error) throw error;
+      setSubmitted(true);
+    } catch (err: any) {
+      setSubmitError('Failed to submit listing. Please try again.');
+      console.error(err);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   // ── Success screen ────────────────────────────────────────────────────────
@@ -261,12 +297,9 @@ function ListBusiness() {
   // ── Main form ─────────────────────────────────────────────────────────────
   return (
     <div className="relative w-full h-full bg-[#1A1A1A] text-[#FBFAF8] overflow-y-auto overflow-x-hidden">
-      {/* Ambient glow */}
       <div className="absolute top-0 right-0 w-150 h-150 translate-x-60 -translate-y-60 bg-radial from-[#FFE2A0]/40 via-[#FFE2A0]/10 to-transparent rounded-full blur-3xl opacity-50 pointer-events-none" />
 
       <div className="relative z-10 max-w-2xl mx-auto px-6 py-10">
-
-        {/* Back button */}
         <button
           onClick={() => navigate('/home-page')}
           className="flex items-center gap-2 text-[#FBFAF8]/50 hover:text-[#FBFAF8] text-sm mb-8 cursor-pointer transition-colors"
@@ -274,7 +307,6 @@ function ListBusiness() {
           ← Back to Homepage
         </button>
 
-        {/* Heading */}
         <h1 className="font-['Playfair-Display'] text-3xl leading-tight mb-2">
           List your <span className="text-[#FFE2A0]">business.</span>
         </h1>
@@ -284,7 +316,7 @@ function ListBusiness() {
 
         <StepBar current={step} />
 
-        {/* ── STEP 1: Business Details ── */}
+        {/* ── STEP 1 ── */}
         {step === 1 && (
           <div className="flex flex-col gap-5">
             <Field label="Business Name *">
@@ -316,9 +348,7 @@ function ListBusiness() {
             <Field label="Description *">
               <textarea
                 value={form.description}
-                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-                  update('description', e.target.value)
-                }
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => update('description', e.target.value)}
                 placeholder="Tell visitors what makes your business special..."
                 rows={4}
                 className="w-full bg-[#2D2D2D] text-[#FBFAF8] text-sm rounded-lg px-4 py-3 outline-none border border-transparent focus:border-[#FFE2A0]/40 placeholder-[#FBFAF8]/30 transition-all resize-none"
@@ -327,49 +357,66 @@ function ListBusiness() {
 
             <div className="flex gap-4">
               <Field label="Opening Time *">
-                <TextInput
-                  type="time"
-                  value={form.openingTime}
-                  onChange={(e) => update('openingTime', e.target.value)}
-                />
+                <TextInput type="time" value={form.openingTime} onChange={(e) => update('openingTime', e.target.value)} />
               </Field>
               <Field label="Closing Time *">
-                <TextInput
-                  type="time"
-                  value={form.closingTime}
-                  onChange={(e) => update('closingTime', e.target.value)}
-                />
+                <TextInput type="time" value={form.closingTime} onChange={(e) => update('closingTime', e.target.value)} />
               </Field>
             </div>
 
-            <Field label="Address *">
+            <Field label="City *">
+              <select
+                value={form.city}
+                onChange={(e) => { update('city', e.target.value); update('barangay', ''); }}
+                className="w-full bg-[#2D2D2D] text-[#FBFAF8] text-sm rounded-lg px-4 py-3 outline-none border border-transparent focus:border-[#FFE2A0]/40 transition-all"
+              >
+                <option value="">Select a city</option>
+                {Object.keys(LOCATIONS).map(city => (
+                  <option key={city} value={city}>{city}</option>
+                ))}
+              </select>
+            </Field>
+
+            {form.city && (
+              <Field label="Barangay *">
+                <select
+                  value={form.barangay}
+                  onChange={(e) => update('barangay', e.target.value)}
+                  className="w-full bg-[#2D2D2D] text-[#FBFAF8] text-sm rounded-lg px-4 py-3 outline-none border border-transparent focus:border-[#FFE2A0]/40 transition-all"
+                >
+                  <option value="">Select a barangay</option>
+                  {LOCATIONS[form.city].map(brgy => (
+                    <option key={brgy} value={brgy}>{brgy}</option>
+                  ))}
+                </select>
+              </Field>
+            )}
+
+            <Field label="Street / Building No. *">
               <TextInput
-                value={form.address}
-                onChange={(e) => update('address', e.target.value)}
-                placeholder="e.g. 123 Sto. Rosario St., Angeles City, Pampanga"
+                value={form.street}
+                onChange={(e) => update('street', e.target.value)}
+                placeholder="e.g. 123 Sto. Rosario St."
+              />
+            </Field>
+
+            <Field label="Other Details (optional)">
+              <TextInput
+                value={form.otherDetails}
+                onChange={(e) => update('otherDetails', e.target.value)}
+                placeholder="e.g. Near SM Clark, 2nd floor of the building"
               />
             </Field>
 
             <Field label="Business Photos (optional)">
               <div className="flex gap-3 flex-wrap">
                 {form.imagePreviews.map((src, i) => (
-                  <img
-                    key={i}
-                    src={src}
-                    alt={`preview-${i}`}
-                    className="w-24 h-24 object-cover rounded-lg border border-[#FFE2A0]/20"
-                  />
+                  <img key={i} src={src} alt={`preview-${i}`} className="w-24 h-24 object-cover rounded-lg border border-[#FFE2A0]/20" />
                 ))}
                 <label className="w-24 h-24 flex flex-col items-center justify-center border-2 border-dashed border-[#373737] hover:border-[#FFE2A0]/40 rounded-lg cursor-pointer transition-colors text-center text-xs text-[#FBFAF8]/40">
                   <span className="text-xl">+</span>
                   <span>Add photo</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    className="hidden"
-                    onChange={handleImages}
-                  />
+                  <input type="file" accept="image/*" multiple className="hidden" onChange={handleImages} />
                 </label>
               </div>
             </Field>
@@ -388,7 +435,7 @@ function ListBusiness() {
           </div>
         )}
 
-        {/* ── STEP 2: Verification ── */}
+        {/* ── STEP 2 ── */}
         {step === 2 && (
           <div className="flex flex-col gap-6">
             <div className="bg-[#2D2D2D] border border-[#FFE2A0]/20 rounded-xl p-4">
@@ -407,7 +454,6 @@ function ListBusiness() {
               hint="JPG, PNG, or PDF · Max 5MB"
               onChange={(e) => handleDoc(e, 'businessPermit', 'permitPreview')}
             />
-
             <FileUploadArea
               label="Valid Government ID * (Required)"
               accept="image/*"
@@ -415,7 +461,6 @@ function ListBusiness() {
               hint="Passport, Driver's License, SSS, PhilHealth, etc."
               onChange={(e) => handleDoc(e, 'governmentId', 'idPreview')}
             />
-
             <FileUploadArea
               label="Selfie Verification (Optional)"
               accept="image/*"
@@ -425,19 +470,14 @@ function ListBusiness() {
             />
 
             <div className="flex gap-3 mt-4">
-              <button
-                onClick={() => setStep(1)}
-                className="flex-1 py-4 rounded-xl font-bold text-sm bg-[#373737] text-[#FBFAF8]/70 hover:bg-[#454545] transition-all cursor-pointer"
-              >
+              <button onClick={() => setStep(1)} className="flex-1 py-4 rounded-xl font-bold text-sm bg-[#373737] text-[#FBFAF8]/70 hover:bg-[#454545] transition-all cursor-pointer">
                 ← Back
               </button>
               <button
                 onClick={() => { if (step2Valid) setStep(3); }}
                 disabled={!step2Valid}
                 className={`flex-1 py-4 rounded-xl font-bold text-sm transition-all ${
-                  step2Valid
-                    ? 'bg-[#FFE2A0] text-[#1A1A1A] hover:bg-[#f5d880] cursor-pointer'
-                    : 'bg-[#373737] text-[#FBFAF8]/30 cursor-not-allowed'
+                  step2Valid ? 'bg-[#FFE2A0] text-[#1A1A1A] hover:bg-[#f5d880] cursor-pointer' : 'bg-[#373737] text-[#FBFAF8]/30 cursor-not-allowed'
                 }`}
               >
                 Review Listing →
@@ -446,7 +486,7 @@ function ListBusiness() {
           </div>
         )}
 
-        {/* ── STEP 3: Review & Submit ── */}
+        {/* ── STEP 3 ── */}
         {step === 3 && (
           <div className="flex flex-col gap-6">
             <div className="bg-[#2D2D2D] rounded-xl p-5 border border-zinc-700">
@@ -462,14 +502,26 @@ function ListBusiness() {
                 </div>
                 <div>
                   <p className="text-[#FBFAF8]/40 text-xs mb-1">Hours</p>
-                  <p className="text-[#FBFAF8] font-medium">
-                    {form.openingTime} – {form.closingTime}
-                  </p>
+                  <p className="text-[#FBFAF8] font-medium">{form.openingTime} – {form.closingTime}</p>
                 </div>
                 <div>
-                  <p className="text-[#FBFAF8]/40 text-xs mb-1">Address</p>
-                  <p className="text-[#FBFAF8] font-medium">{form.address}</p>
+                  <p className="text-[#FBFAF8]/40 text-xs mb-1">City</p>
+                  <p className="text-[#FBFAF8] font-medium">{form.city}, Pampanga</p>
                 </div>
+                <div>
+                  <p className="text-[#FBFAF8]/40 text-xs mb-1">Barangay</p>
+                  <p className="text-[#FBFAF8] font-medium">{form.barangay}</p>
+                </div>
+                <div>
+                  <p className="text-[#FBFAF8]/40 text-xs mb-1">Street / Building No.</p>
+                  <p className="text-[#FBFAF8] font-medium">{form.street}</p>
+                </div>
+                {form.otherDetails && (
+                  <div className="col-span-2">
+                    <p className="text-[#FBFAF8]/40 text-xs mb-1">Other Details</p>
+                    <p className="text-[#FBFAF8] font-medium">{form.otherDetails}</p>
+                  </div>
+                )}
               </div>
               <div className="mt-4">
                 <p className="text-[#FBFAF8]/40 text-xs mb-1">Description</p>
@@ -480,12 +532,7 @@ function ListBusiness() {
                   <p className="text-[#FBFAF8]/40 text-xs mb-2">Photos</p>
                   <div className="flex gap-2 flex-wrap">
                     {form.imagePreviews.map((src, i) => (
-                      <img
-                        key={i}
-                        src={src}
-                        alt={`photo-${i}`}
-                        className="w-16 h-16 object-cover rounded-lg"
-                      />
+                      <img key={i} src={src} alt={`photo-${i}`} className="w-16 h-16 object-cover rounded-lg" />
                     ))}
                   </div>
                 </div>
@@ -518,22 +565,21 @@ function ListBusiness() {
 
             <p className="text-[#FBFAF8]/40 text-xs leading-relaxed">
               By submitting, you confirm that all information provided is accurate and that
-              you are authorized to list this business. False submissions may result in a
-              permanent ban.
+              you are authorized to list this business. False submissions may result in a permanent ban.
             </p>
 
+            {submitError && <p className="text-red-400 text-sm text-center">{submitError}</p>}
+
             <div className="flex gap-3">
-              <button
-                onClick={() => setStep(2)}
-                className="flex-1 py-4 rounded-xl font-bold text-sm bg-[#373737] text-[#FBFAF8]/70 hover:bg-[#454545] transition-all cursor-pointer"
-              >
+              <button onClick={() => setStep(2)} className="flex-1 py-4 rounded-xl font-bold text-sm bg-[#373737] text-[#FBFAF8]/70 hover:bg-[#454545] transition-all cursor-pointer">
                 ← Back
               </button>
               <button
                 onClick={handleSubmit}
-                className="flex-1 py-4 rounded-xl font-bold text-sm bg-[#FFE2A0] text-[#1A1A1A] hover:bg-[#f5d880] transition-all cursor-pointer"
+                disabled={submitting}
+                className="flex-1 py-4 rounded-xl font-bold text-sm bg-[#FFE2A0] text-[#1A1A1A] hover:bg-[#f5d880] disabled:opacity-50 transition-all cursor-pointer"
               >
-                Submit Listing
+                {submitting ? 'Submitting...' : 'Submit Listing'}
               </button>
             </div>
           </div>
