@@ -23,6 +23,7 @@ interface Review {
   date: string;
   rating: number;
   comment: string;
+  profilePic?: string;
 }
 
 interface DetailedBusinessCardProps {

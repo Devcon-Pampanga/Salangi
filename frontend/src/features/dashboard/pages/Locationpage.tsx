@@ -17,6 +17,7 @@ interface Review {
   date: string;
   rating: number;
   comment: string;
+  profilePic?: string;
 }
 
 const DEFAULT_LISTING: Listing = {
@@ -47,21 +48,17 @@ function Locationpage() {
     getListings().then(setListings).catch(console.error);
   }, []);
 
-  // Fetch reviews whenever selected listing changes
   useEffect(() => {
     fetchReviews(selectedListing.id);
   }, [selectedListing.id]);
 
   const fetchReviews = async (listingId: number) => {
     setReviewsLoading(true);
-   const { data, error } = await supabase
-        .from('reviews')
-        .select(`
-          *,
-          users!inner(first_name, last_name)
-        `)
-        .eq('listing_id', listingId)
-        .order('created_at', { ascending: false });
+    const { data, error } = await supabase
+      .from('reviews')
+      .select(`*, users!inner(first_name, last_name, profile_pic)`)
+      .eq('listing_id', listingId)
+      .order('created_at', { ascending: false });
 
     if (!error && data) {
       const mapped: Review[] = data.map((r: any) => {
@@ -78,6 +75,7 @@ function Locationpage() {
           }),
           rating: r.rating,
           comment: r.comment,
+          profilePic: r.users?.profile_pic ?? null,
         };
       });
       setReviews(mapped);

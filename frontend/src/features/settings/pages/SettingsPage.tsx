@@ -8,8 +8,6 @@ interface SettingsPageProps {
   onClose: () => void;
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
 function Toast({ message, type }: { message: string; type: 'success' | 'error' }) {
   return (
     <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-2 px-5 py-3 rounded-xl shadow-xl text-sm font-medium animate-in fade-in slide-in-from-bottom-4 duration-300 ${
@@ -38,18 +36,15 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   );
 }
 
-// ── Main ──────────────────────────────────────────────────────────────────────
-
 const SettingsPage = ({ onClose }: SettingsPageProps) => {
   const navigate = useNavigate();
 
-  // Read user from localStorage — set during loginUser()
   const storedUser = JSON.parse(localStorage.getItem('user') ?? '{}');
 
   const [firstName, setFirstName] = useState<string>(storedUser.first_name ?? '');
   const [lastName,  setLastName]  = useState<string>(storedUser.last_name  ?? '');
   const [email,     setEmail]     = useState<string>(storedUser.email      ?? '');
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(storedUser.avatar_url ?? null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(storedUser.profile_pic ?? storedUser.avatar_url ?? null);
 
   const [newPassword,     setNewPassword]     = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -69,7 +64,6 @@ const SettingsPage = ({ onClose }: SettingsPageProps) => {
     setTimeout(() => setToast(null), 3500);
   };
 
-  // ── Save profile ──────────────────────────────────────────────────────────
   const handleSaveInfo = async () => {
     setSaving(true);
     try {
@@ -88,7 +82,7 @@ const SettingsPage = ({ onClose }: SettingsPageProps) => {
     }
   };
 
-  // ── Upload avatar → Supabase Storage ─────────────────────────────────────
+  // ── Upload avatar → Supabase Storage + save to users table ───────────────
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -108,8 +102,20 @@ const SettingsPage = ({ onClose }: SettingsPageProps) => {
         .from('listings-images')
         .getPublicUrl(path);
 
+      // Save to users table profile_pic column
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ profile_pic: publicUrl })
+        .eq('user_id', userId);
+
+      if (updateError) throw updateError;
+
       setAvatarUrl(publicUrl);
-      localStorage.setItem('user', JSON.stringify({ ...storedUser, avatar_url: publicUrl }));
+      localStorage.setItem('user', JSON.stringify({ 
+        ...storedUser, 
+        profile_pic: publicUrl,
+        avatar_url: publicUrl 
+      }));
       showToast('Profile photo updated!', 'success');
     } catch (err: any) {
       showToast(err.message ?? 'Failed to upload photo.', 'error');
@@ -118,7 +124,6 @@ const SettingsPage = ({ onClose }: SettingsPageProps) => {
     }
   };
 
-  // ── Change password ───────────────────────────────────────────────────────
   const handleChangePassword = async () => {
     if (!newPassword || !confirmPassword) {
       showToast('Please fill in both password fields.', 'error'); return;
@@ -142,7 +147,6 @@ const SettingsPage = ({ onClose }: SettingsPageProps) => {
     }
   };
 
-  // ── Delete account ────────────────────────────────────────────────────────
   const handleDeleteAccount = async () => {
     if (deleteInput !== 'DELETE') {
       showToast('Type DELETE to confirm.', 'error'); return;
@@ -160,7 +164,6 @@ const SettingsPage = ({ onClose }: SettingsPageProps) => {
     }
   };
 
-  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <>
       <div className="fixed inset-0 z-[100] flex items-center justify-center p-10 bg-[#1A1A1A]/60 backdrop-blur-md cursor-default animate-in fade-in duration-300">
