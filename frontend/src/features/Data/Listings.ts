@@ -52,6 +52,7 @@ export async function getListings(): Promise<Listing[]> {
   const { data, error } = await supabase
     .from('listings')
     .select('*')
+    .eq('verified', true)
     .order('id');
   if (error) throw error;
   return data.map(mapRow);
@@ -63,6 +64,7 @@ export async function getListingsByCategory(category: Category): Promise<Listing
     .from('listings')
     .select('*')
     .eq('category', category)
+    .eq('verified', true)
     .order('id');
   if (error) throw error;
   return data.map(mapRow);
@@ -90,7 +92,7 @@ export async function createListing(listing: Omit<Listing, 'id'>): Promise<Listi
       hours: listing.hours,
       description: listing.description,
       images: listing.images,
-      verified: listing.verified,
+      verified: false,
       phone: listing.phone ?? null,
       email: listing.email ?? null,
       facebook: listing.facebook ?? null,
@@ -129,4 +131,4 @@ export async function updateListing(id: number, updates: Partial<Omit<Listing, '
 export async function deleteListing(id: number): Promise<void> {
   const { error } = await supabase.from('listings').delete().eq('id', id);
   if (error) throw error;
-}
+};
