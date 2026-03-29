@@ -5,6 +5,7 @@ import Homepage from './features/dashboard/pages/Homepage';
 import Locationpage from './features/dashboard/pages/Locationpage';
 import Savepage from './features/dashboard/pages/Savepage';
 import ListBusiness from './features/dashboard/components/ListBusiness';
+import MapView from './map/MapView';
 import ProtectedRoute from './components/ProtectedRoute';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import type { RouteObject } from 'react-router-dom';
@@ -42,6 +43,10 @@ const routes: RouteObject[] = [
       {
         path: '/listbusiness',
         element: <ListBusiness />,
+      },
+      {
+        path: '/map-page',
+        element: <MapView />,
       },
     ],
   },

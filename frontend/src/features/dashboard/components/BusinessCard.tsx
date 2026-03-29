@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Listing } from '../../Data/Listings';
 
-// Asset imports — adjust paths to match your project structure
 import locBtnSelected from '@assets/icons/map-btn-active.svg';
 import locBtn from '@assets/icons/map-btn-default.svg';
 import verified from '@assets/icons/verified-btn.svg';
@@ -41,13 +40,13 @@ function BusinessCard({ listing, onSelect, isSelected }: BusinessCardProps) {
       }`}
     >
       <div className="relative group">
-        {/* If clicked, it will save the card to the Saved page*/}
+        {/* Save button */}
         <button
           onClick={(e) => {
             e.stopPropagation();
             setIsSaved(!isSaved);
           }}
-          className="absolute top-3 left-3 flex items-center justify-center w-10 h-10 bg-[#222222]/80 backdrop-blur-sm rounded-full z-20 cursor-pointer hover:scale-110 active:scale-95 transition-all duration-200"
+          className="absolute top-3 left-3 flex items-center justify-center w-10 h-10 bg-[#222222]/80 backdrop-blur-sm rounded-full z-20 cursor-pointer hover:scale-110 active:scale-95"
         >
           <img src={isSaved ? saveActive : saveInactive} width="20" alt="heart" />
         </button>
@@ -65,13 +64,13 @@ function BusinessCard({ listing, onSelect, isSelected }: BusinessCardProps) {
             <>
               <button
                 onClick={prevImage}
-                className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-[#222222]/50 hover:bg-[#222222]/80 backdrop-blur-sm rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-[#222222]/50 hover:bg-[#222222]/80 backdrop-blur-sm rounded-full t"
               >
                 <ChevronLeft size={20} />
               </button>
               <button
                 onClick={nextImage}
-                className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-[#222222]/50 hover:bg-[#222222]/80 backdrop-blur-sm rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-[#222222]/50 hover:bg-[#222222]/80 backdrop-blur-sm rounded-full"
               >
                 <ChevronRight size={20} />
               </button>
@@ -127,12 +126,13 @@ function BusinessCard({ listing, onSelect, isSelected }: BusinessCardProps) {
 
         {/* CTA */}
         <div className="flex justify-end py-3 mt-2">
-            <Link to="/location-page">
-                <button className="flex items-center justify-center rounded-md gap-2 p-2 px-4 bg-[#FFE2A0] cursor-pointer hover:brightness-110 active:scale-95 transition-all duration-200 shadow-lg">
-                    <img src={locBtn} width="13" alt="show" />
-                    <p className="text-[#222222] text-xs font-bold">Show in maps</p>
-                </button>
-            </Link>
+          <button
+            onClick={(e) => { e.stopPropagation(); onSelect(listing); }}
+            className="flex items-center justify-center rounded-md gap-2 p-2 px-4 bg-[#FFE2A0] cursor-pointer hover:brightness-110 active:scale-95 transition-all duration-150"
+          >
+            <img src={locBtn} width="13" alt="show" />
+            <p className="text-[#222222] text-xs font-bold">Show in maps</p>
+          </button>
         </div>
       </div>
     </div>
