@@ -1,4 +1,4 @@
-from jose import jwt
+from jose import jwt, JWTError
 from datetime import datetime, timedelta
 import bcrypt
 from pathlib import Path
@@ -31,6 +31,14 @@ def create_token(user_id: int, email: str) -> str:
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
+def decode_token(token: str) -> dict | None:
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return payload
+    except JWTError:
+        return None
+
+
 def generate_verification_token(email: str) -> str:
     s = URLSafeTimedSerializer(os.getenv("JWT_SECRET", "your-secret-key"))
     return s.dumps(email, salt="email-verify")
@@ -43,4 +51,3 @@ def confirm_verification_token(token: str, expiration=86400):
     except Exception:
         return None
     return email
-

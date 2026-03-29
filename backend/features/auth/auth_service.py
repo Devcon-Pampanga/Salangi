@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import Column, Integer, String, Boolean
 from backend.db.database import Base
-from backend.core.security import hash_password, verify_password, create_token, generate_verification_token, confirm_verification_token
+from backend.core.security import hash_password, verify_password, create_token, generate_verification_token, confirm_verification_token, decode_token
 from backend.core.email import send_verification_email
 from backend.features.auth.auth_schema import RegisterRequest, LoginRequest
 
@@ -77,6 +77,7 @@ def verify_email(token: str, db: Session):
 
     return {"message": "Email verified successfully. You can now log in."}
 
+
 def login_user(request: LoginRequest, db: Session):
     user = db.query(User).filter(User.email == request.email).first()
 
@@ -96,3 +97,42 @@ def login_user(request: LoginRequest, db: Session):
         "email": user.email
     }
 
+
+def update_profile(user_id: int, request, db: Session):
+    user = db.query(User).filter(User.user_id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+
+    existing = db.query(User).filter(User.email == request.email, User.user_id != user_id).first()
+    if existing:
+        raise HTTPException(status_code=409, detail="Email already in use.")
+
+    user.first_name = request.first_name
+    user.last_name = request.last_name
+    user.email = request.email
+    db.commit()
+    db.refresh(user)
+
+    return {"message": "Profile updated successfully."}
+
+
+def change_password(user_id: int, request, db: Session):
+    user = db.query(User).filter(User.user_id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+
+    user.password = hash_password(request.new_password)
+    db.commit()
+
+    return {"message": "Password updated successfully."}
+
+
+def delete_account(user_id: int, db: Session):
+    user = db.query(User).filter(User.user_id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+
+    db.delete(user)
+    db.commit()
+
+    return {"message": "Account deleted successfully."}
