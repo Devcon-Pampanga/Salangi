@@ -166,7 +166,7 @@ const SettingsPage = ({ onClose }: SettingsPageProps) => {
 
   return (
     <>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-10 bg-[#1A1A1A]/60 backdrop-blur-md cursor-default animate-in fade-in duration-300">
+     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-10 bg-[#1A1A1A]/80 cursor-default animate-in fade-in duration-300">
         <div className="flex w-full max-w-5xl h-[85vh] bg-[#222222] rounded-3xl overflow-hidden shadow-2xl border border-zinc-800 animate-in zoom-in duration-300">
 
           {/* Sidebar */}
