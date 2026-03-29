@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
  
 import BusinessCard from '../components/BusinessCard';
-import MapView from '../components/MapView';
+import MapView from '../../../map/MapView';
  
 import { listings, CATEGORIES } from '../../Data/Listings';
 import type { Listing, Category } from '../../Data/Listings';
