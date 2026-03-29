@@ -1,23 +1,22 @@
+import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import search from '@assets/icons/search-back-btn.svg';
 import sampleImage from '@assets/png-files/imagesample.png';
 import bg from '@assets/images/bg.png';
-
 import DetailedBusinessCard from '../components/DetailedBusinessCard';
 import SearchBar from '../components/SearchBar';
 import MapView from '../../../map/MapView';
 import type { Listing } from '../../Data/Listings';
+import { listings } from '../../Data/Listings';
 
 const DEFAULT_SPOT = {
   title: "Holy Rosary Parish Church",
   location: "Angeles City, Pampanga",
   hours: "8:00 am - 10:00 pm (Mon-Fri)",
-  description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation.",
+  description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
   images: [sampleImage, bg, sampleImage],
-  phone: "+63 976 355 7152",
-  email: "hrpc@email.com",
-  facebook: "facebook.com/hrpacofficial/",
-  website: "www.hrpc.com",
+  phone: '+63 928 520 7489',
+  facebook: 'facebook.com/hrpacofficial',
   rating: 4.8,
   reviewsCount: 25,
   isVerified: true,
@@ -51,21 +50,42 @@ const DEFAULT_LISTING: Listing = {
   description: DEFAULT_SPOT.description,
   images: DEFAULT_SPOT.images,
   verified: DEFAULT_SPOT.isVerified,
+  phone: DEFAULT_SPOT.phone,
+  facebook: DEFAULT_SPOT.facebook,
 };
 
 function Locationpage() {
   const { state } = useLocation();
   const listing: Listing = state?.listing ?? DEFAULT_LISTING;
 
-  // Build the spot detail from the passed listing
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedListing, setSelectedListing] = useState<Listing>(listing);
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+  };
+
+  const searchResults = searchQuery.trim().length > 0
+    ? listings.filter((item: Listing) =>
+        item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.location.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : [];
+
+  const isSearching = searchQuery.trim().length > 0;
+
   const spot = {
     ...DEFAULT_SPOT,
-    title: listing.name,
-    location: listing.location,
-    hours: listing.hours,
-    description: listing.description,
-    images: listing.images,
-    isVerified: listing.verified,
+    title: selectedListing.name,
+    location: selectedListing.location,
+    hours: selectedListing.hours,
+    description: selectedListing.description,
+    images: selectedListing.images,
+    isVerified: selectedListing.verified,
+    phone: selectedListing.phone,
+    email: selectedListing.email,
+    facebook: selectedListing.facebook,
+    website: selectedListing.website,
   };
 
   return (
@@ -74,17 +94,54 @@ function Locationpage() {
       <div className="w-125 h-full overflow-y-auto border-r border-zinc-800 flex flex-col items-center px-6 py-6 scrollbar-hide">
         <SearchBar
           searchIcon={search}
-          containerClassName="w-full mb-6 shrink-0"
+          containerClassName="w-full mb-4 shrink-0"
+          value={searchQuery}
+          onChange={handleSearchChange}
+          placeholder="Search local spots..."
         />
-        <DetailedBusinessCard {...spot} />
+
+        {/* Search Results */}
+        {isSearching && (
+          <div className="w-full mb-4">
+            {searchResults.length > 0 ? (
+              <div className="flex flex-col gap-2">
+                {searchResults.map((item: Listing) => (
+                  <div
+                    key={item.id}
+                    onClick={() => {
+                      setSelectedListing(item);
+                      setSearchQuery('');
+                    }}
+                    className="flex items-center gap-3 px-4 py-3 bg-[#2D2D2D] rounded-lg cursor-pointer hover:bg-[#3D3D3D] transition-colors"
+                  >
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-[#FBFAF8]">{item.name}</p>
+                      <p className="text-xs text-[#FBFAF8]/50">{item.location}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-6">
+                <p className="text-[#FBFAF8]/50 text-sm">No results found for "{searchQuery}"</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Business Detail */}
+        {!isSearching && <DetailedBusinessCard {...spot} />}
       </div>
 
       {/* Right: Map */}
       <div className="flex-1 h-full relative">
         <MapView
-          listings={[listing]}
-          selectedListing={listing}
-          onSelect={() => {}}
+          listings={isSearching ? searchResults : [selectedListing]}
+          selectedListing={selectedListing}
+          onSelect={(item) => {
+            setSelectedListing(item);
+            setSearchQuery('');
+          }}
         />
       </div>
     </div>
