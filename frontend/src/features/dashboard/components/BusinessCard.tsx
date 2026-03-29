@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Listing } from '../../Data/Listings';
 
@@ -19,6 +19,7 @@ interface BusinessCardProps {
 function BusinessCard({ listing, onSelect, isSelected }: BusinessCardProps) {
   const [isSaved, setIsSaved] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const navigate = useNavigate();
 
   const nextImage = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -32,6 +33,7 @@ function BusinessCard({ listing, onSelect, isSelected }: BusinessCardProps) {
 
   return (
     <div
+      id={`listing-card-${listing.id}`}
       onClick={() => onSelect(listing)}
       className={`w-full max-w-120 bg-[#373737] rounded-xl cursor-pointer overflow-hidden shrink-0 transition-all duration-200 ${
         isSelected
@@ -64,7 +66,7 @@ function BusinessCard({ listing, onSelect, isSelected }: BusinessCardProps) {
             <>
               <button
                 onClick={prevImage}
-                className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-[#222222]/50 hover:bg-[#222222]/80 backdrop-blur-sm rounded-full t"
+                className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-[#222222]/50 hover:bg-[#222222]/80 backdrop-blur-sm rounded-full"
               >
                 <ChevronLeft size={20} />
               </button>
@@ -118,11 +120,17 @@ function BusinessCard({ listing, onSelect, isSelected }: BusinessCardProps) {
         <p className="text-sm text-zinc-300 line-clamp-2 mb-1">
           {listing.description}
         </p>
-        <Link to="/location-page">
-          <span className="text-[#FFE2A0] text-sm cursor-pointer hover:underline">
-            See more.
-          </span>
-        </Link>
+
+        {/* See more */}
+        <span
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate('/location-page', { state: { listing } });
+          }}
+          className="text-[#FFE2A0] text-sm cursor-pointer hover:underline"
+        >
+          See more.
+        </span>
 
         {/* CTA */}
         <div className="flex justify-end py-3 mt-2">

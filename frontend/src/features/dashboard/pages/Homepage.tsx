@@ -1,6 +1,6 @@
 // Features: category filtering, real-time search, map interaction, "List Your Business" nav
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
  
 import BusinessCard from '../components/BusinessCard';
@@ -13,7 +13,6 @@ import CategoryFilters from '../components/CategoryFilters';
 import locBtn from '@assets/png-files/locBtn.png';
 import search from '@assets/png-files/search.png';
 import settings from '@assets/png-files/Settings.png';
- 
  
 function Homepage() {
   const navigate = useNavigate();
@@ -47,6 +46,13 @@ function Homepage() {
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     setSearchQuery(e.target.value);
   };
+
+  // Scroll to selected card when selected from map pin
+  useEffect(() => {
+    if (!selectedListing) return;
+    const el = document.getElementById(`listing-card-${selectedListing.id}`);
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [selectedListing]);
  
   return (
     <div className="relative w-full h-full bg-[#1A1A1A] text-[#FBFAF8] overflow-hidden">
@@ -67,7 +73,7 @@ function Homepage() {
         {/* ── LEFT COLUMN: fixed width, title + filters + scrollable cards ── */}
         <div
           className="h-full flex flex-col overflow-hidden shrink-0"
-          style={{ width: '480px',}}
+          style={{ width: '480px' }}
         >
           <div className="shrink-0">
             <h1 className="font-['Playfair_Display'] text-3xl leading-tight mb-5">
@@ -135,8 +141,12 @@ function Homepage() {
           </div>
  
           {/* Map — fills all remaining vertical space below search bar */}
-          <div className="flex-1 mt-6 min-h-0">
-            <MapView selectedListing={selectedListing} />
+          <div className="flex-1 min-h-0">
+            <MapView
+              listings={filteredListings}
+              selectedListing={selectedListing}
+              onSelect={handleCardSelect}
+            />
           </div>
  
         </div>
