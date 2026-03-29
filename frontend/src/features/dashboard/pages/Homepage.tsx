@@ -20,6 +20,22 @@ function Homepage() {
   const [activeCategory, setActiveCategory]   = useState<Category>(CATEGORIES.ALL as Category);
   const [searchQuery,    setSearchQuery]       = useState<string>('');
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
+
+  // 1. Logic for saving/loading from LocalStorage
+  const [savedIds, setSavedIds] = useState<number[]>(() => {
+    const saved = localStorage.getItem('salangi_saved_spots');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('salangi_saved_spots', JSON.stringify(savedIds));
+  }, [savedIds]);
+
+  const toggleSave = (id: number) => {
+    setSavedIds(prev => 
+      prev.includes(id) ? prev.filter(savedId => savedId !== id) : [...prev, id]
+    );
+  };
  
   const filteredListings = useMemo<Listing[]>(() => {
     return listings.filter((item: Listing) => {
@@ -99,6 +115,9 @@ function Homepage() {
                   listing={listing}
                   onSelect={handleCardSelect}
                   isSelected={selectedListing?.id === listing.id}
+                  // ADD THESE TWO PROPS TO FIX THE ERROR
+                  isSaved={savedIds.includes(listing.id)}
+                  onToggleSave={toggleSave}
                 />
               ))
             ) : (
