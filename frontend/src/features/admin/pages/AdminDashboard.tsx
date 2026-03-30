@@ -27,7 +27,7 @@ function AdminDashboard() {
       return;
     }
     fetchUnverified();
-  }, []);
+  }, [navigate]);
 
   const fetchUnverified = async () => {
     setLoading(true);
