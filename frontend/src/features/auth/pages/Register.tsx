@@ -5,6 +5,7 @@ import google from '@assets/icons/google-icon.svg';
 import facebook from '@assets/icons/facebook-icon.svg';
 import bg from '@assets/images/bg.png';
 import { registerUser } from '@/api';
+import { supabase } from '@/lib/supabase';
 
 function Register() {
   const navigate = useNavigate();
@@ -37,9 +38,17 @@ function Register() {
     }
   };
 
+  const handleGoogleSignUp = async () => {
+  setError('');
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+  });
+  if (error) setError(error.message);
+};
+
   return (
     <div className="flex min-h-screen">
-      {/* Left side — background image with text */}
+      {/* Left side */}
       <div
         className="w-1/2 relative flex items-end p-12"
         style={{
@@ -55,7 +64,7 @@ function Register() {
         </h1>
       </div>
 
-      {/* Right side — form */}
+      {/* Right side */}
       <div className="w-1/2 bg-[#1a1a1a] flex items-center justify-center px-16">
         <div className="w-full max-w-md">
           <h2 className="font-['Playfair_Display'] text-white text-4xl font-bold mb-2">
@@ -155,12 +164,18 @@ function Register() {
 
           {/* Social buttons */}
           <div className="flex gap-4">
-            <button className="flex-1 flex items-center justify-center gap-2 bg-[#2E2E2E] hover:bg-[#3a3a3a] text-white py-3 rounded-lg transition-colors border border-gray-600">
+            <button
+              onClick={handleGoogleSignUp}
+              className="flex-1 flex items-center justify-center gap-2 bg-[#2E2E2E] hover:bg-[#3a3a3a] text-white py-3 rounded-lg transition-colors border border-gray-600 cursor-pointer"
+            >
               <img src={google} className="w-5 h-5" />
               Google
             </button>
-            <button className="flex-1 flex items-center justify-center gap-2 bg-[#2E2E2E] hover:bg-[#3a3a3a] text-white py-3 rounded-lg transition-colors border border-gray-600">
-              <img src={facebook} className="w-5 h-5" />
+            <button
+              disabled
+              className="flex-1 flex items-center justify-center gap-2 bg-[#2E2E2E] text-white/40 py-3 rounded-lg border border-gray-600 cursor-not-allowed"
+            >
+              <img src={facebook} className="w-5 h-5 opacity-40" />
               Facebook
             </button>
           </div>
