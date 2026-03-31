@@ -136,7 +136,7 @@ function AdminDashboard() {
     const auth = sessionStorage.getItem('admin_auth');
     if (!auth) { navigate('/admin'); return; }
     fetchUnverified();
-  }, []);
+  }, [navigate]);
 
   const fetchUnverified = async () => {
     setLoading(true);

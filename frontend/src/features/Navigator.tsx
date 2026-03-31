@@ -3,6 +3,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { Settings, LogOut } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import SettingsPage from './settings/pages/SettingsPage';
+import { supabase } from '@/lib/supabase';
 
 // icons
 import homeBtn from '@assets/icons/home-btn-default.svg';
@@ -56,26 +57,22 @@ function Navigator() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const stored = localStorage.getItem('user');
-  const user = stored ? JSON.parse(stored) : null;
-  const initials = user
-    ? `${user.first_name?.[0] ?? ''}${user.last_name?.[0] ?? ''}`.toUpperCase()
-    : '?';
-  const fullName = user ? `${user.first_name} ${user.last_name}` : 'Guest';
+  const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setIsMenuOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    supabase.auth.getUser().then(({ data: { user } }) => setUser(user));
   }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+  const initials = user?.user_metadata?.full_name
+    ?.split(' ')
+    .map((n: string) => n[0])
+    .join('')
+    .toUpperCase() ?? '?';
+
+  const fullName = user?.user_metadata?.full_name ?? 'Guest';
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     navigate('/sign-in');
   };
 

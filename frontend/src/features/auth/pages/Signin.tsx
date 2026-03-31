@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import google from '@assets/icons/google-icon.svg';
 import facebook from '@assets/icons/facebook-icon.svg';
 import bg from '@assets/images/bg.png';
-import { loginUser } from '@/api';
+import { supabase } from '@/lib/supabase';
 
 function Signin() {
   const navigate = useNavigate();
@@ -18,14 +18,8 @@ function Signin() {
     setError('');
     setLoading(true);
     try {
-      const res = await loginUser({ email, password });
-      localStorage.setItem('token', res.token);
-      localStorage.setItem('user', JSON.stringify({
-        user_id: res.user_id,
-        first_name: res.first_name,
-        last_name: res.last_name,
-        email: res.email,
-      }));
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
       navigate('/home-page');
     } catch (err: any) {
       setError(err.message);
@@ -34,9 +28,19 @@ function Signin() {
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+    if (error) console.error(error.message);
+  };
+
   return (
     <div className="flex min-h-screen">
-      {/* Left side — background image with text */}
+      {/* Left side */}
       <div
         className="w-1/2 relative flex items-end p-12"
         style={{
@@ -53,7 +57,7 @@ function Signin() {
         </h1>
       </div>
 
-      {/* Right side — form */}
+      {/* Right side */}
       <div className="w-1/2 bg-[#1a1a1a] flex items-center justify-center px-16">
         <div className="w-full max-w-md">
           <h2 className="font-['Playfair_Display'] text-white text-4xl font-bold mb-2">
@@ -63,7 +67,6 @@ function Signin() {
             Continue exploring local businesses and experiences.
           </p>
 
-          {/* Email */}
           <div className="mb-4">
             <label className="text-gray-300 text-sm mb-1 block">Email</label>
             <input
@@ -75,7 +78,6 @@ function Signin() {
             />
           </div>
 
-          {/* Password */}
           <div className="mb-6">
             <label className="text-gray-300 text-sm mb-1 block">Password</label>
             <div className="relative">
@@ -96,18 +98,16 @@ function Signin() {
             </div>
           </div>
 
-          {/* Sign In Button */}
           <button
             onClick={handleSignIn}
             disabled={loading}
-            className="w-full bg-[#FFE2A0] hover:bg-[#fcd789] text-[#222222] font-semibold py-3 rounded-lg transition-colors"
+            className="w-full bg-[#FFE2A0] hover:bg-[#fcd789] text-[#222222] font-semibold py-3 rounded-lg transition-colors cursor-pointer"
           >
             {loading ? 'Signing in...' : 'SIGN IN'}
           </button>
 
           {error && <p className="text-red-400 text-sm text-center mt-3">{error}</p>}
 
-          {/* Don't have account */}
           <p className="text-gray-400 text-sm text-center mt-4">
             Don't have an account yet?{' '}
             <Link to="/sign-up" className="text-[#FFE2A0] hover:underline">
@@ -115,20 +115,21 @@ function Signin() {
             </Link>
           </p>
 
-          {/* Divider */}
           <div className="flex items-center gap-4 my-5">
             <div className="flex-1 border-t border-gray-600"></div>
             <span className="text-gray-400 text-sm">Or</span>
             <div className="flex-1 border-t border-gray-600"></div>
           </div>
 
-          {/* Social buttons */}
           <div className="flex gap-4">
-            <button className="flex-1 flex items-center justify-center gap-2 bg-[#2E2E2E] hover:bg-[#3a3a3a] text-white py-3 rounded-lg transition-colors border border-gray-600">
+            <button
+              onClick={handleGoogleSignIn}
+              className="flex-1 flex items-center justify-center gap-2 bg-[#2E2E2E] hover:bg-[#3a3a3a] text-white py-3 rounded-lg transition-colors border border-gray-600 cursor-pointer"
+            >
               <img src={google} className="w-5 h-5" />
               Google
             </button>
-            <button className="flex-1 flex items-center justify-center gap-2 bg-[#2E2E2E] hover:bg-[#3a3a3a] text-white py-3 rounded-lg transition-colors border border-gray-600">
+            <button className="flex-1 flex items-center justify-center gap-2 bg-[#2E2E2E] hover:bg-[#3a3a3a] text-white py-3 rounded-lg transition-colors border border-gray-600 cursor-pointer">
               <img src={facebook} className="w-5 h-5" />
               Facebook
             </button>

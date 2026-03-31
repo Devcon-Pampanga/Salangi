@@ -1,56 +1,78 @@
-import Register from './features/auth/pages/Register';
-import Signin from './features/auth/pages/Signin';
-import Navigator from './features/Navigator';
-import Homepage from './features/dashboard/pages/Homepage';
-import Locationpage from './features/dashboard/pages/Locationpage';
-import Savepage from './features/dashboard/pages/Savepage';
-import ListBusiness from './features/dashboard/components/ListBusiness';
-import MapView from './map/MapView';
-import ProtectedRoute from './components/ProtectedRoute';
-import AdminLogin from './features/admin/pages/AdminLogin';
-import AdminDashboard from './features/admin/pages/AdminDashboard';
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
-import type { RouteObject } from 'react-router-dom';
+import { useEffect, useState } from 'react'
+import { supabase } from './lib/supabase'
+import { BrowserRouter, Routes, Route, useNavigate, Navigate } from 'react-router-dom'
+import type { Session } from '@supabase/supabase-js'
+import Homepage from './features/dashboard/pages/Homepage'
+import Locationpage from './features/dashboard/pages/Locationpage'
+import Savepage from './features/dashboard/pages/Savepage'
+import Navigator from './features/Navigator'
+import Signin from './features/auth/pages/Signin'
+import Register from './features/auth/pages/Register'
+import ListBusiness from './features/dashboard/components/ListBusiness'
+import AdminLogin from './features/admin/pages/AdminLogin'
+import AdminDashboard from './features/admin/pages/AdminDashboard'
 
-const routes: RouteObject[] = [
-  {
-    index: true,
-    path: '/sign-up',
-    element: <Register />,
-  },
-  {
-    path: '/sign-in',
-    element: <Signin />,
-  },
-  {
-    path: '/admin',
-    element: <AdminLogin />,
-  },
-  {
-    path: '/admin/dashboard',
-    element: <AdminDashboard />,
-  },
-  {
-    path: '/',
-    element: (
-      <ProtectedRoute>
-        <Navigator />
-      </ProtectedRoute>
-    ),
-    children: [
-      { path: '/home-page', element: <Homepage /> },
-      { path: '/location-page', element: <Locationpage /> },
-      { path: '/save-page', element: <Savepage /> },
-      { path: '/listbusiness', element: <ListBusiness /> },
-      { path: '/map-page', element: <MapView /> },
-    ],
-  },
-];
-
-const router = createBrowserRouter(routes);
-
-function App() {
-  return <RouterProvider router={router} />;
+function AuthCallback() {
+  const navigate = useNavigate()
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) navigate('/home-page')
+      else navigate('/sign-in')
+    })
+  }, [])
+  return <p>Loading...</p>
 }
 
-export default App;
+function ProtectedLayout({ session }: { session: Session | null }) {
+  if (!session) return <Navigate to="/sign-in" replace />
+  return <Navigator />
+}
+
+function App() {
+  const [session, setSession] = useState<Session | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session)
+      setLoading(false)
+    })
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => setSession(session)
+    )
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  if (loading) return <p>Loading...</p>
+
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route path="/sign-in" element={<Signin />} />
+        <Route path="/sign-up" element={<Register />} />
+
+        {/* Admin routes */}
+        <Route path="/admin" element={<AdminLogin />} />
+        <Route path="/admin/dashboard" element={<AdminDashboard />} />
+
+        {/* Protected routes */}
+        <Route element={<ProtectedLayout session={session} />}>
+          <Route path="/home-page" element={<Homepage />} />
+          <Route path="/location-page" element={<Locationpage />} />
+          <Route path="/save-page" element={<Savepage />} />
+          <Route path="/listbusiness" element={<ListBusiness />} />
+        </Route>
+
+        <Route path="/" element={<Navigate to={session ? '/home-page' : '/sign-in'} replace />} />
+
+        {/* 404 catch-all */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
+  )
+}
+
+export default App
