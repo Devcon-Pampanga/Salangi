@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { Settings, LogOut } from 'lucide-react';
+import { createPortal } from 'react-dom';
 import SettingsPage from './settings/pages/SettingsPage';
 import { supabase } from '@/lib/supabase';
 
@@ -80,14 +81,12 @@ function Navigator() {
 
       {/* Sidebar */}
       <div className="bg-[#373737] w-24 p-5 flex flex-col justify-between items-center h-full shrink-0 relative">
-        {/*Logo*/}
         <div>
           <button className="h-15 w-15 bg-[#2E2E2E] rounded-lg cursor-pointer">
             <p className="font-['Playfair-Display'] text-[#FFE2A0] text-xl">L</p>
           </button>
         </div>
 
-        {/*Home, Loc, Save*/}
         <div className="flex flex-col items-center py-10 gap-6">
           <NavItem
             to="/home-page"
@@ -112,15 +111,12 @@ function Navigator() {
           />
         </div>
 
-        {/*Account*/}
         <div className="relative">
-          {/* Account Menu Popover */}
           {isMenuOpen && (
             <div
               ref={menuRef}
               className="absolute bottom-18 left-0 w-64 bg-[#2D2D2D] rounded-2xl shadow-2xl border border-zinc-700/50 py-3 px-3 z-50 flex flex-col gap-1 transition-all"
             >
-              {/* User Info */}
               <div className="flex items-center gap-3 p-2 py-3">
                 <div className="h-8 w-8 bg-[#222222] rounded-full flex items-center justify-center shrink-0">
                   <span className="text-[#FFE2A0] text-xs font-bold">{initials}</span>
@@ -133,7 +129,6 @@ function Navigator() {
 
               <div className="h-px bg-zinc-700/50 my-1 mx-2" />
 
-              {/* Settings */}
               <button
                 onClick={() => {
                   setIsMenuOpen(false);
@@ -145,7 +140,6 @@ function Navigator() {
                 <span className="text-sm font-medium">Settings</span>
               </button>
 
-              {/* Logout */}
               <button
                 onClick={handleLogout}
                 className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-red-500/10 transition-colors cursor-pointer text-[#FBFAF8]/90 hover:text-red-500"
@@ -169,9 +163,10 @@ function Navigator() {
         <Outlet />
       </main>
 
-      {/* Settings Modal */}
-      {isSettingsOpen && (
-        <SettingsPage onClose={() => setIsSettingsOpen(false)} />
+      {/* Settings Modal — rendered via portal to escape overflow:hidden */}
+      {isSettingsOpen && createPortal(
+        <SettingsPage onClose={() => setIsSettingsOpen(false)} />,
+        document.body
       )}
     </div>
   );

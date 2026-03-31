@@ -14,21 +14,39 @@ interface BusinessCardProps {
   listing: Listing;
   onSelect: (listing: Listing) => void;
   isSelected: boolean;
-  isSaved: boolean; 
+  isSaved: boolean;
   onToggleSave: (id: number) => void;
+}
+
+// ── Placeholder shown when a listing has no images ────────────────────────────
+function NoImagePlaceholder({ name }: { name: string }) {
+  return (
+    <div className="w-full h-full flex flex-col items-center justify-center bg-[#2D2D2D] gap-3">
+      <span className="text-5xl">🏪</span>
+      <p className="text-[#FBFAF8]/30 text-xs text-center px-4">
+        No photos yet for<br />
+        <span className="text-[#FBFAF8]/50 font-medium">{name}</span>
+      </p>
+    </div>
+  );
 }
 
 function BusinessCard({ listing, onSelect, isSelected, isSaved, onToggleSave }: BusinessCardProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [imgError, setImgError] = useState(false);
   const navigate = useNavigate();
+
+  const hasImages = Array.isArray(listing.images) && listing.images.length > 0;
 
   const nextImage = (e: React.MouseEvent) => {
     e.stopPropagation();
+    setImgError(false);
     setCurrentIndex((prev) => (prev === listing.images.length - 1 ? 0 : prev + 1));
   };
 
   const prevImage = (e: React.MouseEvent) => {
     e.stopPropagation();
+    setImgError(false);
     setCurrentIndex((prev) => (prev === 0 ? listing.images.length - 1 : prev - 1));
   };
 
@@ -43,6 +61,7 @@ function BusinessCard({ listing, onSelect, isSelected, isSaved, onToggleSave }: 
       }`}
     >
       <div className="relative group">
+        {/* Save button */}
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -53,45 +72,62 @@ function BusinessCard({ listing, onSelect, isSelected, isSaved, onToggleSave }: 
           <img src={isSaved ? saveActive : saveInactive} width="20" alt="heart" />
         </button>
 
+        {/* Image area */}
         <div className="relative w-full h-72 overflow-hidden bg-zinc-800">
-          <img
-            src={listing.images[currentIndex]}
-            className="w-full h-full object-cover transition-opacity duration-300"
-            alt={`${listing.name} - ${currentIndex + 1}`}
-          />
+          {hasImages && !imgError ? (
+            <img
+              key={listing.images[currentIndex]}
+              src={listing.images[currentIndex]}
+              className="w-full h-full object-cover transition-opacity duration-300"
+              alt={`${listing.name} - ${currentIndex + 1}`}
+              onError={() => setImgError(true)}
+            />
+          ) : (
+            <NoImagePlaceholder name={listing.name} />
+          )}
 
-          {listing.images.length > 1 && (
+          {/* Prev / Next arrows — only if multiple valid images */}
+          {hasImages && !imgError && listing.images.length > 1 && (
             <>
               <button
                 onClick={prevImage}
-                className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-[#222222]/50 hover:bg-[#222222]/80 backdrop-blur-sm rounded-full"
+                className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-[#222222]/50 hover:bg-[#222222]/80 backdrop-blur-sm rounded-full z-10"
               >
                 <ChevronLeft size={20} />
               </button>
               <button
                 onClick={nextImage}
-                className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-[#222222]/50 hover:bg-[#222222]/80 backdrop-blur-sm rounded-full"
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-[#222222]/50 hover:bg-[#222222]/80 backdrop-blur-sm rounded-full z-10"
               >
                 <ChevronRight size={20} />
               </button>
             </>
           )}
 
-          {listing.images.length > 1 && (
+          {/* Dot indicators */}
+          {hasImages && !imgError && listing.images.length > 1 && (
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
               {listing.images.map((_, idx) => (
                 <div
                   key={idx}
-                  className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
-                    currentIndex === idx ? 'bg-white w-3' : 'bg-white/40'
+                  className={`h-1.5 rounded-full transition-all duration-300 ${
+                    currentIndex === idx ? 'bg-white w-3' : 'bg-white/40 w-1.5'
                   }`}
                 />
               ))}
             </div>
           )}
+
+          {/* Image count badge */}
+          {hasImages && !imgError && listing.images.length > 1 && (
+            <div className="absolute top-3 right-3 bg-[#222222]/70 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-full z-20">
+              {currentIndex + 1} / {listing.images.length}
+            </div>
+          )}
         </div>
       </div>
 
+      {/* Card body */}
       <div className="p-5">
         <div className="flex items-center gap-2 mt-4">
           <img src={locBtnSelected} width="13" alt="loc" />
