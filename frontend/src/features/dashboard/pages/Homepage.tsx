@@ -1,5 +1,3 @@
-// Features: category filtering, real-time search, map interaction, "List Your Business" nav
-
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
  
@@ -21,7 +19,11 @@ function Homepage() {
   const [searchQuery,    setSearchQuery]       = useState<string>('');
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
 
-  // Fetch listings from Supabase on mount
+  // Get user-specific storage key
+  const storedUser = JSON.parse(localStorage.getItem('user') ?? '{}');
+  const userId = storedUser.user_id ?? 'guest';
+  const storageKey = `salangi_saved_spots_${userId}`;
+
   useEffect(() => {
     getListings()
       .then(setListings)
@@ -29,15 +31,14 @@ function Homepage() {
       .finally(() => setIsLoading(false));
   }, []);
 
-  // Saving/loading from LocalStorage
   const [savedIds, setSavedIds] = useState<number[]>(() => {
-    const saved = localStorage.getItem('salangi_saved_spots');
+    const saved = localStorage.getItem(storageKey);
     return saved ? JSON.parse(saved) : [];
   });
 
   useEffect(() => {
-    localStorage.setItem('salangi_saved_spots', JSON.stringify(savedIds));
-  }, [savedIds]);
+    localStorage.setItem(storageKey, JSON.stringify(savedIds));
+  }, [savedIds, storageKey]);
 
   const toggleSave = (id: number) => {
     setSavedIds(prev => 
@@ -109,7 +110,6 @@ function Homepage() {
             />
           </div>
  
-          {/* Scrollable card list */}
           <div
             className="flex-1 overflow-y-auto flex flex-col gap-6 pb-10 pr-2 pl-1 pt-1"
             style={{ scrollbarWidth: 'none' }}
@@ -144,7 +144,6 @@ function Homepage() {
         {/* ── RIGHT COLUMN ── */}
         <div className="flex-1 flex flex-col overflow-hidden min-w-0">
 
-          {/* Search bar row */}
           <div className="flex items-center gap-3 shrink-0">
             <SearchBar
               placeholder="Explore local spots"
@@ -154,7 +153,6 @@ function Homepage() {
               containerClassName="flex-1"
             />
 
-            {/* List Your Business button */}
             <button
               onClick={() => navigate('/listbusiness')}
               className="flex items-center gap-2 px-4 py-3 bg-[#FFE2A0] text-[#1A1A1A] rounded-lg font-semibold text-sm whitespace-nowrap cursor-pointer hover:bg-[#f5d880] transition-colors"
@@ -163,7 +161,6 @@ function Homepage() {
             </button>
           </div>
  
-          {/* Map */}
           <div className="flex-1 min-h-0">
             <MapView
               listings={filteredListings}
