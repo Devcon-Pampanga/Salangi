@@ -159,7 +159,7 @@ function AdminDashboard() {
                   <p className="text-gray-400 text-sm line-clamp-2">{listing.description}</p>
                 </div>
 
-                <div className="flex flex-col gap-2 min-w-[130px]">
+                <div className="flex flex-col gap-2 min-w-32.5">
                   <button
                     onClick={() => handleApprove(listing.id)}
                     disabled={actionLoading === listing.id}

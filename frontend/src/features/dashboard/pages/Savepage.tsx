@@ -84,7 +84,6 @@ function Savepage() {
                         </div>
                     ) : (
                         <div className="flex flex-col items-center justify-center h-full text-center opacity-40">
-                            <div className="mb-4 text-6xl">✨</div>
                             <h3 className="text-xl font-semibold mb-2">No saved spots</h3>
                             <p className="max-w-xs text-sm">
                                 Locations you save while browsing will appear here for quick access.

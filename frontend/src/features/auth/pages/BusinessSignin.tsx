@@ -3,10 +3,9 @@ import { Eye, EyeOff } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import google from '@assets/icons/google-icon.svg';
 import facebook from '@assets/icons/facebook-icon.svg';
-import bg from '@assets/images/bg.png';
 import { loginUser } from '@/api';
 
-function Signin() {
+function BusinessSignin() {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
@@ -28,48 +27,52 @@ function Signin() {
       }));
       navigate('/home-page');
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || 'An error occurred during sign in');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="flex min-h-screen">
-      {/* Left side — background image with text */}
-      <div
-        className="w-1/2 relative flex items-end p-12"
-        style={{
-          backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.3), rgba(0,0,0,0.7)), url(${bg})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-        }}
-      >
-        <h1 className="font-['Playfair_Display'] text-white text-6xl font-bold leading-tight">
-          Continue <br />
-          Your <br />
-          Pampanga <br />
-          <span className="text-[#FFE2A0]">Journey</span>
-        </h1>
+    <div className="relative bg-[#1a1a1a] flex items-center justify-center px-6 md:px-16 min-h-screen overflow-hidden">
+      
+      <div className="absolute top-0 left-0 p-6 md:p-10 z-50">
+        <button
+          onClick={() => navigate('/listyourbusiness')}
+          className="flex items-center gap-2 text-[#FBFAF8]/50 hover:text-[#FBFAF8] text-sm cursor-pointer transition-colors"
+        >
+          ← Go Back.
+        </button>
       </div>
 
-      {/* Right side — form */}
-      <div className="w-1/2 bg-[#1a1a1a] flex items-center justify-center px-16">
-        <div className="w-full max-w-md">
-          <h2 className="font-['Playfair_Display'] text-white text-4xl font-bold mb-2">
-            Sign in.
-          </h2>
-          <p className="text-gray-400 text-sm mb-8">
-            Continue exploring local businesses and experiences.
-          </p>
+      <div className="w-full max-w-md relative z-10">
+        <div
+          className="absolute top-30 left-20 rounded-full blur-3xl opacity-60 pointer-events-none -z-10"
+          style={{
+            width: '760px',
+            height: '680px',
+            transform: 'translate(-250px, -650px)',
+            background: 'radial-gradient(circle, rgba(255,226,160,0.8) 0%, rgba(255,226,160,0.2) 50%, transparent 70%)',
+          }}
+        />
 
+        {/* Header */}
+        <h2 className="font-['Playfair_Display'] text-white text-4xl font-bold mb-2">
+          Sign in.
+        </h2>
+        <p className="text-gray-400 text-sm mb-8">
+          Continue exploring local businesses and experiences.
+        </p>
+
+        {/* Form Fields */}
+        <div className="space-y-4">
           {/* Email */}
-          <div className="mb-4">
+          <div>
             <label className="text-gray-300 text-sm mb-1 block">Email</label>
             <input
               type="text"
               value={email}
-              onChange={e => setEmail(e.target.value)}
+              onChange={(e) => setEmail(e.target.value)}
               placeholder="eg. juan.dc@gmail.com"
               className="w-full bg-[#2E2E2E] text-white placeholder-gray-500 px-4 py-3 rounded-lg outline-none focus:ring-1 focus:ring-[#FFE2A0]"
             />
@@ -82,8 +85,8 @@ function Signin() {
               <input
                 type={showPassword ? 'text' : 'password'}
                 value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder="*************"
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="***********"
                 className="w-full bg-[#2E2E2E] text-white placeholder-gray-500 px-4 py-3 rounded-lg outline-none focus:ring-1 focus:ring-[#FFE2A0]"
               />
               <button
@@ -95,8 +98,10 @@ function Signin() {
               </button>
             </div>
           </div>
+        </div>
 
-          {/* Sign In Button */}
+        {/* Actions */}
+        <div className="mt-6">
           <button
             onClick={handleSignIn}
             disabled={loading}
@@ -107,36 +112,36 @@ function Signin() {
 
           {error && <p className="text-red-400 text-sm text-center mt-3">{error}</p>}
 
-          {/* Don't have account */}
           <p className="text-gray-400 text-sm text-center mt-4">
             Don't have an account yet?{' '}
-            <Link to="/sign-up" className="text-[#FFE2A0] hover:underline">
+            <Link to="/businessRegister" className="text-[#FFE2A0] hover:underline">
               Sign up.
             </Link>
           </p>
+        </div>
 
-          {/* Divider */}
-          <div className="flex items-center gap-4 my-5">
-            <div className="flex-1 border-t border-gray-600"></div>
-            <span className="text-gray-400 text-sm">Or</span>
-            <div className="flex-1 border-t border-gray-600"></div>
-          </div>
+        {/* Divider */}
+        <div className="flex items-center gap-4 my-5">
+          <div className="flex-1 border-t border-gray-600"></div>
+          <span className="text-gray-400 text-sm">Or</span>
+          <div className="flex-1 border-t border-gray-600"></div>
+        </div>
 
-          {/* Social buttons */}
-          <div className="flex gap-4">
-            <button className="flex-1 flex items-center justify-center gap-2 bg-[#2E2E2E] hover:bg-[#3a3a3a] text-white py-3 rounded-lg transition-colors border border-gray-600">
-              <img src={google} className="w-5 h-5" />
-              Google
-            </button>
-            <button className="flex-1 flex items-center justify-center gap-2 bg-[#2E2E2E] hover:bg-[#3a3a3a] text-white py-3 rounded-lg transition-colors border border-gray-600">
-              <img src={facebook} className="w-5 h-5" />
-              Facebook
-            </button>
-          </div>
+        {/* Social Buttons */}
+        <div className="flex gap-4">
+          <button className="flex-1 flex items-center justify-center gap-2 bg-[#2E2E2E] hover:bg-[#3a3a3a] text-white py-3 rounded-lg transition-colors border border-gray-600">
+            <img src={google} className="w-5 h-5" alt="Google" />
+            Google
+          </button>
+
+          <button className="flex-1 flex items-center justify-center gap-2 bg-[#2E2E2E] hover:bg-[#3a3a3a] text-white py-3 rounded-lg transition-colors border border-gray-600">
+            <img src={facebook} className="w-5 h-5" alt="Facebook" />
+            Facebook
+          </button>
         </div>
       </div>
     </div>
   );
 }
 
-export default Signin;
+export default BusinessSignin;
