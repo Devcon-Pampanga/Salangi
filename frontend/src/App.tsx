@@ -1,21 +1,21 @@
 import BusinessRegister from './features/auth/pages/BusinessRegister'
 import BusinessSignin from './features/auth/pages/BusinessSignin'
-import Dashboard from './BusinessSide/pages/Dashboard'
-import Overview from './BusinessSide/components/Overview'
-import MyBusiness from './BusinessSide/components/MyBusiness'
-import Events from './BusinessSide/components/Events'
-import Reviews from './BusinessSide/components/Reviews'
+import Dashboard from './features/business-side/pages/Dashboard'
+import Overview from './features/business-side/components/Overview'
+import MyBusiness from './features/business-side/components/MyBusiness'
+import Events from './features/business-side/components/Events'
+import Reviews from './features/business-side/components/Reviews'
 import Navigator from './features/Navigator';
 import Homepage from './features/dashboard/pages/Homepage';
 import Locationpage from './features/dashboard/pages/Locationpage';
 import Savepage from './features/dashboard/pages/Savepage';
-import ListBusiness from './BusinessSide/components/ListBusiness';
+import ListBusiness from './features/business-side/components/ListBusiness';
 import MapView from './map/MapView';
-import ProtectedRoute from './components/ProtectedRoute';
+import ProtectedRoute from './routes/ProtectedRoute';
 import HeroListBusiness from './features/dashboard/pages/HeroListBusiness'
 import AdminLogin from './features/admin/pages/AdminLogin';
 import AdminDashboard from './features/admin/pages/AdminDashboard';
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
 import type { RouteObject } from 'react-router-dom';
 
 const routes: RouteObject[] = [
@@ -30,48 +30,28 @@ const routes: RouteObject[] = [
 
   { 
     path: '/listyourbusiness', 
-    element: (
-      <ProtectedRoute>
-        <HeroListBusiness />
-      </ProtectedRoute>
-    ) 
+    element: <HeroListBusiness />
   },
 
   { 
     path: '/businessRegister', 
-    element: (
-      <ProtectedRoute>
-        <BusinessRegister />
-      </ProtectedRoute>
-    ) 
+    element: <BusinessRegister />
   },
 
   { 
     path: '/businessSignin', 
-    element: (
-      <ProtectedRoute>
-        <BusinessSignin />
-      </ProtectedRoute>
-    ) 
+    element: <BusinessSignin />
   },
 
   { 
     path: '/listbusiness', 
-    element: (
-      <ProtectedRoute>
-        <ListBusiness />
-      </ProtectedRoute>
-    ) 
+    element: <ListBusiness />
   },
 
   // Eto yung sa Business Side
   { 
     path: '/dashboard', 
-    element: (
-      <ProtectedRoute>
-        <Dashboard />
-      </ProtectedRoute>
-    ),
+    element: <Dashboard />,
     
     children: [
       {path: 'overview', element: <Overview />},
@@ -83,12 +63,11 @@ const routes: RouteObject[] = [
 
   {
     path: '/',
-    element: (
-      <ProtectedRoute>
-        <Navigator />
-      </ProtectedRoute>
-    ),
+
+    // REMOVE PROTECTED ROUTE
+    element: <Navigator />,
     children: [
+      { index: true, element: <Navigate to="/home-page" replace /> },
       { path: '/home-page', element: <Homepage /> },
       { path: '/location-page', element: <Locationpage /> },
       { path: '/save-page', element: <Savepage /> },

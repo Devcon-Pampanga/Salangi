@@ -2,21 +2,22 @@ import { NavLink, NavLinkRenderProps } from 'react-router-dom';
 
 function Sidebar() {
     const navClass = ({ isActive }: NavLinkRenderProps): string => 
-        `flex gap-2 transition-colors ${
-            isActive ? 'text-[#FFE2A0]' : 'text-[#a7a7a7] hover:text-white'
+        `flex items-center gap-2 transition-colors ${
+            isActive ? 'bg-[#222222] border border-[#222222] text-[#FFE2A0] py-1 px-2 rounded-md' : 'bg-[#373737] border border-[#373737] hover:bg-[#222222] hover:border-[#FFE2A0] py-1 px-2 rounded-md text-white hover:text-[#FFE2A0]'
         }`;
 
     return (
-        <div className="bg-[#222222] border-r border-r-amber-100 w-55 min-h-screen">
-            <div className="px-6 py-4">
-                <p className="text-[#FFE2A0] text-xl font-semibold tracking-wide">Dashboard</p>
+        <div className="bg-[#373737] w-55 min-h-screen z-10 relative">
+            <div className="px-4 py-6">
+                <p className="font-['Playfair_Display'] text-[#FFE2A0] text-2xl font-semibold tracking-wide">Dashboard</p>
 
                 <div className="space-y-4 mt-8">
-                    <NavLink to="/dashboard/overview" className={navClass}>
+                    <NavLink to="/dashboard/overview" 
+                        className={navClass}>
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-5">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 0 1-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0 1 15 18.257V17.25m6-12V15a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 15V5.25m18 0A2.25 2.25 0 0 0 18.75 3H5.25A2.25 2.25 0 0 0 3 5.25m18 0V12a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 12V5.25" />
                         </svg>
-                        Overview
+                        <span className=''>Overview</span>
                     </NavLink>
 
                     <NavLink to="/dashboard/mybusiness" className={navClass}>

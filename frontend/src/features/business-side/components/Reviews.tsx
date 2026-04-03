@@ -49,7 +49,7 @@ function Review(){
     ];
     
     return(
-        <div className = "px-4 py-4">
+        <div className = "px-6 py-4">
             <div className = "flex flex-row items-center justify-between mb-3">
                 <h1 className = "font-semibold text-xl tracking-wide text-white mb-3">Reviews</h1>
                 <button className = "w-60 px-3 py-3 flex justify-center items-center cursor-pointer bg-[#3a3a3a] hover:bg-[#424242] border border-[#4d4d4d] rounded-xl">

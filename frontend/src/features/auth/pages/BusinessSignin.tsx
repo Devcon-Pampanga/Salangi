@@ -3,7 +3,7 @@ import { Eye, EyeOff } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import google from '@assets/icons/google-icon.svg';
 import facebook from '@assets/icons/facebook-icon.svg';
-import { loginUser } from '@/api';
+import { loginUser } from '@/services/api';
 
 function BusinessSignin() {
   const navigate = useNavigate();

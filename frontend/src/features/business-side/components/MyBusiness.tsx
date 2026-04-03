@@ -9,7 +9,7 @@ const MyBusiness = () => {
     return (
 
         <div>
-            <div className = "py-4 px-4 gap-3">
+            <div className = "py-4 px-6 gap-3">
                 <div className = "w-285 h-75 flex flex-row bg-[#3a3a3a] rounded-xl px-4 py-4">
                     <div className = "flex flex-col justify-center space-y-3">
                         <button 

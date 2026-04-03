@@ -15,12 +15,16 @@ L.Icon.Default.mergeOptions({
 });
 
 interface MapViewProps {
-  listings: Listing[];
-  selectedListing: Listing | null;
-  onSelect: (listing: Listing) => void;
+  listings?: Listing[];
+  selectedListing?: Listing | null;
+  onSelect?: (listing: Listing) => void;
 }
 
-const MapView = ({ listings, selectedListing, onSelect }: MapViewProps) => {
+const MapView = ({ 
+  listings = [], 
+  selectedListing = null, 
+  onSelect = () => {} 
+}: MapViewProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markersRef = useRef<Map<number, L.Marker>>(new Map());

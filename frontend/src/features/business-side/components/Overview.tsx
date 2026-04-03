@@ -5,13 +5,14 @@ import EventPostModal from "./PostEventModal";
 export default function Overview() {
     const navigate = useNavigate();
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [userName, setUserName] = useState("John");
 
     return(
-        <div>
+        <div className="w-full h-full">
             {/*Greetings dpt kung anong name yung pinag regis nila yun ma didisplay specifically first name lng*/}
-            <div className = "px-7 py-4">
-                <h1 className = "text-white text-xl font-semibold tracking-wide">
-                    Good Morning, Name
+            <div className = "px-6 py-4">
+                <h1 className = "font-['Playfair_Display'] text-white text-3xl font-semibold tracking-wide">
+                    Good Morning, <span className = "text-[#FFE2A0]">{userName}</span>
                 </h1>
 
                 <p className = "text-white text-sm">Here's what's happening with your listing today.</p>
@@ -19,10 +20,10 @@ export default function Overview() {
 
             <div>
                 {/*Cards: Profile views, Saved by users, Directions tapped, Review score*/}
-                <div className = "flex flex-row gap-3 justify-center">
+                <div className = "flex flex-row gap-3 justify-center px-6 py-4">
 
                     {/*Profile*/}
-                    <div className = "w-68 h-32 space-y-2 bg-[#3a3a3a] rounded-xl border border-[#4d4d4d] px-4 py-4">
+                    <div className = "w-full h-full space-y-2 bg-[#3a3a3a] rounded-xl border border-[#4d4d4d] px-4 py-4">
                         <p className = "text-sm text-[#7a7a7a]">Profile views</p>
                         <p className = "text-white text-3xl font-semibold">1,467</p>
 
@@ -35,7 +36,7 @@ export default function Overview() {
                     </div>
 
                     {/*Saved*/}
-                    <div className = "w-68 h-32 space-y-2 bg-[#3a3a3a] rounded-xl border border-[#4d4d4d] px-4 py-4">
+                    <div className = "w-full h-full space-y-2 bg-[#3a3a3a] rounded-xl border border-[#4d4d4d] px-4 py-4">
                         <p className = "text-sm text-[#7a7a7a]">Saved by users</p>
                         <p className = "text-white text-3xl font-semibold">97</p>
 
@@ -48,7 +49,7 @@ export default function Overview() {
                     </div>
 
                     {/*Directions tapped*/}
-                    <div className = "w-68 h-32 space-y-2 bg-[#3a3a3a] rounded-xl border border-[#4d4d4d] px-4 py-4">
+                    <div className = "w-full h-full space-y-2 bg-[#3a3a3a] rounded-xl border border-[#4d4d4d] px-4 py-4">
                         <p className = "text-sm text-[#7a7a7a]">Directions tapped</p>
                         <p className = "text-white text-3xl font-semibold">37</p>
 
@@ -61,7 +62,7 @@ export default function Overview() {
                     </div>
 
                     {/*Review scores*/}
-                    <div className = "w-68 h-32 space-y-2 bg-[#3a3a3a] rounded-xl border border-[#4d4d4d] px-4 py-4">
+                    <div className = "w-full h-full space-y-2 bg-[#3a3a3a] rounded-xl border border-[#4d4d4d] px-4 py-4">
                         <p className = "text-sm text-[#7a7a7a]">Review score</p>
                         <p className = "text-white text-3xl font-semibold">
                             
@@ -78,9 +79,9 @@ export default function Overview() {
                 </div>
 
                 {/*Quick actions, Post new events*/}
-                <div className = "flex flex-row gap-3 py-4 justify-center">
+                <div className = "flex flex-row gap-3 justify-center px-6 py-2">
                     {/*Quick actions*/}
-                    <div className = "w-139 h-70 space-y-2 bg-[#3a3a3a] rounded-xl border border-[#4d4d4d] px-6 py-4">
+                    <div className = "w-full h-full space-y-2 bg-[#3a3a3a] rounded-xl border border-[#4d4d4d] px-6 py-4">
                         <p className = "text-lg text-[#ffffff]">Quick actions</p>
 
                         <div className = "space-y-3">
@@ -157,7 +158,7 @@ export default function Overview() {
                     </div>
 
                     {/*Post new events*/}
-                    <div className = "w-139 h-70 space-y-2 bg-[#3a3a3a] rounded-xl border border-[#4d4d4d] px-6 py-4">
+                    <div className = "w-full h-full space-y-2 bg-[#3a3a3a] rounded-xl border border-[#4d4d4d] px-6 py-4">
                         <div className = "flex justify-between">
                             <p className = "text-lg text-[#ffffff]">Upcoming events</p>
                             <button 
@@ -212,8 +213,8 @@ export default function Overview() {
                 </div>
 
                 {/*Recent Activity; Dito makikita lahat like kung sino nag mga nag comment, nag bigay stars, etc*/}
-                <div className = "px-4 mb-10">
-                    <div className = "w-281 h-100 bg-[#3a3a3a] rounded-xl border border-[#4d4d4d] px-6 py-4">
+                <div className="flex flex-row gap-3 justify-center px-6 py-2">
+                    <div className="w-full h-100 bg-[#3a3a3a] rounded-xl border border-[#4d4d4d] px-6 py-4">
                         <div className = "flex justify-between">
                             <p className = "font-semibold text-white tracking-wide">Recent activity</p>
                             <p className = "text-[#FFE2A0] text-sm cursor-pointer">View all</p>
