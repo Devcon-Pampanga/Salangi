@@ -127,34 +127,53 @@ const SettingsPage = ({ onClose }: SettingsPageProps) => {
 
   // ── Upload avatar ────────────────────────────────────────────────────────
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { showToast('Image must be under 5MB.', 'error'); return; }
-    setUploadingAvatar(true);
-    try {
-      const current = getStoredUser();
-      const userId  = current.user_id ?? 'user';
-      const ext     = file.name.split('.').pop();
-      const path    = `avatars/${userId}-${Date.now()}.${ext}`;
+  const file = e.target.files?.[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) { showToast('Image must be under 5MB.', 'error'); return; }
 
-      const { error: uploadError } = await supabase.storage.from('listings-images').upload(path, file, { upsert: true });
-      if (uploadError) throw uploadError;
+  setUploadingAvatar(true);
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const userId = sessionData.session?.user?.id;
+    if (!userId) throw new Error('Not authenticated');
 
-      const { data: { publicUrl } } = supabase.storage.from('listings-images').getPublicUrl(path);
+    const ext  = file.name.split('.').pop();
+    const path = `avatars/${userId}-${Date.now()}.${ext}`;
 
-      const { error: updateError } = await supabase.from('users').update({ profile_pic: publicUrl }).eq('user_id', userId);
-      if (updateError) throw updateError;
+    // 1. Upload to Supabase Storage (bucket: "avatars")
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(path, file, { upsert: true });
+    if (uploadError) throw uploadError;
 
-      setAvatarUrl(publicUrl);
-      localStorage.setItem('user', JSON.stringify({ ...current, profile_pic: publicUrl, avatar_url: publicUrl }));
-      showToast('Profile photo updated!', 'success');
-    } catch (err: any) {
-      handleError(err, 'Failed to upload photo.');
-    } finally {
-      setUploadingAvatar(false);
-      if (avatarInputRef.current) avatarInputRef.current.value = '';
-    }
-  };
+    // 2. Get public URL
+    const { data: { publicUrl } } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(path);
+
+    // 3. Save URL to users table
+    const { error: dbError } = await supabase
+      .from('users')
+      .update({ profile_pic: publicUrl })
+      .eq('user_id', userId);
+    if (dbError) throw dbError;
+
+    // 4. Update local state + localStorage
+    setAvatarUrl(publicUrl);
+    const current = getStoredUser();
+    localStorage.setItem('user', JSON.stringify({
+      ...current,
+      profile_pic: publicUrl,
+      avatar_url:  publicUrl,
+    }));
+    showToast('Profile photo updated!', 'success');
+  } catch (err: any) {
+    handleError(err, 'Failed to upload photo.');
+  } finally {
+    setUploadingAvatar(false);
+    if (avatarInputRef.current) avatarInputRef.current.value = '';
+  }
+};
 
   // ── Change password ──────────────────────────────────────────────────────
   const handleChangePassword = async () => {

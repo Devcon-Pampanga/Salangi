@@ -56,7 +56,12 @@ function Navigator() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const [displayName, setDisplayName] = useState({ firstName: '', lastName: '', email: '' });
+  const [displayName, setDisplayName] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    avatarUrl: '' as string | null,
+  });
 
   const refreshUser = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -66,12 +71,12 @@ function Navigator() {
       return;
     }
 
-    // Prefer localStorage (updated immediately on save) then fallback to Supabase metadata
     const stored = JSON.parse(localStorage.getItem('user') ?? '{}');
     setDisplayName({
       firstName: stored.first_name || user.user_metadata?.first_name || '',
       lastName:  stored.last_name  || user.user_metadata?.last_name  || '',
       email:     stored.email      || user.email                     || '',
+      avatarUrl: stored.profile_pic || stored.avatar_url             || null,
     });
   }, [navigate]);
 
@@ -92,6 +97,20 @@ function Navigator() {
     navigate('/sign-in');
   };
 
+  // Reusable avatar: shows photo if available, else initials
+  const AvatarButton = ({ onClick, className }: { onClick?: () => void; className?: string }) => (
+    <button
+      onClick={onClick}
+      className={`h-15 w-15 bg-[#2E2E2E] rounded-lg cursor-pointer flex items-center justify-center overflow-hidden transition-all hover:bg-[#222222] ${className}`}
+    >
+      {displayName.avatarUrl ? (
+        <img src={displayName.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+      ) : (
+        <p className="font-['Playfair-Display'] text-[#FFE2A0] text-xl">{initials}</p>
+      )}
+    </button>
+  );
+
   return (
     <div className="flex h-screen overflow-hidden">
 
@@ -104,27 +123,9 @@ function Navigator() {
         </div>
 
         <div className="flex flex-col items-center py-10 gap-6">
-          <NavItem
-            to="/home-page"
-            defaultIcon={homeBtn}
-            activeIcon={homeBtnSelected}
-            alt="Home"
-            isEnd
-          />
-          <NavItem
-            to="/location-page"
-            defaultIcon={locBtn}
-            activeIcon={locBtnSelected}
-            alt="Location"
-            className="w-12 h-12 rounded-xl"
-          />
-          <NavItem
-            to="/save-page"
-            defaultIcon={saveBtn}
-            activeIcon={saveBtnSelected}
-            alt="Save"
-            className="w-12 h-12 rounded-xl"
-          />
+          <NavItem to="/home-page" defaultIcon={homeBtn} activeIcon={homeBtnSelected} alt="Home" isEnd />
+          <NavItem to="/location-page" defaultIcon={locBtn} activeIcon={locBtnSelected} alt="Location" className="w-12 h-12 rounded-xl" />
+          <NavItem to="/save-page" defaultIcon={saveBtn} activeIcon={saveBtnSelected} alt="Save" className="w-12 h-12 rounded-xl" />
         </div>
 
         <div className="relative">
@@ -134,8 +135,13 @@ function Navigator() {
               className="absolute bottom-18 left-0 w-64 bg-[#2D2D2D] rounded-2xl shadow-2xl border border-zinc-700/50 py-3 px-3 z-50 flex flex-col gap-1 transition-all"
             >
               <div className="flex items-center gap-3 p-2 py-3">
-                <div className="h-8 w-8 bg-[#222222] rounded-full flex items-center justify-center shrink-0">
-                  <span className="text-[#FFE2A0] text-xs font-bold">{initials}</span>
+                {/* Mini avatar in menu */}
+                <div className="h-8 w-8 rounded-full overflow-hidden bg-[#222222] flex items-center justify-center shrink-0">
+                  {displayName.avatarUrl ? (
+                    <img src={displayName.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-[#FFE2A0] text-xs font-bold">{initials}</span>
+                  )}
                 </div>
                 <div className="flex flex-col overflow-hidden">
                   <p className="text-[#FBFAF8] text-sm font-semibold truncate">{fullName}</p>
@@ -146,10 +152,7 @@ function Navigator() {
               <div className="h-px bg-zinc-700/50 my-1 mx-2" />
 
               <button
-                onClick={() => {
-                  setIsMenuOpen(false);
-                  setIsSettingsOpen(true);
-                }}
+                onClick={() => { setIsMenuOpen(false); setIsSettingsOpen(true); }}
                 className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-[#3D3D3D] transition-colors cursor-pointer text-[#FBFAF8]/90 hover:text-white"
               >
                 <Settings size={18} className="opacity-70" />
@@ -160,18 +163,13 @@ function Navigator() {
                 onClick={handleLogout}
                 className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-red-500/10 transition-colors cursor-pointer text-[#FBFAF8]/90 hover:text-red-500"
               >
-                <LogOut size={18} className="opacity-70 group-hover:opacity-100" />
+                <LogOut size={18} className="opacity-70" />
                 <span className="text-sm font-medium">Log out</span>
               </button>
             </div>
           )}
 
-          <button
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="h-15 w-15 bg-[#2E2E2E] rounded-lg cursor-pointer flex items-center justify-center transition-all hover:bg-[#222222]"
-          >
-            <p className="font-['Playfair-Display'] text-[#FFE2A0] text-xl">{initials}</p>
-          </button>
+          <AvatarButton onClick={() => setIsMenuOpen(!isMenuOpen)} />
         </div>
       </div>
 
@@ -183,7 +181,7 @@ function Navigator() {
         <SettingsPage
           onClose={() => {
             setIsSettingsOpen(false);
-            refreshUser();
+            refreshUser(); // re-reads localStorage including new profile_pic
           }}
         />,
         document.body
