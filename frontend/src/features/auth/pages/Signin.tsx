@@ -1,8 +1,6 @@
 import { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import google from '@assets/icons/google-icon.svg';
-import facebook from '@assets/icons/facebook-icon.svg';
 import bg from '@assets/images/bg.png';
 import { supabase } from '@/lib/supabase';
 
@@ -26,16 +24,6 @@ function Signin() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleGoogleSignIn = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
-    if (error) console.error(error.message);
   };
 
   return (
@@ -114,26 +102,6 @@ function Signin() {
               Sign up.
             </Link>
           </p>
-
-          <div className="flex items-center gap-4 my-5">
-            <div className="flex-1 border-t border-gray-600"></div>
-            <span className="text-gray-400 text-sm">Or</span>
-            <div className="flex-1 border-t border-gray-600"></div>
-          </div>
-
-          <div className="flex gap-4">
-            <button
-              onClick={handleGoogleSignIn}
-              className="flex-1 flex items-center justify-center gap-2 bg-[#2E2E2E] hover:bg-[#3a3a3a] text-white py-3 rounded-lg transition-colors border border-gray-600 cursor-pointer"
-            >
-              <img src={google} className="w-5 h-5" />
-              Google
-            </button>
-            <button className="flex-1 flex items-center justify-center gap-2 bg-[#2E2E2E] hover:bg-[#3a3a3a] text-white py-3 rounded-lg transition-colors border border-gray-600 cursor-pointer">
-              <img src={facebook} className="w-5 h-5" />
-              Facebook
-            </button>
-          </div>
         </div>
       </div>
     </div>
