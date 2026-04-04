@@ -1,4 +1,13 @@
-const BASE_URL = "http://localhost:8000";
+import { supabase } from '@/lib/supabase';
+
+const BASE_URL = "http://127.0.0.1:8000";
+
+async function getToken(): Promise<string> {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) throw new Error("Not authenticated");
+  return token;
+}
 
 export async function registerUser(data: {
   first_name: string;
@@ -39,7 +48,7 @@ export async function updateProfile(data: {
   last_name: string;
   email: string;
 }) {
-  const token = localStorage.getItem("token");
+  const token = await getToken();
   const res = await fetch(`${BASE_URL}/api/auth/update-profile`, {
     method: "PUT",
     headers: {
@@ -55,27 +64,14 @@ export async function updateProfile(data: {
   return res.json();
 }
 
-export async function changePassword(data: {
-  new_password: string;
-}) {
-  const token = localStorage.getItem("token");
-  const res = await fetch(`${BASE_URL}/api/auth/change-password`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.detail || "Failed to change password");
-  }
-  return res.json();
+export async function changePassword(newPassword: string) {
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
+  if (error) throw new Error(error.message || "Failed to change password");
+  return { message: "Password updated successfully." };
 }
 
 export async function deleteAccount() {
-  const token = localStorage.getItem("token");
+  const token = await getToken();
   const res = await fetch(`${BASE_URL}/api/auth/delete-account`, {
     method: "DELETE",
     headers: {
