@@ -16,8 +16,8 @@ function Signin() {
     setError('');
     setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw error;
+      const { data, error: supabaseError } = await supabase.auth.signInWithPassword({ email, password });
+      if (supabaseError) throw supabaseError;
 
       // Block unverified users
       if (!data.user?.email_confirmed_at) {
@@ -25,6 +25,16 @@ function Signin() {
         setError('Please verify your email before signing in. Check your inbox.');
         return;
       }
+
+      // Store user info for display purposes (not for auth)
+      const meta = data.user.user_metadata;
+      localStorage.setItem('user', JSON.stringify({
+        user_id:    data.user.id,
+        first_name: meta?.first_name ?? meta?.full_name?.split(' ')[0] ?? '',
+        last_name:  meta?.last_name  ?? meta?.full_name?.split(' ')[1] ?? '',
+        email:      data.user.email,
+        profile_pic: meta?.avatar_url ?? null,
+      }));
 
       navigate('/home-page');
     } catch (err: any) {
@@ -69,6 +79,7 @@ function Signin() {
               type="text"
               value={email}
               onChange={e => setEmail(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleSignIn()}
               placeholder="eg. juan.dc@gmail.com"
               className="w-full bg-[#2E2E2E] text-white placeholder-gray-500 px-4 py-3 rounded-lg outline-none focus:ring-1 focus:ring-[#FFE2A0]"
             />
@@ -81,6 +92,7 @@ function Signin() {
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={e => setPassword(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleSignIn()}
                 placeholder="*************"
                 className="w-full bg-[#2E2E2E] text-white placeholder-gray-500 px-4 py-3 rounded-lg outline-none focus:ring-1 focus:ring-[#FFE2A0]"
               />
@@ -97,7 +109,7 @@ function Signin() {
           <button
             onClick={handleSignIn}
             disabled={loading}
-            className="w-full bg-[#FFE2A0] hover:bg-[#fcd789] text-[#222222] font-semibold py-3 rounded-lg transition-colors cursor-pointer"
+            className="w-full bg-[#FFE2A0] hover:bg-[#fcd789] text-[#222222] font-semibold py-3 rounded-lg transition-colors cursor-pointer disabled:opacity-60"
           >
             {loading ? 'Signing in...' : 'SIGN IN'}
           </button>

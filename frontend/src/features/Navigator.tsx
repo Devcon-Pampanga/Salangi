@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { Settings, LogOut } from 'lucide-react';
 import { createPortal } from 'react-dom';
@@ -56,29 +56,35 @@ function Navigator() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const [displayName, setDisplayName] = useState({ firstName: '', lastName: '', email: '' });
 
-  const [user, setUser] = useState<any>(null);
+  const refreshUser = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user?.email_confirmed_at) {
+      supabase.auth.signOut();
+      navigate('/sign-in');
+      return;
+    }
+
+    // Prefer localStorage (updated immediately on save) then fallback to Supabase metadata
+    const stored = JSON.parse(localStorage.getItem('user') ?? '{}');
+    setDisplayName({
+      firstName: stored.first_name || user.user_metadata?.first_name || '',
+      lastName:  stored.last_name  || user.user_metadata?.last_name  || '',
+      email:     stored.email      || user.email                     || '',
+    });
+  }, [navigate]);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user?.email_confirmed_at) {
-        supabase.auth.signOut();
-        navigate('/sign-in');
-        return;
-      }
-      setUser(user);
-    });
-  }, []);
+    refreshUser();
+  }, [refreshUser]);
 
-  const firstName = user?.user_metadata?.first_name ?? '';
-  const lastName = user?.user_metadata?.last_name ?? '';
-
-  const initials = firstName && lastName
-    ? `${firstName[0]}${lastName[0]}`.toUpperCase()
+  const initials = displayName.firstName && displayName.lastName
+    ? `${displayName.firstName[0]}${displayName.lastName[0]}`.toUpperCase()
     : '?';
 
-  const fullName = firstName && lastName
-    ? `${firstName} ${lastName}`
+  const fullName = displayName.firstName && displayName.lastName
+    ? `${displayName.firstName} ${displayName.lastName}`
     : 'Guest';
 
   const handleLogout = async () => {
@@ -133,7 +139,7 @@ function Navigator() {
                 </div>
                 <div className="flex flex-col overflow-hidden">
                   <p className="text-[#FBFAF8] text-sm font-semibold truncate">{fullName}</p>
-                  <p className="text-gray-400 text-xs truncate">{user?.email ?? ''}</p>
+                  <p className="text-gray-400 text-xs truncate">{displayName.email}</p>
                 </div>
               </div>
 
@@ -173,9 +179,13 @@ function Navigator() {
         <Outlet />
       </main>
 
-      {/* Settings Modal — rendered via portal to escape overflow:hidden */}
       {isSettingsOpen && createPortal(
-        <SettingsPage onClose={() => setIsSettingsOpen(false)} />,
+        <SettingsPage
+          onClose={() => {
+            setIsSettingsOpen(false);
+            refreshUser();
+          }}
+        />,
         document.body
       )}
     </div>

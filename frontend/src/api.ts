@@ -1,90 +1,55 @@
-const BASE_URL = "http://localhost:8000";
+import { supabase } from '@/lib/supabase';
 
-export async function registerUser(data: {
-  first_name: string;
-  last_name: string;
-  email: string;
-  password: string;
-}) {
-  const res = await fetch(`${BASE_URL}/api/auth/register`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.detail || "Registration failed");
+const BASE_URL = 'http://localhost:8000';
+
+// ── Get live Supabase session token ──────────────────────────────────────────
+async function getToken(): Promise<string> {
+  const { data, error } = await supabase.auth.getSession();
+  if (error || !data.session?.access_token) {
+    throw new Error('Not authenticated. Please sign in again.');
   }
-  return res.json();
+  return data.session.access_token;
 }
 
-export async function loginUser(data: {
-  email: string;
-  password: string;
-}) {
-  const res = await fetch(`${BASE_URL}/api/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
+// ── Shared fetch helper ───────────────────────────────────────────────────────
+async function authFetch(path: string, options: RequestInit = {}): Promise<any> {
+  const token = await getToken();
+  const res = await fetch(`${BASE_URL}${path}`, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+      ...(options.headers ?? {}),
+    },
   });
   if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.detail || "Login failed");
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `Request failed (${res.status})`);
   }
-  return res.json();
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
 }
 
+// ── Profile (backend) ─────────────────────────────────────────────────────────
 export async function updateProfile(data: {
-  first_name: string;
-  last_name: string;
-  email: string;
+  first_name?: string;
+  last_name?: string;
+  email?: string;
 }) {
-  const token = localStorage.getItem("token");
-  const res = await fetch(`${BASE_URL}/api/auth/update-profile`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
+  return authFetch('/api/auth/update-profile', {
+    method: 'PUT',
     body: JSON.stringify(data),
   });
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.detail || "Failed to update profile");
-  }
-  return res.json();
 }
 
-export async function changePassword(data: {
-  new_password: string;
-}) {
-  const token = localStorage.getItem("token");
-  const res = await fetch(`${BASE_URL}/api/auth/change-password`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.detail || "Failed to change password");
-  }
-  return res.json();
+// ── Password (Supabase directly — no backend needed) ─────────────────────────
+export async function changePassword(newPassword: string) {
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
+  if (error) throw new Error(error.message);
+  return { message: 'Password updated successfully.' };
 }
 
+// ── Delete account (backend removes DB row, Supabase handles auth deletion) ──
 export async function deleteAccount() {
-  const token = localStorage.getItem("token");
-  const res = await fetch(`${BASE_URL}/api/auth/delete-account`, {
-    method: "DELETE",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.detail || "Failed to delete account");
-  }
-  return res.json();
+  return authFetch('/api/auth/delete-account', { method: 'DELETE' });
 }

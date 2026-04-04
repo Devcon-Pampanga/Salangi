@@ -1,6 +1,11 @@
 from jose import jwt, JWTError
 from datetime import datetime, timedelta
 import bcrypt
+import base64
+import json
+import urllib.request
+import jwt as pyjwt
+from jwt.algorithms import ECAlgorithm
 from pathlib import Path
 from dotenv import load_dotenv
 from itsdangerous import URLSafeTimedSerializer
@@ -12,9 +17,14 @@ load_dotenv(dotenv_path=env_path)
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 30))
+SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET")
+SUPABASE_PROJECT_REF = os.getenv("SUPABASE_PROJECT_REF")
 
 if not SECRET_KEY:
     raise ValueError("SECRET_KEY not found in .env")
+
+if not SUPABASE_PROJECT_REF:
+    raise ValueError("SUPABASE_PROJECT_REF not found in .env")
 
 
 def hash_password(password: str) -> str:
@@ -51,3 +61,40 @@ def confirm_verification_token(token: str, expiration=86400):
     except Exception:
         return None
     return email
+
+
+# ── Supabase JWT (ES256 with JWKS) ───────────────────────────────────────────
+def decode_supabase_token(token: str) -> dict | None:
+    try:
+        jwks_url = f"https://{SUPABASE_PROJECT_REF}.supabase.co/auth/v1/.well-known/jwks.json"
+        with urllib.request.urlopen(jwks_url) as response:
+            jwks = json.loads(response.read())
+
+        header = pyjwt.get_unverified_header(token)
+        kid = header.get("kid")
+
+        public_key = None
+        for key in jwks["keys"]:
+            if key["kid"] == kid:
+                public_key = ECAlgorithm.from_jwk(json.dumps(key))
+                break
+
+        if not public_key:
+            return None
+
+        payload = pyjwt.decode(
+            token,
+            public_key,
+            algorithms=["ES256"],
+            options={"verify_aud": False},
+        )
+        return payload
+    except Exception:
+        return None
+
+
+def get_supabase_user_id(token: str) -> str | None:
+    payload = decode_supabase_token(token)
+    if not payload:
+        return None
+    return payload.get("sub")
