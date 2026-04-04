@@ -86,18 +86,17 @@ function DetailedBusinessCard({
     setSubmitting(true);
     setReviewError(null);
     try {
-      const storedUser = JSON.parse(localStorage.getItem('user') ?? '{}');
-      const userId = storedUser.user_id;
+      const { data: { user } } = await supabase.auth.getUser();
 
-      if (!userId) {
-        setReviewError('You must be logged in to leave a review.');
-        setSubmitting(false);
-        return;
+      if (!user) {
+      setReviewError('You must be logged in to leave a review.');
+      setSubmitting(false);
+      return;
       }
 
       const { error } = await supabase.from('reviews').insert({
         listing_id: listingId,
-        user_id: userId,
+        user_id: user.id,
         rating,
         comment,
       });
@@ -108,8 +107,8 @@ function DetailedBusinessCard({
       onReviewAdded?.();
     } catch (err: any) {
       setReviewError('Failed to submit review. Please try again.');
-    } finally {
-      setSubmitting(false);
+    }  finally {
+    setSubmitting(false);
     }
   };
 

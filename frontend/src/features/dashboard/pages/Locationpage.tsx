@@ -21,7 +21,7 @@ interface Review {
 }
 
 const DEFAULT_LISTING: Listing = {
-  id: 999,
+  id: 1,
   name: "Holy Rosary Parish Church",
   location: "Angeles City, Pampanga",
   hours: "8:00 am - 10:00 pm (Mon-Fri)",
@@ -54,16 +54,47 @@ function Locationpage() {
 
   const fetchReviews = async (listingId: number) => {
     setReviewsLoading(true);
-    const { data, error } = await supabase
-      .from('reviews')
-      .select(`*, users!inner(first_name, last_name, profile_pic)`)
-      .eq('listing_id', listingId)
-      .order('created_at', { ascending: false });
+    try {
+      // Step 1: fetch reviews
+      const { data: reviewData, error: reviewError } = await supabase
+        .from('reviews')
+        .select('id, listing_id, user_id, rating, comment, created_at')
+        .eq('listing_id', listingId)
+        .order('created_at', { ascending: false });
 
-    if (!error && data) {
-      const mapped: Review[] = data.map((r: any) => {
-        const firstName = r.users?.first_name ?? 'Anonymous';
-        const lastName = r.users?.last_name ?? '';
+      if (reviewError) {
+        console.error('reviews error:', reviewError);
+        setReviewsLoading(false);
+        return;
+      }
+
+      if (!reviewData || reviewData.length === 0) {
+        setReviews([]);
+        setReviewsLoading(false);
+        return;
+      }
+
+      // Step 2: fetch users for those reviews
+      const userIds = [...new Set(reviewData.map((r: any) => r.user_id))];
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('user_id, first_name, last_name, profile_pic')
+        .in('user_id', userIds);
+
+      if (userError) {
+        console.error('users error:', userError);
+      }
+
+      // Step 3: map together
+      const userMap: Record<string, any> = {};
+      (userData ?? []).forEach((u: any) => {
+        userMap[u.user_id] = u;
+      });
+
+      const mapped: Review[] = reviewData.map((r: any) => {
+        const u = userMap[r.user_id];
+        const firstName = u?.first_name ?? 'Anonymous';
+        const lastName = u?.last_name ?? '';
         const fullName = `${firstName} ${lastName}`.trim();
         const initials = `${firstName[0] ?? ''}${lastName[0] ?? ''}`.toUpperCase();
         return {
@@ -75,12 +106,16 @@ function Locationpage() {
           }),
           rating: r.rating,
           comment: r.comment,
-          profilePic: r.users?.profile_pic ?? null,
+          profilePic: u?.profile_pic ?? null,
         };
       });
+
       setReviews(mapped);
+    } catch (err) {
+      console.error('fetchReviews unexpected error:', err);
+    } finally {
+      setReviewsLoading(false);
     }
-    setReviewsLoading(false);
   };
 
   const averageRating = reviews.length > 0
