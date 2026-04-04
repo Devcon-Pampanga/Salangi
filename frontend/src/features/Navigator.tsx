@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { Settings, LogOut } from 'lucide-react';
 import SettingsPage from './settings/pages/SettingsPage';
+import { ROUTES } from '../routes/paths';
 
 // icons
 import homeBtn from '@assets/icons/home-btn-default.svg';
@@ -49,7 +50,7 @@ const NavItem = ({ to, defaultIcon, activeIcon, alt, isEnd = false, className = 
   );
 };
 
-function Navigator() {
+export function Navigator() {
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -77,7 +78,7 @@ function Navigator() {
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    navigate('/sign-in');
+    navigate(ROUTES.SIGN_IN);
   };
 
   return (
@@ -95,21 +96,21 @@ function Navigator() {
         {/*Home, Loc, Save*/}
         <div className="flex flex-col items-center py-10 gap-6">
           <NavItem
-            to="/home-page"
+            to={ROUTES.HOME}
             defaultIcon={homeBtn}
             activeIcon={homeBtnSelected}
             alt="Home"
             isEnd
           />
           <NavItem
-            to="/location-page"
+            to={ROUTES.LOCATION}
             defaultIcon={locBtn}
             activeIcon={locBtnSelected}
             alt="Location"
             className="w-12 h-12 rounded-xl"
           />
           <NavItem
-            to="/save-page"
+            to={ROUTES.SAVE}
             defaultIcon={saveBtn}
             activeIcon={saveBtnSelected}
             alt="Save"

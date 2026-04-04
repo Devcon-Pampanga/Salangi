@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import bg from '@assets/images/bg.png';
 import { Eye, EyeOff } from 'lucide-react';
+import { ROUTES } from '../../../routes/paths';
 
 const ADMIN_PASSWORD = 'salangi-admin-2024';
 
@@ -14,7 +15,7 @@ function AdminLogin() {
   const handleLogin = () => {
     if (password === ADMIN_PASSWORD) {
       sessionStorage.setItem('admin_auth', 'true');
-      navigate('/admin/dashboard');
+      navigate(ROUTES.ADMIN_DASHBOARD);
     } else {
       setError('Incorrect password.');
     }

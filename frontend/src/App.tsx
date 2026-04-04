@@ -17,47 +17,48 @@ import AdminLogin from './features/admin/pages/AdminLogin';
 import AdminDashboard from './features/admin/pages/AdminDashboard';
 import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
 import type { RouteObject } from 'react-router-dom';
+import { ROUTES } from './routes/paths';
 
 const routes: RouteObject[] = [
   {
-    path: '/admin',
+    path: ROUTES.ADMIN,
     element: <AdminLogin />,
   },
   {
-    path: '/admin/dashboard',
+    path: ROUTES.ADMIN_DASHBOARD,
     element: <AdminDashboard />,
   },
 
   { 
-    path: '/listyourbusiness', 
+    path: ROUTES.LIST_YOUR_BUSINESS, 
     element: <HeroListBusiness />
   },
 
   { 
-    path: '/businessRegister', 
+    path: ROUTES.BUSINESS_REGISTER, 
     element: <BusinessRegister />
   },
 
   { 
-    path: '/businessSignin', 
+    path: ROUTES.BUSINESS_SIGNIN, 
     element: <BusinessSignin />
   },
 
   { 
-    path: '/listbusiness', 
+    path: ROUTES.LIST_BUSINESS, 
     element: <ListBusiness />
   },
 
   // Eto yung sa Business Side
   { 
-    path: '/dashboard', 
+    path: ROUTES.DASHBOARD, 
     element: <Dashboard />,
     
     children: [
-      {path: 'overview', element: <Overview />},
-      {path: 'mybusiness', element: <MyBusiness />},
-      {path: 'events', element: <Events />},
-      {path: 'reviews', element: <Reviews />}
+      {path: ROUTES.DASHBOARD_REL.OVERVIEW, element: <Overview />},
+      {path: ROUTES.DASHBOARD_REL.MY_BUSINESS, element: <MyBusiness />},
+      {path: ROUTES.DASHBOARD_REL.EVENTS, element: <Events />},
+      {path: ROUTES.DASHBOARD_REL.REVIEWS, element: <Reviews />}
     ]
   },
 
@@ -67,11 +68,11 @@ const routes: RouteObject[] = [
     // REMOVE PROTECTED ROUTE
     element: <Navigator />,
     children: [
-      { index: true, element: <Navigate to="/home-page" replace /> },
-      { path: '/home-page', element: <Homepage /> },
-      { path: '/location-page', element: <Locationpage /> },
-      { path: '/save-page', element: <Savepage /> },
-      { path: '/map-page', element: <MapView /> },
+      { index: true, element: <Navigate to={ROUTES.HOME} replace /> },
+      { path: ROUTES.HOME, element: <Homepage /> },
+      { path: ROUTES.LOCATION, element: <Locationpage /> },
+      { path: ROUTES.SAVE, element: <Savepage /> },
+      { path: ROUTES.MAP, element: <MapView /> },
     ],
   },
 ];

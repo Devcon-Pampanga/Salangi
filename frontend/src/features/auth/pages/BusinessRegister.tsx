@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import google from '@assets/icons/google-icon.svg';
 import facebook from '@assets/icons/facebook-icon.svg';
 import { registerUser } from '@/services/api';
+import { ROUTES } from '../../../routes/paths';
 
 function BusinessRegiter(){
 
@@ -41,7 +42,7 @@ function BusinessRegiter(){
         <div>
             <div className = "absolute px-10 py-10">
                 <button
-                    onClick={() => navigate('/listyourbusiness')}
+                    onClick={() => navigate(ROUTES.LIST_YOUR_BUSINESS)}
                     className="flex items-center gap-2 text-[#FBFAF8]/50 hover:text-[#FBFAF8] text-sm mb-8 cursor-pointer transition-colors"
                     >
                     ← Go Back.
@@ -62,7 +63,7 @@ function BusinessRegiter(){
 
                     <div className = "absolute -left-70">
                         <button
-                        onClick={() => navigate('/listyourbusiness')}
+                        onClick={() => navigate(ROUTES.LIST_YOUR_BUSINESS)}
                         className="flex items-center gap-2 text-[#FBFAF8]/50 hover:text-[#FBFAF8] text-sm mb-8 cursor-pointer transition-colors"
                         >
                         ← Back to Homepage
@@ -152,7 +153,7 @@ function BusinessRegiter(){
                     {/* Already have account */}
                     <p className="text-gray-400 text-sm text-center mt-4">
                         Already have an account?{' '}
-                        <Link to="/businessSignin" className="text-[#FFE2A0] hover:underline">
+                        <Link to={ROUTES.BUSINESS_SIGNIN} className="text-[#FFE2A0] hover:underline">
                         Sign in.
                         </Link>
                     </p>

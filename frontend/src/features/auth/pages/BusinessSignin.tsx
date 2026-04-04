@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import google from '@assets/icons/google-icon.svg';
 import facebook from '@assets/icons/facebook-icon.svg';
 import { loginUser } from '@/services/api';
+import { ROUTES } from '../../../routes/paths';
 
 function BusinessSignin() {
   const navigate = useNavigate();
@@ -25,7 +26,7 @@ function BusinessSignin() {
         last_name: res.last_name,
         email: res.email,
       }));
-      navigate('/home-page');
+      navigate(ROUTES.HOME);
     } catch (err: any) {
       setError(err.message || 'An error occurred during sign in');
     } finally {
@@ -38,7 +39,7 @@ function BusinessSignin() {
       
       <div className="absolute top-0 left-0 p-6 md:p-10 z-50">
         <button
-          onClick={() => navigate('/listyourbusiness')}
+          onClick={() => navigate(ROUTES.LIST_YOUR_BUSINESS)}
           className="flex items-center gap-2 text-[#FBFAF8]/50 hover:text-[#FBFAF8] text-sm cursor-pointer transition-colors"
         >
           ← Go Back.
@@ -114,7 +115,7 @@ function BusinessSignin() {
 
           <p className="text-gray-400 text-sm text-center mt-4">
             Don't have an account yet?{' '}
-            <Link to="/businessRegister" className="text-[#FFE2A0] hover:underline">
+            <Link to={ROUTES.BUSINESS_REGISTER} className="text-[#FFE2A0] hover:underline">
               Sign up.
             </Link>
           </p>

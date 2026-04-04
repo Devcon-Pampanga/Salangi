@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Listing } from '../../Data/Listings';
+import { ROUTES } from '../../../routes/paths';
 
 import locBtnSelected from '@assets/icons/map-btn-active.svg';
 import locBtn from '@assets/icons/map-btn-default.svg';
@@ -117,7 +118,7 @@ function BusinessCard({ listing, onSelect, isSelected, isSaved, onToggleSave }: 
         <span
           onClick={(e) => {
             e.stopPropagation();
-            navigate('/location-page', { state: { listing } });
+            navigate(ROUTES.LOCATION, { state: { listing } });
           }}
           className="text-[#FFE2A0] text-sm cursor-pointer hover:underline"
         >

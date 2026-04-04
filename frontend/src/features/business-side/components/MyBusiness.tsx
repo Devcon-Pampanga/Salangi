@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import EventPostModal from "./PostEventModal";
+import { ROUTES } from '../../../routes/paths';
 
 const MyBusiness = () => {
     const navigate = useNavigate();
@@ -13,7 +14,7 @@ const MyBusiness = () => {
                 <div className = "w-285 h-75 flex flex-row bg-[#3a3a3a] rounded-xl px-4 py-4">
                     <div className = "flex flex-col justify-center space-y-3">
                         <button 
-                        onClick={() => navigate('/listbusiness')}
+                        onClick={() => navigate(ROUTES.BUSINESS_REGISTER)}
                         className = "p-3 w-50 rounded-xl flex flex-row items-center gap-3 bg-[#5a5241] hover:bg-[#857657] border border-[#FFE2A0] text-[#fdfdfd] text-md tracking-wide cursor-pointer text-left">
                             <div className = "p-3 h-13 flex justify-center items-center bg-[#474133] rounded-xl">
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor" className="size-6 text-white">

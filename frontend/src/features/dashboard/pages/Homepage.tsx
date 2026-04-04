@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ROUTES } from '../../../routes/paths';
  
 import BusinessCard from '../components/BusinessCard';
 import MapView from '../../../map/MapView';
@@ -155,7 +156,7 @@ function Homepage() {
 
             {/* List Your Business button */}
             <button
-              onClick={() => navigate('/listyourbusiness')}
+              onClick={() => navigate(ROUTES.LIST_YOUR_BUSINESS)}
               className="flex items-center gap-2 px-4 py-3 bg-[#FFE2A0] text-[#1A1A1A] rounded-lg font-semibold text-sm whitespace-nowrap cursor-pointer hover:bg-[#f5d880] transition-colors"
             >
               List Your Business

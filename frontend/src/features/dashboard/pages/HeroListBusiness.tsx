@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { ROUTES } from '../../../routes/paths';
 
 const HeroListBusiness = () => {
 
@@ -36,7 +37,7 @@ const HeroListBusiness = () => {
 
                 <div className = "absolute -left-70">
                     <button
-                    onClick={() => navigate('/home-page')}
+                    onClick={() => navigate(ROUTES.HOME)}
                     className="flex items-center gap-2 text-[#FBFAF8]/50 hover:text-[#FBFAF8] text-sm mb-8 cursor-pointer transition-colors"
                     >
                     ← Back to Main
@@ -96,7 +97,7 @@ const HeroListBusiness = () => {
 
                 {/*List Business Button*/}
                 <button 
-                onClick={() => navigate('/businessRegister')}
+                onClick={() => navigate(ROUTES.BUSINESS_REGISTER)}
                 className="w-70 mt-10 py-4 flex justify-center gap-3 items-center bg-[#eec76c] text-[#222222] text-lg font-semibold tracking-wide rounded-xl cursor-pointer transition-all duration-300 hover:scale-[1.02] shadow-[0_0_20px_rgba(238,199,108,0.4)] hover:shadow-[0_0_30px_rgba(238,199,108,0.6)]">  
                     Create an Account 
                 </button>
@@ -143,7 +144,6 @@ const HeroListBusiness = () => {
                             </span>
                         </div>
                         ))}
-                        
                     </div>
                 </div>
             </div>
