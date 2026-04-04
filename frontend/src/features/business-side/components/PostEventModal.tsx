@@ -58,7 +58,7 @@ export default function PostEventModal({ isOpen, onClose }: EventPostModalProps)
       onClick={(e) => e.target === e.currentTarget && handleClose()}
     >
       <div
-        className="relative w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl"
+        className="relative w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl text-left"
         style={{ backgroundColor: "#222222", border: "1px solid #333333" }}
       >
         {/* Top accent bar */}

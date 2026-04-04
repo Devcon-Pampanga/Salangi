@@ -50,10 +50,17 @@ function Review(){
     
     return(
         <div className = "px-6 py-4">
-            <div className = "flex flex-row items-center justify-between mb-3">
-                <h1 className = "font-semibold text-xl tracking-wide text-white mb-3">Reviews</h1>
-                <button className = "w-60 px-3 py-3 flex justify-center items-center cursor-pointer bg-[#3a3a3a] hover:bg-[#424242] border border-[#4d4d4d] rounded-xl">
-                    <p className = "text-white">March 2021 - February 2022</p>
+            <div className="mb-4">
+                <h1 className="font-['Playfair_Display'] text-white text-3xl font-semibold tracking-wide cursor-default">
+                    Customer <span className="text-[#FFE2A0]">Reviews</span>
+                </h1>
+                <p className="text-white text-sm">Monitor and respond to your latest business feedback</p>
+            </div>
+
+            <div className = "flex flex-row items-center justify-between mt-8 mb-6">
+                <h2 className = "text-[#FFE2A0] text-xl font-['Playfair_Display'] font-semibold">Overall Rating</h2>
+                <button className = "px-6 py-2 flex justify-center items-center cursor-pointer bg-[#3a3a3a] hover:bg-[#424242] border border-[#4d4d4d] rounded-xl transition-colors">
+                    <p className = "text-white text-sm font-light">March 2021 - February 2022</p>
                 </button>
             </div>
 
@@ -132,53 +139,68 @@ function Review(){
             </div>
 
             <div className="w-285 h-px my-5 bg-[#4b4b4b]"></div>
-
             {/*Comments*/}
             <div className="mt-5 px-10">
-                {reviews.map((rev, index) => (
-                    <div key={rev.id} className="flex gap-10 mb-8 max-w-7xl">
-                    
-                    {/* 1. LEFT COLUMN: USER PROFILE */}
-                    <div className="w-70 flex flex-row items-start gap-4 shrink-0">
-                        <img 
-                        src={rev.avatar} 
-                        alt={rev.name} 
-                        className="size-25 rounded-xl object-cover" 
-                        />
-                        <div className="flex flex-col gap-1 mt-1">
-                        <h2 className="text-white text-md font-semibold tracking-wide">
-                            {rev.name}
-                        </h2>
-                        </div>
-                    </div>
-
-                    {/* 2. RIGHT COLUMN: REVIEW CONTENT */}
-                    <div className="flex-1">
-                        {/* Header: Stars and Date */}
-                        <div className="flex items-center gap-3 mb-3 mt-1">
-                        <div className="flex flex-row gap-0.5">
-                            {[...Array(5)].map((_, i) => (
-                            <svg key={i} viewBox="0 0 24 24" fill={i < rev.rating ? "#FFB800" : "#4B4B4B"} className="size-4">
-                                <path d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.563.563 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.563.563 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z" />
+                {reviews.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
+                        <div className="bg-[#474133] p-4 rounded-full border border-[#5a5241] shadow-inner transition-transform hover:scale-110">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" className="size-10 text-[#FFE2A0]">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a.75.75 0 0 1-1.154-.63 4.5 4.5 0 0 1 .767-2.327C3.392 16.483 2.25 14.366 2.25 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" />
                             </svg>
-                            ))}
                         </div>
-                        <span className="text-[#9ca3af] text-sm">{rev.date}</span>
+                        <div className="space-y-1">
+                            <h3 className="text-white text-xl font-semibold tracking-wide font-['Playfair_Display']">No Reviews Yet</h3>
+                            <p className="text-[#a0a0a0] text-sm font-light max-w-xs mx-auto leading-relaxed">
+                                Your customers haven't shared their feedback yet. Positive reviews will help you stand out!
+                            </p>
                         </div>
-
-                        {/* Review Text */}
-                        <p className="text-[#e5e7eb] text-md leading-relaxed tracking-wide">
-                        {rev.comment}
-                        </p>
-
-                        {/* Divider (Optional: Hides on the last item) */}
-                        {index !== reviews.length - 1 && (
-                            <div className="w-full h-px mt-8 mb-2 bg-[#4b4b4b]"></div>
-                        )}
+                    </div>
+                ) : (
+                    reviews.map((rev, index) => (
+                        <div key={rev.id} className="flex gap-10 mb-8 max-w-7xl">
                         
-                    </div>
-                    </div>
-                ))}
+                        {/* 1. LEFT COLUMN: USER PROFILE */}
+                        <div className="w-70 flex flex-row items-start gap-4 shrink-0">
+                            <img 
+                            src={rev.avatar} 
+                            alt={rev.name} 
+                            className="size-25 rounded-xl object-cover" 
+                            />
+                            <div className="flex flex-col gap-1 mt-1">
+                            <h2 className="text-white text-md font-semibold tracking-wide">
+                                {rev.name}
+                            </h2>
+                            </div>
+                        </div>
+
+                        {/* 2. RIGHT COLUMN: REVIEW CONTENT */}
+                        <div className="flex-1">
+                            {/* Header: Stars and Date */}
+                            <div className="flex items-center gap-3 mb-3 mt-1">
+                            <div className="flex flex-row gap-0.5">
+                                {[...Array(5)].map((_, i) => (
+                                <svg key={i} viewBox="0 0 24 24" fill={i < rev.rating ? "#FFB800" : "#4B4B4B"} className="size-4">
+                                    <path d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z" />
+                                </svg>
+                                ))}
+                            </div>
+                            <span className="text-[#9ca3af] text-sm">{rev.date}</span>
+                            </div>
+
+                            {/* Review Text */}
+                            <p className="text-[#e5e7eb] text-md leading-relaxed tracking-wide">
+                            {rev.comment}
+                            </p>
+
+                            {/* Divider (Optional: Hides on the last item) */}
+                            {index !== reviews.length - 1 && (
+                                <div className="w-full h-px mt-8 mb-2 bg-[#4b4b4b]"></div>
+                            )}
+                            
+                        </div>
+                        </div>
+                    ))
+                )}
             </div>
         </div>
     );
