@@ -37,8 +37,7 @@ function Register() {
         }
       });
       if (error) throw error;
-      setSuccess('Account created! You can now sign in.');
-      setTimeout(() => navigate('/sign-in'), 2000);
+      setSuccess('Account created! Please check your email to verify your account before signing in.');
     } catch (err: any) {
       setError(err.message);
     } finally {

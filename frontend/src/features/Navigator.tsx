@@ -60,16 +60,26 @@ function Navigator() {
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => setUser(user));
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user?.email_confirmed_at) {
+        supabase.auth.signOut();
+        navigate('/sign-in');
+        return;
+      }
+      setUser(user);
+    });
   }, []);
 
-  const initials = user?.user_metadata?.full_name
-    ?.split(' ')
-    .map((n: string) => n[0])
-    .join('')
-    .toUpperCase() ?? '?';
+  const firstName = user?.user_metadata?.first_name ?? '';
+  const lastName = user?.user_metadata?.last_name ?? '';
 
-  const fullName = user?.user_metadata?.full_name ?? 'Guest';
+  const initials = firstName && lastName
+    ? `${firstName[0]}${lastName[0]}`.toUpperCase()
+    : '?';
+
+  const fullName = firstName && lastName
+    ? `${firstName} ${lastName}`
+    : 'Guest';
 
   const handleLogout = async () => {
     await supabase.auth.signOut();

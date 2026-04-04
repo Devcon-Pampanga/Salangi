@@ -16,8 +16,16 @@ function Signin() {
     setError('');
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
+
+      // Block unverified users
+      if (!data.user?.email_confirmed_at) {
+        await supabase.auth.signOut();
+        setError('Please verify your email before signing in. Check your inbox.');
+        return;
+      }
+
       navigate('/home-page');
     } catch (err: any) {
       setError(err.message);
