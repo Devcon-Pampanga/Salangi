@@ -5,8 +5,9 @@ import { supabase } from '@/lib/supabase';
 import BusinessCard from '../components/BusinessCard';
 import MapView from '../../../map/MapView';
 import SearchBar from '../components/SearchBar';
+import type { FilterOptions } from '../components/SearchBar';
 
-import { getListings, CATEGORIES } from '../../Data/Listings';
+import { getListings, getAverageRatings, CATEGORIES } from '../../Data/Listings';
 import type { Listing, Category } from '../../Data/Listings';
 
 import CategoryFilters from '../components/CategoryFilters';
@@ -20,26 +21,27 @@ function Homepage() {
   const [searchQuery,    setSearchQuery]       = useState<string>('');
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
   const [savedIds, setSavedIds]               = useState<number[]>([]);
+  const [averageRatings, setAverageRatings]   = useState<Record<number, number>>({});
+  const [filters, setFilters]                 = useState<FilterOptions>({ minRating: null, sortBy: 'default' });
 
-  // Fetch listings
   useEffect(() => {
-    getListings()
-      .then(setListings)
+    Promise.all([getListings(), getAverageRatings()])
+      .then(([listingsData, ratingsData]) => {
+        setListings(listingsData);
+        setAverageRatings(ratingsData);
+      })
       .catch(console.error)
       .finally(() => setIsLoading(false));
   }, []);
 
-  // Fetch saved spots from Supabase
   useEffect(() => {
     const fetchSaves = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-
       const { data, error } = await supabase
         .from('saves')
         .select('listing_id')
         .eq('user_id', user.id);
-
       if (!error && data) {
         setSavedIds(data.map((row: any) => row.listing_id));
       }
@@ -50,34 +52,30 @@ function Homepage() {
   const toggleSave = async (id: number) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-
     const isSaved = savedIds.includes(id);
-
     if (isSaved) {
-      await supabase
-        .from('saves')
-        .delete()
-        .eq('user_id', user.id)
-        .eq('listing_id', id);
+      await supabase.from('saves').delete().eq('user_id', user.id).eq('listing_id', id);
       setSavedIds(prev => prev.filter(savedId => savedId !== id));
     } else {
-      await supabase
-        .from('saves')
-        .insert({ user_id: user.id, listing_id: id });
+      await supabase.from('saves').insert({ user_id: user.id, listing_id: id });
       setSavedIds(prev => [...prev, id]);
     }
   };
 
   const filteredListings = useMemo<Listing[]>(() => {
-    return listings.filter((item: Listing) => {
-      const matchesCategory =
-        activeCategory === CATEGORIES.ALL || item.category === activeCategory;
-      const matchesSearch = item.name
-        .toLowerCase()
-        .includes(searchQuery.toLowerCase());
-      return matchesCategory && matchesSearch;
+    let result = listings.filter((item: Listing) => {
+      const matchesCategory = activeCategory === CATEGORIES.ALL || item.category === activeCategory;
+      const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesRating = filters.minRating === null || (averageRatings[item.id] ?? 0) >= filters.minRating;
+      return matchesCategory && matchesSearch && matchesRating;
     });
-  }, [listings, activeCategory, searchQuery]);
+
+    if (filters.sortBy === 'az') {
+      result = [...result].sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    return result;
+  }, [listings, activeCategory, searchQuery, filters, averageRatings]);
 
   const handleCardSelect = (listing: Listing): void => {
     setSelectedListing((prev: Listing | null) =>
@@ -102,7 +100,6 @@ function Homepage() {
 
   return (
     <div className="relative w-full h-full bg-[#1A1A1A] text-[#FBFAF8] overflow-hidden">
-
       <div
         className="absolute top-0 left-0 rounded-full blur-3xl opacity-60 pointer-events-none"
         style={{
@@ -116,15 +113,11 @@ function Homepage() {
       <div className="relative z-10 h-full flex px-6 py-6 gap-6">
 
         {/* ── LEFT COLUMN ── */}
-        <div
-          className="h-full flex flex-col overflow-hidden shrink-0"
-          style={{ width: '480px' }}
-        >
+        <div className="h-full flex flex-col overflow-hidden shrink-0" style={{ width: '480px' }}>
           <div className="shrink-0">
             <h1 className="font-['Playfair_Display'] text-3xl leading-tight mb-5">
               Discover the <span className="text-[#FFE2A0]">heart</span> of Pampanga.
             </h1>
-
             <CategoryFilters
               activeCategory={activeCategory}
               onCategoryChange={handleCategoryChange}
@@ -164,8 +157,7 @@ function Homepage() {
         </div>
 
         {/* ── RIGHT COLUMN ── */}
-        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-
+        <div className="flex-1 flex flex-col overflow-visible min-w-0 relative z-50">
           <div className="flex items-center gap-3 shrink-0">
             <SearchBar
               placeholder="Explore local spots"
@@ -173,8 +165,9 @@ function Homepage() {
               onChange={handleSearchChange}
               className="py-1"
               containerClassName="flex-1"
+              onFilterChange={setFilters}
+              filters={filters}
             />
-
             <button
               onClick={() => navigate('/listbusiness')}
               className="flex items-center gap-2 px-4 py-3 bg-[#FFE2A0] text-[#1A1A1A] rounded-lg font-semibold text-sm whitespace-nowrap cursor-pointer hover:bg-[#f5d880] transition-colors"
@@ -183,12 +176,14 @@ function Homepage() {
             </button>
           </div>
 
-          <div className="flex-1 min-h-0 mt-2 rounded-2xl overflow-hidden mx-2">
-            <MapView  
-              listings={filteredListings}
-              selectedListing={selectedListing}
-              onSelect={handleCardSelect}
-            />
+          <div className="flex-1 min-h-0 mt-2 mx-2">
+            <div className="w-full h-full rounded-2xl overflow-hidden">
+              <MapView
+                listings={filteredListings}
+                selectedListing={selectedListing}
+                onSelect={handleCardSelect}
+              />
+            </div>
           </div>
         </div>
       </div>
