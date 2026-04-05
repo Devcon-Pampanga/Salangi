@@ -1,10 +1,23 @@
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import EventPostModal from "./PostEventModal";
+import EventCard from "../../dashboard/components/EventCard";
+import { MOCK_EVENTS, type Event } from "../../Data/Events";
 
 export default function Events(){
-    const navigate = useNavigate();
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [events] = useState(MOCK_EVENTS);
+    const [editingEvent, setEditingEvent] = useState<Event | null>(null);
+
+    const handleEdit = (event: Event) => {
+        setEditingEvent(event);
+        setIsModalOpen(true);
+    };
+
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
+        setEditingEvent(null);
+    };
 
     return(
         <div className="w-full h-full">
@@ -18,7 +31,10 @@ export default function Events(){
 
                 <div className = "flex flex-row gap-4 mt-6">
                     <button 
-                    onClick={() => setIsModalOpen(true)}
+                    onClick={() => {
+                        setEditingEvent(null);
+                        setIsModalOpen(true);
+                    }}
                     className = "p-3 w-54 h-18 rounded-xl flex flex-row items-center gap-3 bg-[#5a5241] hover:bg-[#857657] border border-[#FFE2A0] text-[#fdfdfd] text-md tracking-wide cursor-pointer text-left transition-all shadow-lg active:scale-95">
                         <div className = "p-3 h-12 w-12 flex justify-center items-center bg-[#474133] rounded-xl">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" className = "size-6 text-white text-bold">
@@ -32,25 +48,42 @@ export default function Events(){
                         </div>
                     </button>
                 </div>
+
+                {events.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-12 mb-8">
+                        {events.map(event => (
+                            <EventCard 
+                                key={event.id} 
+                                event={event} 
+                                isBusinessSide={true}
+                                onEdit={() => handleEdit(event)}
+                                onDelete={() => {}}
+                            />
+                        ))}
+                    </div>
+                ) : (
+                    <div className = "flex flex-col items-center justify-center text-center px-4 py-16 mt-4 space-y-4 w-full">
+                        <div className="bg-[#474133] p-4 rounded-full border border-[#5a5241] shadow-inner transition-transform hover:scale-110">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor" className = "size-10 text-[#FFE2A0]">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5m-9-6h.008v.008H12v-.008ZM12 15h.008v.008H12V15Zm0 2.25h.008v.008H12v-.008ZM9.75 15h.008v.008H9.75V15Zm0 2.25h.008v.008H9.75v-.008ZM7.5 15h.008v.008H7.5V15Zm0 2.25h.008v.008H7.5v-.008Zm6.75-4.5h.008v.008h-.008v-.008Zm0 2.25h.008v.008h-.008V15Zm0 2.25h.008v.008h-.008v-.008Zm2.25-4.5h.008v.008H16.5v-.008Zm0 2.25h.008v.008H16.5V15Z" />
+                            </svg>
+                        </div>
+                        <div className="space-y-1">
+                            <h3 className="text-white text-xl font-semibold tracking-wide font-['Playfair_Display']">No Events Found</h3>
+                            <p className="text-[#a0a0a0] text-sm font-light max-w-xs mx-auto leading-relaxed">
+                                Host your first event to reach more customers and grow your community.
+                            </p>
+                        </div>
+                    </div>
+                )}
                 
-                <div className = "flex flex-col items-center justify-center text-center px-4 py-16 mt-4 space-y-4 w-full">
-                    <div className="bg-[#474133] p-4 rounded-full border border-[#5a5241] shadow-inner transition-transform hover:scale-110">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor" className = "size-10 text-[#FFE2A0]">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5m-9-6h.008v.008H12v-.008ZM12 15h.008v.008H12V15Zm0 2.25h.008v.008H12v-.008ZM9.75 15h.008v.008H9.75V15Zm0 2.25h.008v.008H9.75v-.008ZM7.5 15h.008v.008H7.5V15Zm0 2.25h.008v.008H7.5v-.008Zm6.75-4.5h.008v.008h-.008v-.008Zm0 2.25h.008v.008h-.008V15Zm0 2.25h.008v.008h-.008v-.008Zm2.25-4.5h.008v.008H16.5v-.008Zm0 2.25h.008v.008H16.5V15Z" />
-                        </svg>
-                    </div>
-                    <div className="space-y-1">
-                        <h3 className="text-white text-xl font-semibold tracking-wide font-['Playfair_Display']">No Events Found</h3>
-                        <p className="text-[#a0a0a0] text-sm font-light max-w-xs mx-auto leading-relaxed">
-                            Host your first event to reach more customers and grow your community.
-                        </p>
-                    </div>
-                    {/* Modal */}
-                    <EventPostModal
-                        isOpen={isModalOpen}
-                        onClose={() => setIsModalOpen(false)}
-                    />
-                </div>
+                {/* Modal */}
+                <EventPostModal
+                    isOpen={isModalOpen}
+                    onClose={handleCloseModal}
+                    onAddEvent={() => {}}
+                    editEvent={editingEvent}
+                />
             </div>
         </div>
     );

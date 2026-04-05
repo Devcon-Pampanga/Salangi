@@ -1,12 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import type { Event } from "../../Data/Events";
 
 interface EventPostModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAddEvent: (event: any) => void;
+  editEvent?: Event | null;
 }
 
-export default function PostEventModal({ isOpen, onClose, onAddEvent }: EventPostModalProps) {
+export default function PostEventModal({ isOpen, onClose, onAddEvent, editEvent }: EventPostModalProps) {
   const [form, setForm] = useState({
     title: "",
     date: "",
@@ -16,6 +18,23 @@ export default function PostEventModal({ isOpen, onClose, onAddEvent }: EventPos
     description: "",
   });
 
+  useEffect(() => {
+    if (editEvent) {
+      // Map event data to form fields
+      // Note: This transition assumes date/time format matches or is handled during selection
+      setForm({
+        title: editEvent.title,
+        date: "", // Date strings like "May 02, 2026" need conversion for <input type="date" />
+        timeFrom: editEvent.time.split(" - ")[0] || "",
+        timeTo: editEvent.time.split(" - ")[1] || "",
+        location: editEvent.location.split(", ")[0] || editEvent.location,
+        description: editEvent.description,
+      });
+    } else {
+      setForm({ title: "", date: "", timeFrom: "", timeTo: "", location: "", description: "" });
+    }
+  }, [editEvent, isOpen]);
+
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
@@ -24,10 +43,13 @@ export default function PostEventModal({ isOpen, onClose, onAddEvent }: EventPos
 
   const handleSubmit = (e: React.MouseEvent) => {
     e.preventDefault();
-    if (!form.title || !form.date) return;
+    if (!form.title || (!editEvent && !form.date)) return;
 
+    // Use current date if editing and date is empty (to avoid regression)
+    const effectiveDate = form.date || (editEvent ? "2026-05-02" : ""); 
+    
     // Format date for the high-end display (e.g., "Apr 5")
-    const dateObj = new Date(form.date);
+    const dateObj = new Date(effectiveDate);
     const month = dateObj.toLocaleString('en-US', { month: 'short' });
     const day = dateObj.getDate().toString();
 
@@ -36,8 +58,9 @@ export default function PostEventModal({ isOpen, onClose, onAddEvent }: EventPos
     const locationDisplay = `${form.location}${timeDisplay ? ` ${timeDisplay}` : ''}`;
 
     onAddEvent({
-      month,
-      day,
+      id: editEvent?.id,
+      month: effectiveDate ? month : "",
+      day: effectiveDate ? day : "",
       title: form.title,
       location: locationDisplay
     });
@@ -46,8 +69,10 @@ export default function PostEventModal({ isOpen, onClose, onAddEvent }: EventPos
   };
 
   const handleClose = () => {
-    setForm({ title: "", date: "", timeFrom: "", timeTo: "", location: "", description: "" });
     onClose();
+    if (!editEvent) {
+      setForm({ title: "", date: "", timeFrom: "", timeTo: "", location: "", description: "" });
+    }
   };
 
   if (!isOpen) return null;
@@ -89,10 +114,10 @@ export default function PostEventModal({ isOpen, onClose, onAddEvent }: EventPos
               className="text-lg font-semibold tracking-wide"
               style={{ color: "#FFE2A0"}}
             >
-              Post New Event
+              {editEvent ? "Edit Event" : "Post New Event"}
             </h2>
             <p className="text-xs mt-0.5" style={{ color: "#888888" }}>
-              Fill in the details to publish your event listing
+              {editEvent ? "Update your event details" : "Fill in the details to publish your event listing"}
             </p>
           </div>
           <button
@@ -253,7 +278,7 @@ export default function PostEventModal({ isOpen, onClose, onAddEvent }: EventPos
               e.currentTarget.style.boxShadow = "none";
             }}
           >
-            Post Event
+            {editEvent ? "Save Changes" : "Post Event"}
           </button>
         </div>
       </div>

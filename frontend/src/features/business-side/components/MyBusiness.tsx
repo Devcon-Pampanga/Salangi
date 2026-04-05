@@ -1,11 +1,15 @@
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 import { HiOutlineOfficeBuilding, HiOutlineSpeakerphone } from "react-icons/hi";
 import { ROUTES } from '../../../routes/paths';
 import BusinessCard from "../../dashboard/components/BusinessCard";
+import EditListingModal from "./EditListingModal";
 import type { Listing } from "../../Data/Listings";
 
 const MyBusiness = () => {
     const navigate = useNavigate();
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [editingListing, setEditingListing] = useState<Listing | null>(null);
 
     const MOCK_LISTING: Listing = {
         id: 101,
@@ -17,6 +21,18 @@ const MyBusiness = () => {
         verified: true,
         images: ["https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?q=80&w=2070&auto=format&fit=crop"],
         category: "Resto"
+    };
+
+    const handleEditListing = (listing: Listing) => {
+        setEditingListing(listing);
+        setIsEditModalOpen(true);
+    };
+
+    const handleSaveListing = (updatedListing: Partial<Listing>) => {
+        console.log("Saving Listing:", updatedListing);
+        // Implementation for saving (Supabase call usually)
+        setIsEditModalOpen(false);
+        setEditingListing(null);
     };
 
     return (
@@ -66,9 +82,17 @@ const MyBusiness = () => {
                         isSaved={false}
                         onSelect={() => {}}
                         onToggleSave={() => {}}
+                        onEdit={handleEditListing}
                     />
                 </div>
             </div>
+
+            <EditListingModal 
+                isOpen={isEditModalOpen}
+                onClose={() => setIsEditModalOpen(false)}
+                onSave={handleSaveListing}
+                listing={editingListing}
+            />
         </div>
     );
 };

@@ -148,8 +148,8 @@ export default function Overview() {
                             <div key={idx} className="space-y-4">
                                 <div className = "flex items-center gap-4">
                                     <div className="flex flex-col items-center justify-center min-w-14 w-14 p-1 bg-[#8d8065] border border-[#FFE2A0] rounded-lg leading-tight">
-                                        <p className="text-[#FFE2A0] text-xs uppercase tracking-wide">{event.month}</p>
-                                        <p className="text-[#FFE2A0] text-xl font-bold -mt-1">{event.day}</p>
+                                        <p className="text-[#474133] text-xs uppercase tracking-wide">{event.month}</p>
+                                        <p className="text-[#474133] text-xl font-bold -mt-1">{event.day}</p>
                                     </div>
 
                                     <div>

@@ -18,9 +18,20 @@ interface BusinessCardProps {
   isSaved: boolean; 
   onToggleSave: (id: number) => void;
   isBusinessSide?: boolean;
+  onEdit?: (listing: Listing) => void;
+  onDelete?: (id: number) => void;
 }
 
-function BusinessCard({ listing, onSelect, isSelected, isSaved, onToggleSave, isBusinessSide }: BusinessCardProps) {
+function BusinessCard({ 
+  listing, 
+  onSelect, 
+  isSelected, 
+  isSaved, 
+  onToggleSave, 
+  isBusinessSide,
+  onEdit,
+  onDelete 
+}: BusinessCardProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const navigate = useNavigate();
 
@@ -50,7 +61,7 @@ function BusinessCard({ listing, onSelect, isSelected, isSaved, onToggleSave, is
           <button
             onClick={(e) => {
               e.stopPropagation();
-              // Potential delete logic/modal trigger
+              onDelete?.(listing.id);
             }}
             className="absolute top-4 right-4 flex items-center justify-center w-10 h-10 bg-red-600/90 hover:bg-red-700 backdrop-blur-md rounded-full z-30 cursor-pointer shadow-xl border border-white/10 transition-all duration-300 hover:scale-110 active:scale-95"
             title="Delete Listing"
@@ -152,7 +163,10 @@ function BusinessCard({ listing, onSelect, isSelected, isSaved, onToggleSave, is
           {isBusinessSide ? (
             <div className="flex gap-3 w-full">
               <button 
-                onClick={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit?.(listing);
+                }}
                 className="flex-1 py-3.5 bg-[#454545] text-white text-xs font-bold rounded-xl hover:bg-[#525252] transition-all active:scale-95 cursor-pointer shadow-lg border border-white/5"
               >
                 Edit Listing
