@@ -19,7 +19,7 @@ const StatsCard = ({ title, value, trend, icon }: StatsCardProps) => (
         </div>
         <div>
             <p className="text-[#a0a0a0] text-sm font-light mb-1">{title}</p>
-            <h3 className="text-white text-3xl font-bold tracking-tight">{value}</h3>
+            <h3 className="text-white text-2xl md:text-3xl font-bold tracking-tight">{value}</h3>
         </div>
     </div>
 );

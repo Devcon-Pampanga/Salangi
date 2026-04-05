@@ -28,14 +28,14 @@ const Settings = () => {
     return (
         <div className="w-full h-full pb-20 animate-in fade-in duration-500">
             {/* Header */}
-            <div className="px-6 py-4">
-                <h1 className="font-['Playfair_Display'] text-white text-3xl font-semibold tracking-wide cursor-default">
+            <div className="px-4 md:px-6 py-4">
+                <h1 className="font-['Playfair_Display'] text-white text-2xl md:text-3xl font-semibold tracking-wide cursor-default">
                     Business <span className="text-[#FFE2A0]">Settings</span>
                 </h1>
                 <p className="text-white text-sm">Manage your business profile, availability, and preferences</p>
             </div>
 
-            <div className="px-6 py-4 space-y-10 max-w-6xl">
+            <div className="px-4 md:px-6 py-4 space-y-10 max-w-6xl">
                 
                 {/* Section: Preferences & Security */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-10 pt-4">
@@ -98,9 +98,13 @@ const Settings = () => {
                 </div>
 
                 {/* Footer Actions */}
-                <div className="pt-10 flex border-t border-[#4d4d4d] justify-end gap-4">
-                    <button className="px-8 py-3 rounded-xl text-[#a0a0a0] hover:text-white transition-colors font-semibold">Discard Changes</button>
-                    <button className="px-10 py-3 rounded-xl bg-[#FFE2A0] text-[#1a1a1a] font-bold hover:scale-105 transition-all shadow-lg active:scale-95">Save All Changes</button>
+                <div className="pt-10 flex flex-col md:flex-row border-t border-[#4d4d4d] justify-end gap-3 md:gap-4">
+                    <button className="w-full md:w-auto px-8 py-3 rounded-xl text-[#a0a0a0] hover:text-white transition-colors font-semibold bg-[#3a3a3a] md:bg-transparent border md:border-0 border-[#4d4d4d] md:order-1 order-2 mt-2 md:mt-0">
+                        Discard Changes
+                    </button>
+                    <button className="w-full md:w-auto px-10 py-3 rounded-xl bg-[#FFE2A0] text-[#1a1a1a] font-bold hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg md:order-2 order-1">
+                        Save All Changes
+                    </button>
                 </div>
             </div>
             

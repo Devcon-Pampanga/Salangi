@@ -135,7 +135,7 @@ const Analytics = () => {
     return (
         <div className="w-full h-full pb-10">
             {/* Header */}
-            <div className="px-6 py-4 flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div className="px-4 md:px-6 py-4 flex flex-col md:flex-row md:items-end justify-between gap-4">
                 <div>
                     <h1 className="font-['Playfair_Display'] text-white text-3xl font-semibold tracking-wide cursor-default">
                         Business <span className="text-[#FFE2A0]">Analytics</span>
@@ -144,12 +144,12 @@ const Analytics = () => {
                 </div>
 
                 {/* Date Selector -> depending on the timeframe the KPIs and graph will change*/}
-                <div className="flex bg-[#3a3a3a] p-1 rounded-xl border border-[#4d4d4d]">
+                <div className="flex w-full md:w-fit bg-[#3a3a3a] p-1 rounded-xl border border-[#4d4d4d]">
                     {['7D', '30D', '90D', '1Y'].map((t) => (
                         <button
                             key={t}
                             onClick={() => setTimeframe(t)}
-                            className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                            className={`flex-1 md:flex-none px-4 py-1.5 text-xs font-semibold rounded-lg transition-all ${
                                 timeframe === t 
                                 ? 'bg-[#FFE2A0] text-[#3a3a3a] shadow-md' 
                                 : 'text-[#a0a0a0] hover:text-white hover:bg-[#474133]'
@@ -161,9 +161,9 @@ const Analytics = () => {
                 </div>
             </div>
 
-            <div className="px-6 py-6 space-y-8">
+            <div className="px-4 md:px-6 py-6 space-y-8">
                 {/* Stats Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-6">
 
                     {/* Total Profile Views -> amount of people who clicked the business */}
                     <StatsCard 

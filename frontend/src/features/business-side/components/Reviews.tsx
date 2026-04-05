@@ -49,7 +49,7 @@ function Review(){
     ];
     
     return(
-        <div className = "px-6 py-4">
+        <div className = "px-4 md:px-6 py-4">
             <div className="mb-4">
                 <h1 className="font-['Playfair_Display'] text-white text-3xl font-semibold tracking-wide cursor-default">
                     Customer <span className="text-[#FFE2A0]">Reviews</span>
@@ -57,16 +57,16 @@ function Review(){
                 <p className="text-white text-sm">Monitor and respond to your latest business feedback</p>
             </div>
 
-            <div className = "flex flex-row items-center justify-between mt-8 mb-6">
+            <div className = "flex flex-col sm:flex-row sm:items-center justify-between mt-8 mb-6 gap-3">
                 <h2 className = "text-[#FFE2A0] text-xl font-['Playfair_Display'] font-semibold">Overall Rating</h2>
-                <button className = "px-6 py-2 flex justify-center items-center cursor-pointer bg-[#3a3a3a] hover:bg-[#424242] border border-[#4d4d4d] rounded-xl transition-colors">
+                <button className = "px-6 py-2 w-fit flex justify-center items-center cursor-pointer bg-[#3a3a3a] hover:bg-[#424242] border border-[#4d4d4d] rounded-xl transition-colors">
                     <p className = "text-white text-sm font-light">March 2021 - February 2022</p>
                 </button>
             </div>
 
-            <div className = "flex flex-row gap-3">
+            <div className = "flex flex-col lg:flex-row gap-4">
                 {/*Total review*/}
-                <div className = "w-100 h-50 px-6 py-6 bg-[#3a3a3a] border border-[#4d4d4d] rounded-xl">
+                <div className = "w-full flex-1 min-h-50 px-6 py-6 bg-[#3a3a3a] border border-[#4d4d4d] rounded-xl">
                     <p className = "text-white text-lg font-semibold tracking-wide mb-4">Total Reviews</p>
                     <div>
                         <div className = "flex flex-row just items-center gap-3 mb-2">
@@ -85,7 +85,7 @@ function Review(){
                 </div>
 
                 {/*Average Rating*/}
-                <div className = "w-100 h-50 px-6 py-6 bg-[#3a3a3a] border border-[#4d4d4d] rounded-xl">
+                <div className = "w-full flex-1 min-h-50 px-6 py-6 bg-[#3a3a3a] border border-[#4d4d4d] rounded-xl">
                     <p className = "text-white text-lg font-semibold tracking-wide mb-4">Average Rating</p>
                     <div>
                         <div className = "flex flex-row just items-center gap-3 mb-2">
@@ -112,35 +112,35 @@ function Review(){
                 </div>
 
                 {/*Progress*/}
-                <div className = "w-100 h-50 px-6 py-6 bg-[#3a3a3a] border border-[#4d4d4d] flex flex-col justify-between rounded-xl">
+                <div className = "w-full flex-1 min-h-50 px-6 py-6 bg-[#3a3a3a] border border-[#4d4d4d] flex flex-col justify-between rounded-xl">
                     
                         {ratingData.map((item) => (
-                            <div key={item.stars} className="flex items-center gap-3">
-                            {/* Star Label */}
-                            <div className="flex items-center gap-1 min-w-7.5">
-                                <span className="text-gray-400 text-md">★</span>
-                                <span className="text-white text-sm font-medium">{item.stars}</span>
-                            </div>
+                            <div key={item.stars} className="flex items-center gap-3 w-full">
+                                {/* Star Label */}
+                                <div className="flex items-center gap-1 w-8 shrink-0">
+                                    <span className="text-gray-400 text-sm">★</span>
+                                    <span className="text-white text-sm font-medium">{item.stars}</span>
+                                </div>
 
-                            {/* Progress Bar Track */}
-                            <div className="flex-1 h-2 bg-[#4b4b4b] rounded-full overflow-hidden">
-                                <div 
-                                className={`h-full rounded-full ${item.color} ${item.width}`} 
-                                />
-                            </div>
+                                {/* Progress Bar Track */}
+                                <div className="flex-1 h-2 bg-[#4b4b4b] rounded-full overflow-hidden">
+                                    <div 
+                                        className={`h-full rounded-full ${item.color} ${item.width}`} 
+                                    />
+                                </div>
 
-                            {/* Count Label */}
-                            <span className="text-gray-400 text-xs min-w-7.5 text-right">
-                                {item.count}
-                            </span>
+                                {/* Count Label */}
+                                <span className="text-gray-400 text-xs w-8 shrink-0 text-right">
+                                    {item.count}
+                                </span>
                             </div>
                         ))}
                 </div>
             </div>
 
-            <div className="w-285 h-px my-5 bg-[#4b4b4b]"></div>
+            <div className="w-full h-px my-5 bg-[#4b4b4b]"></div>
             {/*Comments*/}
-            <div className="mt-5 px-10">
+            <div className="mt-5">
                 {reviews.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
                         <div className="bg-[#474133] p-4 rounded-full border border-[#5a5241] shadow-inner transition-transform hover:scale-110">
@@ -157,10 +157,10 @@ function Review(){
                     </div>
                 ) : (
                     reviews.map((rev, index) => (
-                        <div key={rev.id} className="flex gap-10 mb-8 max-w-7xl">
+                        <div key={rev.id} className="flex flex-col sm:flex-row gap-6 sm:gap-10 mb-8 max-w-7xl">
                         
                         {/* 1. LEFT COLUMN: USER PROFILE */}
-                        <div className="w-70 flex flex-row items-start gap-4 shrink-0">
+                        <div className="w-full sm:w-70 flex flex-row items-start gap-4 shrink-0">
                             <img 
                             src={rev.avatar} 
                             alt={rev.name} 

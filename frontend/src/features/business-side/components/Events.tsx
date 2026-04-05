@@ -21,7 +21,7 @@ export default function Events(){
 
     return(
         <div className="w-full h-full">
-            <div className = "px-6 py-4">
+            <div className = "px-4 md:px-6 py-4">
                 <div className="mb-4">
                     <h1 className="font-['Playfair_Display'] text-white text-3xl font-semibold tracking-wide cursor-default">
                         Business <span className="text-[#FFE2A0]">Events</span>

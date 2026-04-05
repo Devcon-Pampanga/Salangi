@@ -62,22 +62,22 @@ const Gallery = () => {
     return (
         <div className="w-full h-full pb-10">
             {/* Header */}
-            <div className="px-6 py-4">
-                <div className="flex flex-row justify-between items-start">
-                    <div className="mb-4">
-                        <h1 className="font-['Playfair_Display'] text-white text-3xl font-semibold tracking-wide cursor-default">
+            <div className="px-4 md:px-6 py-4">
+                <div className="flex flex-col lg:flex-row justify-between items-start gap-4 lg:gap-0">
+                    <div className="mb-2">
+                        <h1 className="font-['Playfair_Display'] text-white text-2xl md:text-3xl font-semibold tracking-wide cursor-default">
                             Business <span className="text-[#FFE2A0]">Gallery</span>
                         </h1>
                         <p className="text-white text-sm">Organize your visuals by business branch</p>
                     </div>
 
-                    {/* Business Filter Bar - Restored to Top Right */}
-                    <div className="flex flex-wrap gap-2 bg-[#3a3a3a] p-1.5 rounded-xl border border-[#4d4d4d]">
+                    {/* Business Filter Bar - Responsive Stacking */}
+                    <div className="flex flex-row overflow-x-auto lg:overflow-visible pb-2 lg:pb-0 gap-2 bg-[#3a3a3a] p-1.5 rounded-xl border border-[#4d4d4d] w-full lg:w-fit scrollbar-hide">
                         {["All", ...MOCK_BUSINESSES].map((business) => (
                             <button
                                 key={business}
                                 onClick={() => setActiveFilter(business)}
-                                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                                className={`px-4 py-1.5 rounded-lg text-xs md:text-sm font-medium transition-all whitespace-nowrap ${
                                     activeFilter === business 
                                         ? 'bg-[#FFE2A0] text-[#1a1a1a] shadow-md scale-105' 
                                         : 'text-white hover:bg-white/5'
@@ -89,7 +89,7 @@ const Gallery = () => {
                     </div>
                 </div>
                 
-                <div className="flex flex-row gap-4 mt-6">
+                <div className="flex flex-col sm:flex-row gap-4 mt-6">
                     {/* Add Photo Button - Exactly like MyBusiness buttons */}
                     <button 
                         onClick={() => setIsAddingPhoto(true)}
@@ -106,7 +106,7 @@ const Gallery = () => {
                 </div>
             </div>
 
-            <div className="px-6 py-6">
+            <div className="px-4 md:px-6 py-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {/* Image Collection */}
                     {filteredImages.map((image) => (

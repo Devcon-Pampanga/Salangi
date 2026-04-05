@@ -21,8 +21,8 @@ export default function Overview() {
     return(
         <div className="w-full h-full pb-10">
             {/*Greetings dpt kung anong name yung pinag regis nila yun ma didisplay specifically first name lng*/}
-            <div className = "px-6 py-4">
-                <h1 className = "font-['Playfair_Display'] text-white text-3xl font-semibold tracking-wide">
+            <div className = "px-4 md:px-6 py-4">
+                <h1 className = "font-['Playfair_Display'] text-white text-2xl md:text-3xl font-semibold tracking-wide">
                     Good Morning, <span className = "text-[#FFE2A0]">{userName}</span>
                 </h1>
 
@@ -30,7 +30,7 @@ export default function Overview() {
             </div>
 
             {/*Cards: Profile views, Saved by users, Directions tapped, Review score*/}
-            <div className = "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 px-6 py-4">
+            <div className = "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-6 px-4 md:px-6 py-4">
                 <StatsCard 
                     title="Profile views" 
                     value="1,467" 
@@ -58,9 +58,9 @@ export default function Overview() {
             </div>
 
             {/*Quick actions, Post new events*/}
-            <div className = "flex flex-col lg:flex-row items-start gap-4 px-6 py-2">
+            <div className = "flex flex-col lg:flex-row items-stretch lg:items-start gap-4 px-4 md:px-6 py-2">
                 {/*Quick actions*/}
-                <div className = "flex-1 space-y-4 bg-[#3a3a3a] rounded-xl border border-[#4d4d4d] px-6 py-4 pb-6">
+                <div className = "w-full lg:flex-1 space-y-4 bg-[#3a3a3a] rounded-xl border border-[#4d4d4d] px-6 py-4 pb-6">
                     <p className = "text-lg text-[#ffffff] mb-4">Quick actions</p>
 
                     <div className = "grid grid-cols-1 xl:grid-cols-2 gap-4">
@@ -133,7 +133,7 @@ export default function Overview() {
                 </div>
 
                 {/*Post new events*/}
-                <div className = "flex-1 space-y-4 bg-[#3a3a3a] rounded-xl border border-[#4d4d4d] px-6 py-4">
+                <div className = "w-full lg:flex-1 space-y-4 bg-[#3a3a3a] rounded-xl border border-[#4d4d4d] px-6 py-4">
                     <div className = "flex justify-between">
                         <p className = "text-lg text-[#ffffff]">Upcoming events</p>
                         <button 
@@ -147,7 +147,7 @@ export default function Overview() {
                         {events.map((event, idx, arr) => (
                             <div key={idx} className="space-y-4">
                                 <div className = "flex items-center gap-4">
-                                    <div className="flex flex-col items-center justify-center min-w-14 w-14 p-1 bg-[#8d8065] border border-[#FFE2A0] rounded-lg leading-tight">
+                                    <div className="flex flex-col items-center justify-center min-w-14 w-14 p-1 bg-[#8d8065] border border-[#FFE2A0] rounded-lg leading-tight shrink-0">
                                         <p className="text-[#474133] text-xs uppercase tracking-wide">{event.month}</p>
                                         <p className="text-[#474133] text-xl font-bold -mt-1">{event.day}</p>
                                     </div>
@@ -165,7 +165,7 @@ export default function Overview() {
             </div>
 
             {/*Recent Activity; Dito makikita lahat like kung sino nag mga nag comment, nag bigay stars, etc*/}
-            <div className="flex flex-col lg:flex-row gap-3 justify-center px-6 py-2">
+            <div className="flex flex-col lg:flex-row gap-3 justify-center px-4 md:px-6 py-2">
                 <div className="w-full h-100 bg-[#3a3a3a] rounded-xl border border-[#4d4d4d] px-6 py-4 mb-4">
                     <div className = "flex justify-between">
                         <p className = "font-semibold text-white tracking-wide">Recent activity</p>

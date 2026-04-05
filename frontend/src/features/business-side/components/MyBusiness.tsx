@@ -37,14 +37,14 @@ const MyBusiness = () => {
 
     return (
         <div>
-            <div className = "px-6 py-4">
+            <div className = "px-4 md:px-6 py-4">
                 <div className="mb-4">
-                    <h1 className="font-['Playfair_Display'] text-white text-3xl font-semibold tracking-wide cursor-default">
+                    <h1 className="font-['Playfair_Display'] text-white text-2xl md:text-3xl font-semibold tracking-wide cursor-default">
                         My <span className="text-[#FFE2A0]">Business</span>
                     </h1>
                     <p className="text-white text-sm">Overview and management of your professional presence</p>
                 </div>
-                <div className = "flex flex-row gap-4 mt-6">
+                <div className = "flex flex-col sm:flex-row gap-4 mt-6">
                     <button 
                     onClick={() => navigate(ROUTES.LIST_BUSINESS)}
                     className = "p-3 w-54 h-18 rounded-xl flex flex-row items-center gap-3 bg-[#5a5241] hover:bg-[#857657] border border-[#FFE2A0] text-[#fdfdfd] text-md tracking-wide cursor-pointer text-left transition-all shadow-lg active:scale-95">
