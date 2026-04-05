@@ -3,9 +3,10 @@ import { useState } from "react";
 interface EventPostModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onAddEvent: (event: any) => void;
 }
 
-export default function PostEventModal({ isOpen, onClose }: EventPostModalProps) {
+export default function PostEventModal({ isOpen, onClose, onAddEvent }: EventPostModalProps) {
   const [form, setForm] = useState({
     title: "",
     date: "",
@@ -23,8 +24,25 @@ export default function PostEventModal({ isOpen, onClose }: EventPostModalProps)
 
   const handleSubmit = (e: React.MouseEvent) => {
     e.preventDefault();
-    console.log("Event submitted:", form);
-    onClose();
+    if (!form.title || !form.date) return;
+
+    // Format date for the high-end display (e.g., "Apr 5")
+    const dateObj = new Date(form.date);
+    const month = dateObj.toLocaleString('en-US', { month: 'short' });
+    const day = dateObj.getDate().toString();
+
+    // Format time and location display
+    const timeDisplay = `${form.timeFrom || ''}${form.timeFrom && form.timeTo ? ' - ' : ''}${form.timeTo || ''}`;
+    const locationDisplay = `${form.location}${timeDisplay ? ` ${timeDisplay}` : ''}`;
+
+    onAddEvent({
+      month,
+      day,
+      title: form.title,
+      location: locationDisplay
+    });
+    
+    handleClose();
   };
 
   const handleClose = () => {
