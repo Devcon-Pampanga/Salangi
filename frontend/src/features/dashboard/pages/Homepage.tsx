@@ -1,29 +1,27 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
- 
+import { supabase } from '@/lib/supabase';
+
 import BusinessCard from '../components/BusinessCard';
 import MapView from '../../../map/MapView';
 import SearchBar from '../components/SearchBar';
- 
+
 import { getListings, CATEGORIES } from '../../Data/Listings';
 import type { Listing, Category } from '../../Data/Listings';
- 
+
 import CategoryFilters from '../components/CategoryFilters';
- 
+
 function Homepage() {
   const navigate = useNavigate();
- 
+
   const [listings, setListings]               = useState<Listing[]>([]);
   const [isLoading, setIsLoading]             = useState(true);
   const [activeCategory, setActiveCategory]   = useState<Category>(CATEGORIES.ALL as Category);
   const [searchQuery,    setSearchQuery]       = useState<string>('');
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
+  const [savedIds, setSavedIds]               = useState<number[]>([]);
 
-  // Get user-specific storage key
-  const storedUser = JSON.parse(localStorage.getItem('user') ?? '{}');
-  const userId = storedUser.user_id ?? 'guest';
-  const storageKey = `salangi_saved_spots_${userId}`;
-
+  // Fetch listings
   useEffect(() => {
     getListings()
       .then(setListings)
@@ -31,21 +29,45 @@ function Homepage() {
       .finally(() => setIsLoading(false));
   }, []);
 
-  const [savedIds, setSavedIds] = useState<number[]>(() => {
-    const saved = localStorage.getItem(storageKey);
-    return saved ? JSON.parse(saved) : [];
-  });
-
+  // Fetch saved spots from Supabase
   useEffect(() => {
-    localStorage.setItem(storageKey, JSON.stringify(savedIds));
-  }, [savedIds, storageKey]);
+    const fetchSaves = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-  const toggleSave = (id: number) => {
-    setSavedIds(prev => 
-      prev.includes(id) ? prev.filter(savedId => savedId !== id) : [...prev, id]
-    );
+      const { data, error } = await supabase
+        .from('saves')
+        .select('listing_id')
+        .eq('user_id', user.id);
+
+      if (!error && data) {
+        setSavedIds(data.map((row: any) => row.listing_id));
+      }
+    };
+    fetchSaves();
+  }, []);
+
+  const toggleSave = async (id: number) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const isSaved = savedIds.includes(id);
+
+    if (isSaved) {
+      await supabase
+        .from('saves')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('listing_id', id);
+      setSavedIds(prev => prev.filter(savedId => savedId !== id));
+    } else {
+      await supabase
+        .from('saves')
+        .insert({ user_id: user.id, listing_id: id });
+      setSavedIds(prev => [...prev, id]);
+    }
   };
- 
+
   const filteredListings = useMemo<Listing[]>(() => {
     return listings.filter((item: Listing) => {
       const matchesCategory =
@@ -56,18 +78,18 @@ function Homepage() {
       return matchesCategory && matchesSearch;
     });
   }, [listings, activeCategory, searchQuery]);
- 
+
   const handleCardSelect = (listing: Listing): void => {
     setSelectedListing((prev: Listing | null) =>
       prev?.id === listing.id ? null : listing
     );
   };
- 
+
   const handleCategoryChange = (cat: Category): void => {
     setActiveCategory(cat);
     setSelectedListing(null);
   };
- 
+
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     setSearchQuery(e.target.value);
   };
@@ -77,10 +99,10 @@ function Homepage() {
     const el = document.getElementById(`listing-card-${selectedListing.id}`);
     el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, [selectedListing]);
- 
+
   return (
     <div className="relative w-full h-full bg-[#1A1A1A] text-[#FBFAF8] overflow-hidden">
- 
+
       <div
         className="absolute top-0 left-0 rounded-full blur-3xl opacity-60 pointer-events-none"
         style={{
@@ -90,9 +112,9 @@ function Homepage() {
           background: 'radial-gradient(circle, rgba(255,226,160,0.8) 0%, rgba(255,226,160,0.2) 50%, transparent 70%)',
         }}
       />
- 
+
       <div className="relative z-10 h-full flex px-6 py-6 gap-6">
- 
+
         {/* ── LEFT COLUMN ── */}
         <div
           className="h-full flex flex-col overflow-hidden shrink-0"
@@ -102,14 +124,14 @@ function Homepage() {
             <h1 className="font-['Playfair_Display'] text-3xl leading-tight mb-5">
               Discover the <span className="text-[#FFE2A0]">heart</span> of Pampanga.
             </h1>
- 
-            <CategoryFilters 
-              activeCategory={activeCategory} 
-              onCategoryChange={handleCategoryChange} 
+
+            <CategoryFilters
+              activeCategory={activeCategory}
+              onCategoryChange={handleCategoryChange}
               className="mb-5"
             />
           </div>
- 
+
           <div
             className="flex-1 overflow-y-auto flex flex-col gap-6 pb-10 pr-2 pl-1 pt-1"
             style={{ scrollbarWidth: 'none' }}
@@ -140,7 +162,7 @@ function Homepage() {
             )}
           </div>
         </div>
- 
+
         {/* ── RIGHT COLUMN ── */}
         <div className="flex-1 flex flex-col overflow-hidden min-w-0">
 
@@ -160,7 +182,7 @@ function Homepage() {
               📍 List Your Business
             </button>
           </div>
- 
+
           <div className="flex-1 min-h-0">
             <MapView
               listings={filteredListings}
@@ -173,5 +195,5 @@ function Homepage() {
     </div>
   );
 }
- 
+
 export default Homepage;
