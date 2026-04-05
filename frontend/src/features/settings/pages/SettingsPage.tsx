@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { X, User, Check, AlertCircle, Loader2, Camera, Eye, EyeOff, Trash2, ShieldAlert } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { updateProfile, changePassword, deleteAccount } from '@/api';
+import { updateProfile, changePassword, deleteAccount } from '@/services/api';
 import { useNavigate } from 'react-router-dom';
 
 interface SettingsPageProps {

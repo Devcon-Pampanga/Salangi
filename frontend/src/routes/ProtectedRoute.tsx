@@ -1,11 +1,15 @@
 import { Navigate } from 'react-router-dom';
-import { ROUTES } from './paths';
+import type { Session } from '@supabase/supabase-js';
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const token = localStorage.getItem('token');
+interface ProtectedRouteProps {
+  session: Session | null;
+  redirectPath: string;
+  children: React.ReactNode;
+}
 
-  if (!token) {
-    return <Navigate to={ROUTES.HOME} replace />;
+function ProtectedRoute({ session, redirectPath, children }: ProtectedRouteProps) {
+  if (!session) {
+    return <Navigate to={redirectPath} replace />;
   }
 
   return <>{children}</>;

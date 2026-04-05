@@ -56,6 +56,10 @@ const routes = (session: Session | null): RouteObject[] => [
     element: session ? <Navigate to="/home-page" replace /> : <Register />,
   },
   {
+    path: ROUTES.SIGN_IN,
+    element: session ? <Navigate to="/home-page" replace /> : <Register />,
+  },
+  {
     path: ROUTES.ADMIN,
     element: <AdminLogin />,
   },
@@ -87,7 +91,11 @@ const routes = (session: Session | null): RouteObject[] => [
   // Business Side Dashboard
   { 
     path: ROUTES.DASHBOARD, 
-    element: <Dashboard />,
+    element: (
+      <ProtectedRoute session={session} redirectPath={ROUTES.BUSINESS_SIGNIN}>
+        <Dashboard />
+      </ProtectedRoute>
+    ),
     
     children: [
       {path: ROUTES.DASHBOARD_REL.OVERVIEW, element: <Overview />},
@@ -103,8 +111,12 @@ const routes = (session: Session | null): RouteObject[] => [
   {
     path: '/',
 
-    // REMOVE PROTECTED ROUTE
-    element: <Navigator />,
+    // PROTECTED ROUTE
+    element: (
+      <ProtectedRoute session={session} redirectPath={ROUTES.SIGN_IN}>
+        <Navigator />
+      </ProtectedRoute>
+    ),
     children: [
       { index: true, element: <Navigate to={ROUTES.HOME} replace /> },
       { path: ROUTES.HOME, element: <Homepage /> },
