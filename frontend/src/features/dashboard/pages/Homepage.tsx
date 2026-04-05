@@ -72,6 +72,8 @@ function Homepage() {
 
     if (filters.sortBy === 'az') {
       result = [...result].sort((a, b) => a.name.localeCompare(b.name));
+    } else if (filters.sortBy === 'za') {
+      result = [...result].sort((a, b) => b.name.localeCompare(a.name));
     }
 
     return result;
@@ -158,13 +160,13 @@ function Homepage() {
 
         {/* ── RIGHT COLUMN ── */}
         <div className="flex-1 flex flex-col overflow-visible min-w-0 relative z-50">
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center justify-end gap-3 shrink-0">
             <SearchBar
               placeholder="Explore local spots"
               value={searchQuery}
               onChange={handleSearchChange}
               className="py-1"
-              containerClassName="flex-1"
+              containerClassName="w-80"
               onFilterChange={setFilters}
               filters={filters}
             />
@@ -176,7 +178,7 @@ function Homepage() {
             </button>
           </div>
 
-          <div className="flex-1 min-h-0 mt-2 mx-2">
+          <div className="flex-1 min-h-0 mt-2">
             <div className="w-full h-full rounded-2xl overflow-hidden">
               <MapView
                 listings={filteredListings}
@@ -186,6 +188,7 @@ function Homepage() {
             </div>
           </div>
         </div>
+
       </div>
     </div>
   );
