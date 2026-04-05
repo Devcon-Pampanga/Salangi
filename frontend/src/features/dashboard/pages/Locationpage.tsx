@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import search from '@assets/icons/search-back-btn.svg';
 import sampleImage from '@assets/png-files/imagesample.png';
 import bg from '@assets/images/bg.png';
@@ -36,6 +36,7 @@ const DEFAULT_LISTING: Listing = {
 
 function Locationpage() {
   const { state } = useLocation();
+  const navigate = useNavigate();
   const listing: Listing = state?.listing ?? DEFAULT_LISTING;
 
   const [listings, setListings] = useState<Listing[]>([]);
@@ -55,7 +56,6 @@ function Locationpage() {
   const fetchReviews = async (listingId: number) => {
     setReviewsLoading(true);
     try {
-      // Step 1: fetch reviews
       const { data: reviewData, error: reviewError } = await supabase
         .from('reviews')
         .select('id, listing_id, user_id, rating, comment, created_at')
@@ -74,7 +74,6 @@ function Locationpage() {
         return;
       }
 
-      // Step 2: fetch users for those reviews
       const userIds = [...new Set(reviewData.map((r: any) => r.user_id))];
       const { data: userData, error: userError } = await supabase
         .from('users')
@@ -85,7 +84,6 @@ function Locationpage() {
         console.error('users error:', userError);
       }
 
-      // Step 3: map together
       const userMap: Record<string, any> = {};
       (userData ?? []).forEach((u: any) => {
         userMap[u.user_id] = u;
@@ -138,13 +136,22 @@ function Locationpage() {
   return (
     <div className="flex h-full w-full bg-[#1A1A1A] text-[#FBFAF8] overflow-hidden">
       <div className="w-125 h-full overflow-y-auto border-r border-zinc-800 flex flex-col items-center px-6 py-6 scrollbar-hide">
-        <SearchBar
-          searchIcon={search}
-          containerClassName="w-full mb-4 shrink-0"
-          value={searchQuery}
-          onChange={handleSearchChange}
-          placeholder="Search local spots..."
-        />
+        
+        {/* Search bar with back button */}
+        <div className="flex items-center gap-2 w-full mb-4 shrink-0">
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center justify-center w-10 h-10 rounded-full bg-[#2D2D2D] hover:bg-[#3D3D3D] transition-colors cursor-pointer shrink-0"
+          >
+            <img src={search} width="18" alt="back" />
+          </button>
+          <SearchBar
+            containerClassName="flex-1"
+            value={searchQuery}
+            onChange={handleSearchChange}
+            placeholder="Search local spots..."
+          />
+        </div>
 
         {isSearching && (
           <div className="w-full mb-4">
