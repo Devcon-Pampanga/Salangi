@@ -8,6 +8,8 @@ import Savepage from './features/dashboard/pages/Savepage'
 import Navigator from './features/Navigator'
 import Signin from './features/auth/pages/Signin'
 import Register from './features/auth/pages/Register'
+import ForgotPassword from './features/auth/pages/ForgotPassword'
+import ResetPassword from './features/auth/pages/ResetPassword'
 import ListBusiness from './features/dashboard/components/ListBusiness'
 import AdminLogin from './features/admin/pages/AdminLogin'
 import AdminDashboard from './features/admin/pages/AdminDashboard'
@@ -37,11 +39,9 @@ function App() {
       setSession(session)
       setLoading(false)
     })
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => setSession(session)
     )
-
     return () => subscription.unsubscribe()
   }, [])
 
@@ -53,11 +53,11 @@ function App() {
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/sign-in" element={<Signin />} />
         <Route path="/sign-up" element={<Register />} />
-
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         {/* Admin routes */}
         <Route path="/admin" element={<AdminLogin />} />
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
-
         {/* Protected routes */}
         <Route element={<ProtectedLayout session={session} />}>
           <Route path="/home-page" element={<Homepage />} />
@@ -65,10 +65,7 @@ function App() {
           <Route path="/save-page" element={<Savepage />} />
           <Route path="/listbusiness" element={<ListBusiness />} />
         </Route>
-
         <Route path="/" element={<Navigate to={session ? '/home-page' : '/sign-in'} replace />} />
-
-        {/* 404 catch-all */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
