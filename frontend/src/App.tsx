@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from './lib/supabase'
-import { createBrowserRouter, RouterProvider, Navigate, useNavigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
-import type { RouteObject } from 'react-router-dom'
 import { ROUTES } from './routes/paths';
 
 // Auth & Protected Components
@@ -25,6 +24,7 @@ import Locationpage from './features/dashboard/pages/Locationpage'
 import Savepage from './features/dashboard/pages/Savepage'
 import MapView from './map/MapView'
 
+import Signin from './features/auth/pages/Signin'
 import Register from './features/auth/pages/Register'
 import ForgotPassword from './features/auth/pages/ForgotPassword'
 import ResetPassword from './features/auth/pages/ResetPassword'
@@ -48,110 +48,88 @@ function AuthCallback() {
   return <div className="min-h-screen bg-[#111111] flex items-center justify-center text-white">Loading...</div>
 }
 
-const routes = (session: Session | null): RouteObject[] => [
-  {
-    path: '/auth/callback',
-    element: <AuthCallback />,
-  },
-  {
-    path: '/sign-up',
-    element: session ? <Navigate to="/home-page" replace /> : <Register />,
-  },
-  {
-    path: ROUTES.SIGN_IN,
-    element: session ? <Navigate to="/home-page" replace /> : <Register />,
-  },
-  {
-    path: ROUTES.ADMIN,
-    element: <AdminLogin />,
-  },
-  {
-    path: ROUTES.ADMIN_DASHBOARD,
-    element: <AdminDashboard />,
-  },
-
-  { 
-    path: ROUTES.LIST_YOUR_BUSINESS, 
-    element: <HeroListBusiness />
-  },
-
-  { 
-    path: ROUTES.BUSINESS_REGISTER, 
-    element: <BusinessRegister />
-  },
-
-  { 
-    path: ROUTES.BUSINESS_SIGNIN, 
-    element: <BusinessSignin />
-  },
-
-  { 
-    path: ROUTES.LIST_BUSINESS, 
-    element: <ListBusiness />
-  },
-
-  // Business Side Dashboard
-  { 
-    path: ROUTES.DASHBOARD, 
-    element: (
-      <ProtectedRoute session={session} redirectPath={ROUTES.BUSINESS_SIGNIN}>
-        <Dashboard />
-      </ProtectedRoute>
-    ),
-    
-    children: [
-      {path: ROUTES.DASHBOARD_REL.OVERVIEW, element: <Overview />},
-      {path: ROUTES.DASHBOARD_REL.MY_BUSINESS, element: <MyBusiness />},
-      {path: ROUTES.DASHBOARD_REL.EVENTS, element: <Events />},
-      {path: ROUTES.DASHBOARD_REL.REVIEWS, element: <Reviews />},
-      {path: ROUTES.DASHBOARD_REL.ANALYTICS, element: <Analytics />},
-      {path: ROUTES.DASHBOARD_REL.GALLERY, element: <Gallery />},
-      {path: ROUTES.DASHBOARD_REL.SETTINGS, element: <Settings />}
-    ]
-  },
-
-  {
-    path: '/',
-
-    // PROTECTED ROUTE
-    element: (
-      <ProtectedRoute session={session} redirectPath={ROUTES.SIGN_IN}>
-        <Navigator />
-      </ProtectedRoute>
-    ),
-    children: [
-      { index: true, element: <Navigate to={ROUTES.HOME} replace /> },
-      { path: ROUTES.HOME, element: <Homepage /> },
-      { path: ROUTES.LOCATION, element: <Locationpage /> },
-      { path: ROUTES.SAVE, element: <Savepage /> },
-      { path: ROUTES.MAP, element: <MapView /> },
-    ],
-  },
-  {
-    path: '*',
-    element: <Navigate to="/" replace />,
-  }
-];
-
 function App() {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      setLoading(false)
-    })
+      setSession(session);
+      setLoading(false);
+    });
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => setSession(session)
-    )
-    return () => subscription.unsubscribe()
-  }, [])
+    );
 
-  if (loading) return <div className="min-h-screen bg-[#111111] flex items-center justify-center text-white">Loading...</div>
+    return () => subscription.unsubscribe();
+  }, []);
 
-  const router = createBrowserRouter(routes(session));
-  return <RouterProvider router={router} />;
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#111111] flex flex-col items-center justify-center text-white">
+        <div className="text-2xl font-bold mb-4 animate-pulse">Loading Salangi...</div>
+      </div>
+    );
+  }
+
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route path="/sign-up" element={session ? <Navigate to="/home-page" replace /> : <Register />} />
+        <Route path={ROUTES.SIGN_IN} element={session ? <Navigate to="/home-page" replace /> : <Signin />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+
+        {/* Admin routes */}
+        <Route path={ROUTES.ADMIN} element={<AdminLogin />} />
+        <Route path={ROUTES.ADMIN_DASHBOARD} element={<AdminDashboard />} />
+
+        {/* Business Side Public Routes */}
+        <Route path={ROUTES.LIST_YOUR_BUSINESS} element={<HeroListBusiness />} />
+        <Route path={ROUTES.BUSINESS_REGISTER} element={<BusinessRegister />} />
+        <Route path={ROUTES.BUSINESS_SIGNIN} element={<BusinessSignin />} />
+        <Route path={ROUTES.LIST_BUSINESS} element={<ListBusiness />} />
+
+        {/* Business Side Dashboard */}
+        <Route
+          path={ROUTES.DASHBOARD}
+          element={
+            <ProtectedRoute session={session} redirectPath={ROUTES.BUSINESS_SIGNIN}>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        >
+          <Route path={ROUTES.DASHBOARD_REL.OVERVIEW} element={<Overview />} />
+          <Route path={ROUTES.DASHBOARD_REL.MY_BUSINESS} element={<MyBusiness />} />
+          <Route path={ROUTES.DASHBOARD_REL.EVENTS} element={<Events />} />
+          <Route path={ROUTES.DASHBOARD_REL.REVIEWS} element={<Reviews />} />
+          <Route path={ROUTES.DASHBOARD_REL.ANALYTICS} element={<Analytics />} />
+          <Route path={ROUTES.DASHBOARD_REL.GALLERY} element={<Gallery />} />
+          <Route path={ROUTES.DASHBOARD_REL.SETTINGS} element={<Settings />} />
+        </Route>
+
+        {/* Protected routes / Main Application Layout */}
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute session={session} redirectPath={ROUTES.SIGN_IN}>
+              <Navigator />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<Navigate to={ROUTES.HOME} replace />} />
+          <Route path={ROUTES.HOME} element={<Homepage />} />
+          <Route path={ROUTES.LOCATION} element={<Locationpage />} />
+          <Route path={ROUTES.SAVE} element={<Savepage />} />
+          <Route path={ROUTES.MAP} element={<MapView />} />
+        </Route>
+
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
+  );
 }
 
 export default App;

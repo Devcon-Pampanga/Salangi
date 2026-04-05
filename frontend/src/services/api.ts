@@ -1,5 +1,29 @@
 import { supabase } from '@/lib/supabase';
 
+// ── Authentication (Supabase) ────────────────────────────────────────────────
+export async function registerUser(data: {
+  first_name: string;
+  last_name: string;
+  email: string;
+  password: string;
+}) {
+  const { data: authData, error } = await supabase.auth.signUp({
+    email: data.email,
+    password: data.password,
+    options: {
+      data: {
+        first_name: data.first_name,
+        last_name: data.last_name,
+      },
+    },
+  });
+  if (error) throw new Error(error.message);
+  return {
+    message: 'Account created! Please check your email to verify your account before signing in.',
+    user: authData.user,
+  };
+}
+
 const BASE_URL = 'http://localhost:8000';
 
 // ── Get live Supabase session token ──────────────────────────────────────────
