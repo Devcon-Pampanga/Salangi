@@ -6,15 +6,20 @@ interface ReviewItemProps {
     date: string;
     rating: number;
     comment: string;
+    profilePic?: string;
 }
 
-function ReviewItem({ user, initials, date, rating, comment }: ReviewItemProps) {
+function ReviewItem({ user, initials, date, rating, comment, profilePic }: ReviewItemProps) {
     return (
         <div className="flex flex-col gap-3">
             <div className="flex justify-between items-start">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-[#2E2E2E] flex items-center justify-center text-[10px] font-bold">
-                        {initials}
+                    <div className="w-10 h-10 rounded-full bg-[#2E2E2E] flex items-center justify-center text-[10px] font-bold overflow-hidden">
+                        {profilePic ? (
+                            <img src={profilePic} alt={user} className="w-full h-full object-cover" />
+                        ) : (
+                            initials
+                        )}
                     </div>
                     <div className="flex flex-col">
                         <span className="text-sm font-semibold">{user}</span>
