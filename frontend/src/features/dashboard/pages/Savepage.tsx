@@ -5,8 +5,9 @@ import search from '@assets/icons/search-btn-default.svg';
 import BusinessCard from '../components/BusinessCard';
 import CategoryFilters from '../components/CategoryFilters';
 import SearchBar from '../components/SearchBar';
+import type { FilterOptions } from '../components/SearchBar';
 
-import { getListings, CATEGORIES } from '../../Data/Listings';
+import { getListings, getAverageRatings, CATEGORIES } from '../../Data/Listings';
 import type { Listing, Category } from '../../Data/Listings';
 
 function Savepage() {
@@ -15,18 +16,22 @@ function Savepage() {
   const [activeCategory, setActiveCategory] = useState<Category>(CATEGORIES.ALL as Category);
   const [searchQuery, setSearchQuery] = useState('');
   const [savedIds, setSavedIds]       = useState<number[]>([]);
+  const [averageRatings, setAverageRatings] = useState<Record<number, number>>({});
+  const [filters, setFilters]         = useState<FilterOptions>({ minRating: null, sortBy: 'default' });
 
   useEffect(() => {
     const fetchData = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const [listingsResult, savesResult] = await Promise.all([
+      const [listingsData, ratingsData, savesResult] = await Promise.all([
         getListings(),
+        getAverageRatings(),
         supabase.from('saves').select('listing_id').eq('user_id', user.id)
       ]);
 
-      setListings(listingsResult);
+      setListings(listingsData);
+      setAverageRatings(ratingsData);
       if (!savesResult.error && savesResult.data) {
         setSavedIds(savesResult.data.map((row: any) => row.listing_id));
       }
@@ -41,30 +46,30 @@ function Savepage() {
     if (!user) return;
 
     const isSaved = savedIds.includes(id);
-
     if (isSaved) {
-      await supabase
-        .from('saves')
-        .delete()
-        .eq('user_id', user.id)
-        .eq('listing_id', id);
+      await supabase.from('saves').delete().eq('user_id', user.id).eq('listing_id', id);
       setSavedIds(prev => prev.filter(savedId => savedId !== id));
     } else {
-      await supabase
-        .from('saves')
-        .insert({ user_id: user.id, listing_id: id });
+      await supabase.from('saves').insert({ user_id: user.id, listing_id: id });
       setSavedIds(prev => [...prev, id]);
     }
   };
 
   const filteredSpots = useMemo(() => {
-    return listings.filter((spot: Listing) => {
+    let result = listings.filter((spot: Listing) => {
       const isSaved = savedIds.includes(spot.id);
       const matchesCategory = activeCategory === CATEGORIES.ALL || spot.category === activeCategory;
       const matchesSearch = spot.name.toLowerCase().includes(searchQuery.toLowerCase());
-      return isSaved && matchesCategory && matchesSearch;
+      const matchesRating = filters.minRating === null || (averageRatings[spot.id] ?? 0) >= filters.minRating;
+      return isSaved && matchesCategory && matchesSearch && matchesRating;
     });
-  }, [listings, activeCategory, searchQuery, savedIds]);
+
+    if (filters.sortBy === 'az') {
+      result = [...result].sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    return result;
+  }, [listings, activeCategory, searchQuery, savedIds, filters, averageRatings]);
 
   return (
     <div className="flex h-screen w-full bg-[#1A1A1A] text-[#F8FAF8] overflow-hidden font-sans">
@@ -81,6 +86,8 @@ function Savepage() {
             placeholder="Search your saved spots"
             value={searchQuery}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
+            onFilterChange={setFilters}
+            filters={filters}
           />
         </div>
 

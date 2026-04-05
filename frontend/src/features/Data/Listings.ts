@@ -131,4 +131,25 @@ export async function updateListing(id: number, updates: Partial<Omit<Listing, '
 export async function deleteListing(id: number): Promise<void> {
   const { error } = await supabase.from('listings').delete().eq('id', id);
   if (error) throw error;
-};
+}
+
+export async function getAverageRatings(): Promise<Record<number, number>> {
+  const { data, error } = await supabase
+    .from('reviews')
+    .select('listing_id, rating');
+
+  if (error) throw error;
+
+  const ratingsMap: Record<number, number[]> = {};
+  data.forEach((row: any) => {
+    if (!ratingsMap[row.listing_id]) ratingsMap[row.listing_id] = [];
+    ratingsMap[row.listing_id].push(row.rating);
+  });
+
+  const averages: Record<number, number> = {};
+  Object.entries(ratingsMap).forEach(([id, ratings]) => {
+    averages[Number(id)] = ratings.reduce((a, b) => a + b, 0) / ratings.length;
+  });
+
+  return averages;
+}
