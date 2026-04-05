@@ -183,8 +183,8 @@ function Homepage() {
             </button>
           </div>
 
-          <div className="flex-1 min-h-0">
-            <MapView
+          <div className="flex-1 min-h-0 mt-2 rounded-2xl overflow-hidden mx-2">
+            <MapView  
               listings={filteredListings}
               selectedListing={selectedListing}
               onSelect={handleCardSelect}
