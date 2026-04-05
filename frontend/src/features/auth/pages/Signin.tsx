@@ -19,14 +19,12 @@ function Signin() {
       const { data, error: supabaseError } = await supabase.auth.signInWithPassword({ email, password });
       if (supabaseError) throw supabaseError;
 
-      // Block unverified users
       if (!data.user?.email_confirmed_at) {
         await supabase.auth.signOut();
         setError('Please verify your email before signing in. Check your inbox.');
         return;
       }
 
-      // Store user info for display purposes (not for auth)
       const meta = data.user.user_metadata;
       localStorage.setItem('user', JSON.stringify({
         user_id:    data.user.id,
@@ -85,7 +83,7 @@ function Signin() {
             />
           </div>
 
-          <div className="mb-6">
+          <div className="mb-2">
             <label className="text-gray-300 text-sm mb-1 block">Password</label>
             <div className="relative">
               <input
@@ -105,6 +103,12 @@ function Signin() {
               </button>
             </div>
           </div>
+
+          <p className="text-right mb-6">
+            <Link to="/forgot-password" className="text-[#FFE2A0] text-sm hover:underline">
+              Forgot password?
+            </Link>
+          </p>
 
           <button
             onClick={handleSignIn}
