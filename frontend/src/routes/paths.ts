@@ -13,6 +13,7 @@ export const ROUTES = {
   DASHBOARD_REVIEWS: '/dashboard/reviews',
   DASHBOARD_ANALYTICS: '/dashboard/analytics',
   DASHBOARD_GALLERY: '/dashboard/gallery',
+  DASHBOARD_SETTINGS: '/dashboard/settings',
 
   // Relative paths for dashboard children (used in App.tsx)
   DASHBOARD_REL: {
@@ -22,6 +23,7 @@ export const ROUTES = {
     REVIEWS: 'reviews',
     ANALYTICS: 'analytics',
     GALLERY: 'gallery',
+    SETTINGS: 'settings',
   },
 
   HOME: '/home-page',
@@ -31,5 +33,4 @@ export const ROUTES = {
   SIGN_IN: '/sign-in',
   ANALYTICS: '/analytics',
   NOTIFICATIONS: '/notifications',
-  SETTINGS: '/settings',
 } as const;

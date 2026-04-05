@@ -7,6 +7,7 @@ import Events from './features/business-side/components/Events'
 import Reviews from './features/business-side/components/Reviews'
 import Analytics from './features/business-side/components/Analytics'
 import Gallery from './features/business-side/components/Gallery'
+import Settings from './features/business-side/components/Settings'
 import Navigator from './features/Navigator';
 import Homepage from './features/dashboard/pages/Homepage';
 import Locationpage from './features/dashboard/pages/Locationpage';
@@ -62,7 +63,8 @@ const routes: RouteObject[] = [
       {path: ROUTES.DASHBOARD_REL.EVENTS, element: <Events />},
       {path: ROUTES.DASHBOARD_REL.REVIEWS, element: <Reviews />},
       {path: ROUTES.DASHBOARD_REL.ANALYTICS, element: <Analytics />},
-      {path: ROUTES.DASHBOARD_REL.GALLERY, element: <Gallery />}
+      {path: ROUTES.DASHBOARD_REL.GALLERY, element: <Gallery />},
+      {path: ROUTES.DASHBOARD_REL.SETTINGS, element: <Settings />}
     ]
   },
 
