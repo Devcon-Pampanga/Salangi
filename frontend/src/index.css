@@ -30,11 +30,27 @@
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #f5c842; /* matches your gold/yellow accent */
+  background: #f5c842;
 }
 
 /* Firefox */
 * {
   scrollbar-width: thin;
   scrollbar-color: #3a3a3a #1a1a1a;
+}
+
+/* Filter dropdown animation */
+[data-filter-dropdown] {
+  animation: filterSlideIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes filterSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }

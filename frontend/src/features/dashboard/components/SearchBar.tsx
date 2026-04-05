@@ -7,7 +7,7 @@ import filterIconHover from '@assets/icons/filter-btn-hover.svg';
 
 export interface FilterOptions {
   minRating: number | null;
-  sortBy: 'default' | 'az';
+  sortBy: 'default' | 'az' | 'za';
 }
 
 interface SearchBarProps {
@@ -75,7 +75,7 @@ const SearchBar = ({
     });
   };
 
-  const handleSortBy = (sort: 'default' | 'az') => {
+  const handleSortBy = (sort: 'az' | 'za') => {
     onFilterChange?.({
       minRating: filters?.minRating ?? null,
       sortBy: filters?.sortBy === sort ? 'default' : sort,
@@ -90,50 +90,85 @@ const SearchBar = ({
   const dropdown = showFilter && onFilterChange ? ReactDOM.createPortal(
     <div
       ref={filterRef}
+      data-filter-dropdown
       style={{ position: 'fixed', top: dropdownPos.top, right: dropdownPos.right, zIndex: 99999 }}
-      className="w-56 bg-[#2D2D2D] border border-zinc-700 rounded-xl shadow-xl p-4 flex flex-col gap-4"
+      className="w-64 bg-[#1E1E1E] border border-zinc-700/60 rounded-2xl shadow-2xl overflow-hidden"
     >
-      <div>
-        <p className="text-xs text-[#FBFAF8]/50 uppercase tracking-wider mb-2">Min Rating</p>
-        <div className="flex gap-2">
-          {[4, 3].map(rating => (
-            <button
-              key={rating}
-              onClick={() => handleRatingFilter(rating)}
-              className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
-                filters?.minRating === rating
-                  ? 'bg-[#FFE2A0] text-[#1A1A1A]'
-                  : 'bg-[#3D3D3D] text-[#FBFAF8] hover:bg-[#4D4D4D]'
-              }`}
-            >
-              {rating}+ ⭐
-            </button>
-          ))}
+      {/* Header */}
+      <div className="px-4 pt-4 pb-3 border-b border-zinc-700/40 flex items-center justify-between">
+        <span className="text-xs font-bold text-[#FBFAF8] uppercase tracking-widest">Filters</span>
+        {isFilterActive && (
+          <button
+            onClick={handleClearFilters}
+            className="text-[10px] text-red-400 hover:text-red-300 font-semibold uppercase tracking-wider transition-colors cursor-pointer"
+          >
+            Clear all
+          </button>
+        )}
+      </div>
+
+      <div className="p-4 flex flex-col gap-5">
+        {/* Min Rating */}
+        <div>
+          <p className="text-[10px] text-[#FBFAF8]/40 uppercase tracking-widest mb-3">Min Rating</p>
+          <div className="flex flex-col gap-2">
+            {[5, 4, 3, 2, 1].map(rating => (
+              <button
+                key={rating}
+                onClick={() => handleRatingFilter(rating)}
+                className={`w-full py-2 px-3 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer border flex items-center justify-between group ${
+                  filters?.minRating === rating
+                    ? 'bg-[#FFE2A0]/10 border-[#FFE2A0] text-[#FFE2A0]'
+                    : 'bg-transparent border-zinc-700 hover:border-[#FFE2A0]/40 hover:bg-[#FFE2A0]/5'
+                }`}
+              >
+                <div className="flex gap-0.5">
+                  {[1, 2, 3, 4, 5].map(star => (
+                    <span
+                      key={star}
+                      className={`text-sm transition-all duration-100 ${
+                        star <= rating
+                          ? 'text-[#FFE2A0]'
+                          : 'text-zinc-600 group-hover:text-zinc-500'
+                      }`}
+                    >
+                      ★
+                    </span>
+                  ))}
+                </div>
+                <span className={`text-[10px] ${filters?.minRating === rating ? 'text-[#FFE2A0]' : 'text-[#FBFAF8]/40'}`}>
+                  {rating}+ & up
+                  {filters?.minRating === rating && ' ✓'}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Sort By */}
+        <div>
+          <p className="text-[10px] text-[#FBFAF8]/40 uppercase tracking-widest mb-3">Sort By</p>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { value: 'az' as const, label: 'A → Z' },
+              { value: 'za' as const, label: 'Z → A' },
+            ].map(option => (
+              <button
+                key={option.value}
+                onClick={() => handleSortBy(option.value)}
+                className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer border flex items-center justify-center gap-1.5 ${
+                  filters?.sortBy === option.value
+                    ? 'bg-[#FFE2A0] text-[#1A1A1A] border-[#FFE2A0] shadow-lg shadow-[#FFE2A0]/20'
+                    : 'bg-transparent text-[#FBFAF8]/70 border-zinc-700 hover:border-[#FFE2A0]/50 hover:text-[#FFE2A0] hover:bg-[#FFE2A0]/5'
+                }`}
+              >
+                <span>{option.value === 'az' ? '↑' : '↓'}</span>
+                {option.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
-
-      <div>
-        <p className="text-xs text-[#FBFAF8]/50 uppercase tracking-wider mb-2">Sort By</p>
-        <button
-          onClick={() => handleSortBy('az')}
-          className={`w-full py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
-            filters?.sortBy === 'az'
-              ? 'bg-[#FFE2A0] text-[#1A1A1A]'
-              : 'bg-[#3D3D3D] text-[#FBFAF8] hover:bg-[#4D4D4D]'
-          }`}
-        >
-          Name A → Z
-        </button>
-      </div>
-
-      {isFilterActive && (
-        <button
-          onClick={handleClearFilters}
-          className="w-full py-1.5 rounded-lg text-xs font-semibold text-red-400 hover:bg-red-400/10 transition-colors cursor-pointer"
-        >
-          Clear Filters
-        </button>
-      )}
     </div>,
     document.body
   ) : null;
