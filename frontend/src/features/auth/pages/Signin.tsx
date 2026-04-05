@@ -1,8 +1,6 @@
 import { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import google from '@assets/icons/google-icon.svg';
-import facebook from '@assets/icons/facebook-icon.svg';
 import bg from '@assets/images/bg.png';
 import { supabase } from '@/lib/supabase';
 
@@ -18,24 +16,32 @@ function Signin() {
     setError('');
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw error;
+      const { data, error: supabaseError } = await supabase.auth.signInWithPassword({ email, password });
+      if (supabaseError) throw supabaseError;
+
+      // Block unverified users
+      if (!data.user?.email_confirmed_at) {
+        await supabase.auth.signOut();
+        setError('Please verify your email before signing in. Check your inbox.');
+        return;
+      }
+
+      // Store user info for display purposes (not for auth)
+      const meta = data.user.user_metadata;
+      localStorage.setItem('user', JSON.stringify({
+        user_id:    data.user.id,
+        first_name: meta?.first_name ?? meta?.full_name?.split(' ')[0] ?? '',
+        last_name:  meta?.last_name  ?? meta?.full_name?.split(' ')[1] ?? '',
+        email:      data.user.email,
+        profile_pic: meta?.avatar_url ?? null,
+      }));
+
       navigate('/home-page');
     } catch (err: any) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleGoogleSignIn = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
-    if (error) console.error(error.message);
   };
 
   return (
@@ -73,6 +79,7 @@ function Signin() {
               type="text"
               value={email}
               onChange={e => setEmail(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleSignIn()}
               placeholder="eg. juan.dc@gmail.com"
               className="w-full bg-[#2E2E2E] text-white placeholder-gray-500 px-4 py-3 rounded-lg outline-none focus:ring-1 focus:ring-[#FFE2A0]"
             />
@@ -85,6 +92,7 @@ function Signin() {
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={e => setPassword(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleSignIn()}
                 placeholder="*************"
                 className="w-full bg-[#2E2E2E] text-white placeholder-gray-500 px-4 py-3 rounded-lg outline-none focus:ring-1 focus:ring-[#FFE2A0]"
               />
@@ -101,7 +109,7 @@ function Signin() {
           <button
             onClick={handleSignIn}
             disabled={loading}
-            className="w-full bg-[#FFE2A0] hover:bg-[#fcd789] text-[#222222] font-semibold py-3 rounded-lg transition-colors cursor-pointer"
+            className="w-full bg-[#FFE2A0] hover:bg-[#fcd789] text-[#222222] font-semibold py-3 rounded-lg transition-colors cursor-pointer disabled:opacity-60"
           >
             {loading ? 'Signing in...' : 'SIGN IN'}
           </button>
@@ -114,26 +122,6 @@ function Signin() {
               Sign up.
             </Link>
           </p>
-
-          <div className="flex items-center gap-4 my-5">
-            <div className="flex-1 border-t border-gray-600"></div>
-            <span className="text-gray-400 text-sm">Or</span>
-            <div className="flex-1 border-t border-gray-600"></div>
-          </div>
-
-          <div className="flex gap-4">
-            <button
-              onClick={handleGoogleSignIn}
-              className="flex-1 flex items-center justify-center gap-2 bg-[#2E2E2E] hover:bg-[#3a3a3a] text-white py-3 rounded-lg transition-colors border border-gray-600 cursor-pointer"
-            >
-              <img src={google} className="w-5 h-5" />
-              Google
-            </button>
-            <button className="flex-1 flex items-center justify-center gap-2 bg-[#2E2E2E] hover:bg-[#3a3a3a] text-white py-3 rounded-lg transition-colors border border-gray-600 cursor-pointer">
-              <img src={facebook} className="w-5 h-5" />
-              Facebook
-            </button>
-          </div>
         </div>
       </div>
     </div>
