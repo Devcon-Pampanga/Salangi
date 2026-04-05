@@ -71,12 +71,17 @@ function Navigator() {
       return;
     }
 
-    const stored = JSON.parse(localStorage.getItem('user') ?? '{}');
+    const { data: profile } = await supabase
+      .from('users')
+      .select('first_name, last_name, email, profile_pic')
+      .eq('user_id', user.id)
+      .single();
+
     setDisplayName({
-      firstName: stored.first_name || user.user_metadata?.first_name || '',
-      lastName:  stored.last_name  || user.user_metadata?.last_name  || '',
-      email:     stored.email      || user.email                     || '',
-      avatarUrl: stored.profile_pic || stored.avatar_url             || null,
+      firstName: profile?.first_name || user.user_metadata?.first_name || '',
+      lastName:  profile?.last_name  || user.user_metadata?.last_name  || '',
+      email:     profile?.email      || user.email || '',
+      avatarUrl: profile?.profile_pic || null,
     });
   }, [navigate]);
 
@@ -97,7 +102,6 @@ function Navigator() {
     navigate('/sign-in');
   };
 
-  // Reusable avatar: shows photo if available, else initials
   const AvatarButton = ({ onClick, className }: { onClick?: () => void; className?: string }) => (
     <button
       onClick={onClick}
@@ -135,7 +139,6 @@ function Navigator() {
               className="absolute bottom-18 left-0 w-64 bg-[#2D2D2D] rounded-2xl shadow-2xl border border-zinc-700/50 py-3 px-3 z-50 flex flex-col gap-1 transition-all"
             >
               <div className="flex items-center gap-3 p-2 py-3">
-                {/* Mini avatar in menu */}
                 <div className="h-8 w-8 rounded-full overflow-hidden bg-[#222222] flex items-center justify-center shrink-0">
                   {displayName.avatarUrl ? (
                     <img src={displayName.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
@@ -181,7 +184,7 @@ function Navigator() {
         <SettingsPage
           onClose={() => {
             setIsSettingsOpen(false);
-            refreshUser(); // re-reads localStorage including new profile_pic
+            refreshUser();
           }}
         />,
         document.body
