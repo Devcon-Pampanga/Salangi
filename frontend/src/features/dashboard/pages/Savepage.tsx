@@ -15,13 +15,17 @@ function Savepage() {
     const [isLoading, setIsLoading] = useState(true);
     const [activeCategory, setActiveCategory] = useState<Category>(CATEGORIES.ALL as Category);
     const [searchQuery, setSearchQuery] = useState('');
-    
+
+    // Get user-specific storage key
+    const storedUser = JSON.parse(localStorage.getItem('user') ?? '{}');
+    const userId = storedUser.user_id ?? 'guest';
+    const storageKey = `salangi_saved_spots_${userId}`;
+
     const [savedIds, setSavedIds] = useState<number[]>(() => {
-        const saved = localStorage.getItem('salangi_saved_spots');
+        const saved = localStorage.getItem(storageKey);
         return saved ? JSON.parse(saved) : [];
     });
 
-    // Fetch listings from Supabase on mount
     useEffect(() => {
         getListings()
             .then(setListings)
@@ -30,8 +34,8 @@ function Savepage() {
     }, []);
 
     useEffect(() => {
-        localStorage.setItem('salangi_saved_spots', JSON.stringify(savedIds));
-    }, [savedIds]);
+        localStorage.setItem(storageKey, JSON.stringify(savedIds));
+    }, [savedIds, storageKey]);
 
     const toggleSave = (id: number) => {
         setSavedIds(prev => prev.filter(savedId => savedId !== id));
