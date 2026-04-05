@@ -15,7 +15,6 @@ def get_current_user_id(authorization: str = Header(...)) -> str:
         raise HTTPException(status_code=401, detail="Invalid or expired token.")
     return user_id
 
-
 @router.put("/update-profile", response_model=dict)
 def update(
     request: UpdateProfileRequest,

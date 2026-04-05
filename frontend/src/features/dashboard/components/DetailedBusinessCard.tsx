@@ -119,66 +119,94 @@ function DetailedBusinessCard({
   };
 
   return (
-    <div className="w-full h-auto bg-[#373737] rounded-xl overflow-hidden shrink-0 mb-10 pb-6 shadow-2xl">
+    <div className="w-full max-w-120 bg-[#333333] rounded-xl overflow-hidden shrink-0 mb-10 shadow-2xl border border-zinc-800/50 mx-auto">
       <div className="relative flex flex-col">
         {/* Heart Icon */}
-        <div className="absolute top-4 left-4 z-20">
+        <div className="absolute top-4 left-4 z-30">
           <button
-            onClick={() => setIsSaved(!isSaved)}
-            className="flex items-center justify-center w-10 h-10 bg-[#222222]/80 backdrop-blur-sm rounded-full cursor-pointer hover:scale-110 active:scale-95 transition-all duration-200"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsSaved(!isSaved);
+            }}
+            className="flex items-center justify-center w-10 h-10 bg-[#222222]/80 backdrop-blur-sm rounded-full z-20 cursor-pointer hover:scale-110 active:scale-95 shadow-lg border border-white/10"
           >
             <img src={isSaved ? heartActive : heartInactive} width="20" alt="heart" />
           </button>
         </div>
 
         {/* Image Carousel */}
-        <div className="relative group w-full h-72 overflow-hidden bg-zinc-800">
+        <div className="relative w-full h-72 overflow-hidden bg-zinc-800 group">
           <img
             src={images[currentIndex]}
-            className="w-full h-full object-cover transition-opacity duration-300"
+            className="w-full h-full object-cover transition-all duration-500 group-hover:scale-105"
             alt={`${title} - ${currentIndex + 1}`}
           />
           {images.length > 1 && (
             <>
-              <button onClick={prevImage} className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-[#222222]/50 hover:bg-[#222222]/80 backdrop-blur-sm rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200 cursor-pointer">
-                <ChevronLeft size={20} />
+              <button
+                onClick={prevImage}
+                className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-[#222222]/50 hover:bg-[#222222]/80 backdrop-blur-sm rounded-full border border-white/5 opacity-0 group-hover:opacity-100 transition-opacity z-20 cursor-pointer"
+              >
+                <ChevronLeft size={16} className="text-white" />
               </button>
-              <button onClick={nextImage} className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-[#222222]/50 hover:bg-[#222222]/80 backdrop-blur-sm rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200 cursor-pointer">
-                <ChevronRight size={20} />
+              <button
+                onClick={nextImage}
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-[#222222]/50 hover:bg-[#222222]/80 backdrop-blur-sm rounded-full border border-white/5 opacity-0 group-hover:opacity-100 transition-opacity z-20 cursor-pointer"
+              >
+                <ChevronRight size={16} className="text-white" />
               </button>
             </>
           )}
           {images.length > 1 && (
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
               {images.map((_, idx) => (
-                <button key={idx} onClick={() => setCurrentIndex(idx)}
-                  className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${currentIndex === idx ? 'bg-white w-3' : 'bg-white/40'}`}
+                <div
+                  key={idx}
+                  className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
+                    currentIndex === idx ? 'bg-[#FFE2A0] w-4' : 'bg-white/40'
+                  }`}
                 />
               ))}
+            </div>
+          )}
+          {images.length > 1 && (
+            <div className="absolute top-3 right-3 bg-[#222222]/70 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-full z-20">
+              {currentIndex + 1} / {images.length}
             </div>
           )}
         </div>
 
         <div className="p-6">
           {/* Header */}
-          <div className="flex items-center gap-2">
-            <img src={locBtnSelected} width="13" alt="loc" />
-            <p className="text-[#FBFAF8]/50 text-sm">{location}</p>
+          <div className="flex items-center justify-between gap-4 mb-4">
+            <div className="flex items-center gap-2">
+              <h3 className="text-[#FBFAF8] font-['Playfair_Display'] font-bold text-2xl tracking-tight leading-tight">
+                {title}
+              </h3>
+              {isVerified && (
+                <img src={verifiedIcon} width="16" height="16" alt="verified" className="mt-1" />
+              )}
+            </div>
           </div>
-          <div className="flex items-center gap-2 mt-2">
-            <img src={timeIcon} width="13" alt="time" />
-            <p className="text-[#FBFAF8]/50 text-sm">{hours}</p>
-          </div>
-          <div className="flex items-center gap-2 my-2">
-            {isVerified && <img src={verifiedIcon} width="15" alt="verified" />}
-            <p className="text-[#FBFAF8] font-bold text-lg">{title}</p>
-          </div>
-          <p className="text-base leading-relaxed text-zinc-300 mt-3 border-b border-zinc-600/50 pb-6">
+
+          <p className="text-sm text-[#FBFAF8]/70 leading-relaxed mb-2 pb-6">
             {description}
           </p>
 
+          {/* Info Row */}
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mb-6 pb-6 border-b border-zinc-600/50">
+            <div className="flex items-center gap-2">
+              <img src={locBtnSelected} width="14" alt="location" className="opacity-70" />
+              <span className="text-[#FBFAF8]/50 text-xs font-medium">{location}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <img src={timeIcon} width="14" alt="hours" className="opacity-70" />
+              <span className="text-[#FBFAF8]/50 text-xs font-medium">{hours}</span>
+            </div>
+          </div>
+
           {/* Contact */}
-          <div className="flex flex-col gap-1 py-4 border-b border-zinc-600/50">
+          <div className="flex flex-col gap-1 pb-6 border-b border-zinc-600/50">
             {phone && (
               <div onClick={() => handleCopy(phone, 'phone')}
                 className="relative flex items-center gap-4 text-sm text-[#FBFAF8]/80 hover:text-[#FBFAF8] px-3 py-2.5 rounded-xl border border-transparent hover:border-[#FFE2A0] hover:bg-[#FFE2A0]/5 transition-all duration-300 cursor-pointer group">

@@ -4,6 +4,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
+import { ROUTES } from '../../../routes/paths';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -447,10 +448,10 @@ function ListBusiness() {
             and notify you within 2–3 business days.
           </p>
           <button
-            onClick={() => navigate('/home-page')}
+            onClick={() => navigate(ROUTES.DASHBOARD_OVERVIEW)}
             className="px-6 py-3 bg-[#FFE2A0] text-[#1A1A1A] rounded-lg font-bold hover:bg-[#f5d880] transition-colors cursor-pointer"
           >
-            Back to Homepage
+            Back
           </button>
         </div>
       </div>
@@ -464,10 +465,10 @@ function ListBusiness() {
 
       <div className="relative z-10 max-w-2xl mx-auto px-6 py-10">
         <button
-          onClick={() => navigate('/home-page')}
+          onClick={() => navigate(ROUTES.DASHBOARD_OVERVIEW)}
           className="flex items-center gap-2 text-[#FBFAF8]/50 hover:text-[#FBFAF8] text-sm mb-8 cursor-pointer transition-colors"
         >
-          ← Back to Homepage
+          ← Back
         </button>
 
         <h1 className="font-['Playfair-Display'] text-3xl leading-tight mb-2">

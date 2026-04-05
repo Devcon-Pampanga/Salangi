@@ -1,16 +1,39 @@
 import { useEffect, useState } from 'react'
 import { supabase } from './lib/supabase'
-import { BrowserRouter, Routes, Route, useNavigate, Navigate } from 'react-router-dom'
+import { createBrowserRouter, RouterProvider, Navigate, useNavigate } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
+import type { RouteObject } from 'react-router-dom'
+import { ROUTES } from './routes/paths';
+
+// Auth & Protected Components
+import ProtectedRoute from './routes/ProtectedRoute';
+
+// Feature Components - Business Side (Standardized to features/business-side)
+import Dashboard from './features/business-side/pages/Dashboard'
+import Overview from './features/business-side/components/Overview'
+import MyBusiness from './features/business-side/components/MyBusiness'
+import Events from './features/business-side/components/Events'
+import Reviews from './features/business-side/components/Reviews'
+import Analytics from './features/business-side/components/Analytics'
+import Gallery from './features/business-side/components/Gallery'
+import Settings from './features/business-side/components/Settings'
+
+// Feature Components - Main Side
+import Navigator from './features/Navigator'
 import Homepage from './features/dashboard/pages/Homepage'
 import Locationpage from './features/dashboard/pages/Locationpage'
 import Savepage from './features/dashboard/pages/Savepage'
-import Navigator from './features/Navigator'
-import Signin from './features/auth/pages/Signin'
+import MapView from './map/MapView'
+
 import Register from './features/auth/pages/Register'
 import ForgotPassword from './features/auth/pages/ForgotPassword'
 import ResetPassword from './features/auth/pages/ResetPassword'
-import ListBusiness from './features/dashboard/components/ListBusiness'
+import BusinessRegister from './features/auth/pages/BusinessRegister'
+import BusinessSignin from './features/auth/pages/BusinessSignin'
+import HeroListBusiness from './features/dashboard/pages/HeroListBusiness'
+import ListBusiness from './features/business-side/components/ListBusiness'
+
+// Feature Components - Admin Side
 import AdminLogin from './features/admin/pages/AdminLogin'
 import AdminDashboard from './features/admin/pages/AdminDashboard'
 
@@ -21,14 +44,94 @@ function AuthCallback() {
       if (session) navigate('/home-page')
       else navigate('/sign-in')
     })
-  }, [])
-  return <p>Loading...</p>
+  }, [navigate]);
+  return <div className="min-h-screen bg-[#111111] flex items-center justify-center text-white">Loading...</div>
 }
 
-function ProtectedLayout({ session }: { session: Session | null }) {
-  if (!session) return <Navigate to="/sign-in" replace />
-  return <Navigator />
-}
+const routes = (session: Session | null): RouteObject[] => [
+  {
+    path: '/auth/callback',
+    element: <AuthCallback />,
+  },
+  {
+    path: '/sign-up',
+    element: session ? <Navigate to="/home-page" replace /> : <Register />,
+  },
+  {
+    path: ROUTES.SIGN_IN,
+    element: session ? <Navigate to="/home-page" replace /> : <Register />,
+  },
+  {
+    path: ROUTES.ADMIN,
+    element: <AdminLogin />,
+  },
+  {
+    path: ROUTES.ADMIN_DASHBOARD,
+    element: <AdminDashboard />,
+  },
+
+  { 
+    path: ROUTES.LIST_YOUR_BUSINESS, 
+    element: <HeroListBusiness />
+  },
+
+  { 
+    path: ROUTES.BUSINESS_REGISTER, 
+    element: <BusinessRegister />
+  },
+
+  { 
+    path: ROUTES.BUSINESS_SIGNIN, 
+    element: <BusinessSignin />
+  },
+
+  { 
+    path: ROUTES.LIST_BUSINESS, 
+    element: <ListBusiness />
+  },
+
+  // Business Side Dashboard
+  { 
+    path: ROUTES.DASHBOARD, 
+    element: (
+      <ProtectedRoute session={session} redirectPath={ROUTES.BUSINESS_SIGNIN}>
+        <Dashboard />
+      </ProtectedRoute>
+    ),
+    
+    children: [
+      {path: ROUTES.DASHBOARD_REL.OVERVIEW, element: <Overview />},
+      {path: ROUTES.DASHBOARD_REL.MY_BUSINESS, element: <MyBusiness />},
+      {path: ROUTES.DASHBOARD_REL.EVENTS, element: <Events />},
+      {path: ROUTES.DASHBOARD_REL.REVIEWS, element: <Reviews />},
+      {path: ROUTES.DASHBOARD_REL.ANALYTICS, element: <Analytics />},
+      {path: ROUTES.DASHBOARD_REL.GALLERY, element: <Gallery />},
+      {path: ROUTES.DASHBOARD_REL.SETTINGS, element: <Settings />}
+    ]
+  },
+
+  {
+    path: '/',
+
+    // PROTECTED ROUTE
+    element: (
+      <ProtectedRoute session={session} redirectPath={ROUTES.SIGN_IN}>
+        <Navigator />
+      </ProtectedRoute>
+    ),
+    children: [
+      { index: true, element: <Navigate to={ROUTES.HOME} replace /> },
+      { path: ROUTES.HOME, element: <Homepage /> },
+      { path: ROUTES.LOCATION, element: <Locationpage /> },
+      { path: ROUTES.SAVE, element: <Savepage /> },
+      { path: ROUTES.MAP, element: <MapView /> },
+    ],
+  },
+  {
+    path: '*',
+    element: <Navigate to="/" replace />,
+  }
+];
 
 function App() {
   const [session, setSession] = useState<Session | null>(null)
@@ -45,31 +148,10 @@ function App() {
     return () => subscription.unsubscribe()
   }, [])
 
-  if (loading) return <p>Loading...</p>
+  if (loading) return <div className="min-h-screen bg-[#111111] flex items-center justify-center text-white">Loading...</div>
 
-  return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/auth/callback" element={<AuthCallback />} />
-        <Route path="/sign-in" element={<Signin />} />
-        <Route path="/sign-up" element={<Register />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
-        {/* Admin routes */}
-        <Route path="/admin" element={<AdminLogin />} />
-        <Route path="/admin/dashboard" element={<AdminDashboard />} />
-        {/* Protected routes */}
-        <Route element={<ProtectedLayout session={session} />}>
-          <Route path="/home-page" element={<Homepage />} />
-          <Route path="/location-page" element={<Locationpage />} />
-          <Route path="/save-page" element={<Savepage />} />
-          <Route path="/listbusiness" element={<ListBusiness />} />
-        </Route>
-        <Route path="/" element={<Navigate to={session ? '/home-page' : '/sign-in'} replace />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </BrowserRouter>
-  )
+  const router = createBrowserRouter(routes(session));
+  return <RouterProvider router={router} />;
 }
 
-export default App
+export default App;

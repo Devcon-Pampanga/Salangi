@@ -1,12 +1,11 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
-
+import { ROUTES } from '../../../routes/paths';
 import BusinessCard from '../components/BusinessCard';
 import MapView from '../../../map/MapView';
 import SearchBar from '../components/SearchBar';
 import type { FilterOptions } from '../components/SearchBar';
-
 import { getListings, getAverageRatings, CATEGORIES } from '../../Data/Listings';
 import type { Listing, Category } from '../../Data/Listings';
 
@@ -148,7 +147,6 @@ function Homepage() {
               ))
             ) : (
               <div className="flex flex-col items-center justify-center py-20 text-center">
-                <p className="text-2xl mb-2">🔍</p>
                 <p className="text-[#FBFAF8]/70 font-semibold">No places found</p>
                 <p className="text-[#FBFAF8]/40 text-sm mt-1">
                   Try a different search term or category
@@ -171,10 +169,10 @@ function Homepage() {
               filters={filters}
             />
             <button
-              onClick={() => navigate('/listbusiness')}
+              onClick={() => navigate(ROUTES.LIST_YOUR_BUSINESS)}
               className="flex items-center gap-2 px-4 py-3 bg-[#FFE2A0] text-[#1A1A1A] rounded-lg font-semibold text-sm whitespace-nowrap cursor-pointer hover:bg-[#f5d880] transition-colors"
             >
-              📍 List Your Business
+              List Your Business
             </button>
           </div>
 

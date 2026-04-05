@@ -3,6 +3,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { Settings, LogOut } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import SettingsPage from './settings/pages/SettingsPage';
+import { ROUTES } from '../routes/paths';
 import { supabase } from '@/lib/supabase';
 
 // icons
@@ -52,7 +53,7 @@ const NavItem = ({ to, defaultIcon, activeIcon, alt, isEnd = false, className = 
   );
 };
 
-function Navigator() {
+export function Navigator() {
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -99,10 +100,13 @@ function Navigator() {
     : 'Guest';
 
   const handleLogout = async () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
     await supabase.auth.signOut();
-    navigate('/sign-in');
+    navigate(ROUTES.SIGN_IN);
   };
 
+  // Reusable avatar: shows photo if available, else initials
   const AvatarButton = ({ onClick, className }: { onClick?: () => void; className?: string }) => (
     <button
       onClick={onClick}
@@ -131,9 +135,27 @@ function Navigator() {
         </div>
 
         <div className="flex flex-col items-center py-10 gap-6">
-          <NavItem to="/home-page" defaultIcon={homeBtn} activeIcon={homeBtnSelected} alt="Home" isEnd />
-          <NavItem to="/location-page" defaultIcon={locBtn} activeIcon={locBtnSelected} alt="Location" className="w-12 h-12 rounded-xl" />
-          <NavItem to="/save-page" defaultIcon={saveBtn} activeIcon={saveBtnSelected} alt="Save" className="w-12 h-12 rounded-xl" />
+          <NavItem
+            to={ROUTES.HOME}
+            defaultIcon={homeBtn}
+            activeIcon={homeBtnSelected}
+            alt="Home"
+            isEnd
+          />
+          <NavItem
+            to={ROUTES.LOCATION}
+            defaultIcon={locBtn}
+            activeIcon={locBtnSelected}
+            alt="Location"
+            className="w-12 h-12 rounded-xl"
+          />
+          <NavItem
+            to={ROUTES.SAVE}
+            defaultIcon={saveBtn}
+            activeIcon={saveBtnSelected}
+            alt="Save"
+            className="w-12 h-12 rounded-xl"
+          />
         </div>
 
         <div className="relative">
@@ -143,6 +165,7 @@ function Navigator() {
               className="absolute bottom-18 left-0 w-64 bg-[#2D2D2D] rounded-2xl shadow-2xl border border-zinc-700/50 py-3 px-3 z-50 flex flex-col gap-1 transition-all"
             >
               <div className="flex items-center gap-3 p-2 py-3">
+                {/* Mini avatar in menu */}
                 <div className="h-8 w-8 rounded-full overflow-hidden bg-[#222222] flex items-center justify-center shrink-0">
                   {displayName.avatarUrl ? (
                     <img src={displayName.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
@@ -188,7 +211,7 @@ function Navigator() {
         <SettingsPage
           onClose={() => {
             setIsSettingsOpen(false);
-            refreshUser();
+            refreshUser(); // re-reads localStorage including new profile_pic
           }}
         />,
         document.body

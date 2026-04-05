@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { CheckCircle, XCircle, LogOut, MapPin, Clock, ChevronLeft, ChevronRight, X, ZoomIn } from 'lucide-react';
+import { ROUTES } from '../../../routes/paths';
 
 interface Listing {
   id: number;
@@ -134,7 +135,10 @@ function AdminDashboard() {
 
   useEffect(() => {
     const auth = sessionStorage.getItem('admin_auth');
-    if (!auth) { navigate('/admin'); return; }
+    if (!auth) {
+      navigate(ROUTES.ADMIN);
+      return;
+    }
     fetchUnverified();
   }, [navigate]);
 
@@ -173,7 +177,7 @@ function AdminDashboard() {
 
   const handleLogout = () => {
     sessionStorage.removeItem('admin_auth');
-    navigate('/admin');
+    navigate(ROUTES.ADMIN);
   };
 
   return (
@@ -275,7 +279,6 @@ function AdminDashboard() {
                     </div>
                   </div>
                 )}
-
               </div>
             ))}
           </div>

@@ -14,7 +14,6 @@ load_dotenv(dotenv_path=env_path)
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 
-
 class User(Base):
     __tablename__ = "users"
 
@@ -98,6 +97,7 @@ def update_profile(user_id: str, request, db: Session):
         "first_name": user.first_name,
         "last_name": user.last_name,
         "email": user.email,
+        "profile_pic": user.profile_pic,
     }
 
 
