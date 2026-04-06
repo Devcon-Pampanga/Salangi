@@ -33,8 +33,9 @@ function Register() {
           data: {
             first_name: formData.first_name,
             last_name: formData.last_name,
-          }
-        }
+            role: 'user',
+          },
+        },
       });
       if (error) throw error;
       setSuccess('Account created! Please check your email to verify your account before signing in.');
@@ -134,7 +135,7 @@ function Register() {
           <button
             onClick={handleSubmit}
             disabled={loading}
-            className="w-full bg-[#FFE2A0] hover:bg-[#fcd789] text-[#222222] font-semibold py-3 rounded-lg transition-colors cursor-pointer"
+            className="w-full bg-[#FFE2A0] hover:bg-[#fcd789] text-[#222222] font-semibold py-3 rounded-lg transition-colors cursor-pointer disabled:opacity-60"
           >
             {loading ? 'Signing up...' : 'SIGN UP'}
           </button>

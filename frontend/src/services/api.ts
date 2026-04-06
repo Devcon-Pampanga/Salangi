@@ -1,11 +1,14 @@
 import { supabase } from '@/lib/supabase';
 
-// ── Authentication (Supabase) ────────────────────────────────────────────────
+const BASE_URL = 'http://localhost:8000';
+
+// ── Authentication ────────────────────────────────────────────────────────────
 export async function registerUser(data: {
   first_name: string;
   last_name: string;
   email: string;
   password: string;
+  role?: 'user' | 'business';
 }) {
   const { data: authData, error } = await supabase.auth.signUp({
     email: data.email,
@@ -14,6 +17,7 @@ export async function registerUser(data: {
       data: {
         first_name: data.first_name,
         last_name: data.last_name,
+        role: data.role ?? 'user',
       },
     },
   });
@@ -23,8 +27,6 @@ export async function registerUser(data: {
     user: authData.user,
   };
 }
-
-const BASE_URL = 'http://localhost:8000';
 
 // ── Get live Supabase session token ──────────────────────────────────────────
 async function getToken(): Promise<string> {
@@ -54,7 +56,7 @@ async function authFetch(path: string, options: RequestInit = {}): Promise<any> 
   return text ? JSON.parse(text) : null;
 }
 
-// ── Profile (backend) ─────────────────────────────────────────────────────────
+// ── Profile ───────────────────────────────────────────────────────────────────
 export async function updateProfile(data: {
   first_name?: string;
   last_name?: string;
@@ -66,14 +68,14 @@ export async function updateProfile(data: {
   });
 }
 
-// ── Password (Supabase directly — no backend needed) ─────────────────────────
+// ── Password ──────────────────────────────────────────────────────────────────
 export async function changePassword(newPassword: string) {
   const { error } = await supabase.auth.updateUser({ password: newPassword });
   if (error) throw new Error(error.message);
   return { message: 'Password updated successfully.' };
 }
 
-// ── Delete account (backend removes DB row, Supabase handles auth deletion) ──
+// ── Delete account ────────────────────────────────────────────────────────────
 export async function deleteAccount() {
   return authFetch('/api/auth/delete-account', { method: 'DELETE' });
 }

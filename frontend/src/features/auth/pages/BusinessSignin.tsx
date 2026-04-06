@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import google from '@assets/icons/google-icon.svg';
 import facebook from '@assets/icons/facebook-icon.svg';
@@ -27,13 +27,27 @@ function BusinessSignin() {
         return;
       }
 
+      // Check role — only allow business users
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', data.user.id)
+        .single();
+
+      if (profile?.role !== 'business') {
+        await supabase.auth.signOut();
+        setError('This is not a business account. Please use the regular sign-in page.');
+        return;
+      }
+
       const meta = data.user.user_metadata;
       localStorage.setItem('user', JSON.stringify({
-        user_id:    data.user.id,
-        first_name: meta?.first_name ?? meta?.full_name?.split(' ')[0] ?? '',
-        last_name:  meta?.last_name  ?? meta?.full_name?.split(' ')[1] ?? '',
-        email:      data.user.email,
+        user_id:     data.user.id,
+        first_name:  meta?.first_name ?? meta?.full_name?.split(' ')[0] ?? '',
+        last_name:   meta?.last_name  ?? meta?.full_name?.split(' ')[1] ?? '',
+        email:       data.user.email,
         profile_pic: meta?.avatar_url ?? null,
+        role:        'business',
       }));
 
       navigate('/dashboard/overview');
@@ -64,7 +78,7 @@ function BusinessSignin() {
 
   return (
     <div className="relative bg-[#1a1a1a] flex items-center justify-center px-6 md:px-16 min-h-screen overflow-hidden">
-      
+
       <div className="absolute top-0 left-0 p-6 md:p-10 z-50">
         <button
           onClick={() => navigate(ROUTES.LIST_YOUR_BUSINESS)}
@@ -81,19 +95,18 @@ function BusinessSignin() {
             width: '760px',
             height: '680px',
             transform: 'translate(-250px, -650px)',
-            background: 'radial-gradient(circle, rgba(255,226,160,0.8) 0%, rgba(255,226,160,0.2) 50%, transparent 70%)',
+            background:
+              'radial-gradient(circle, rgba(255,226,160,0.8) 0%, rgba(255,226,160,0.2) 50%, transparent 70%)',
           }}
         />
 
-        {/* Header */}
         <h2 className="font-['Playfair_Display'] text-white text-4xl font-bold mb-2">
           Sign in.
         </h2>
         <p className="text-gray-400 text-sm mb-8">
-          Continue exploring local businesses and experiences.
+          Welcome back. Sign in to manage your business.
         </p>
 
-        {/* Form Fields */}
         <div className="space-y-4">
           <div>
             <label className="text-gray-300 text-sm mb-1 block">Email</label>

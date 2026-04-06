@@ -25,13 +25,27 @@ function Signin() {
         return;
       }
 
+      // Check role — block business users from this page
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', data.user.id)
+        .single();
+
+      if (profile?.role === 'business') {
+        await supabase.auth.signOut();
+        setError('This is a business account. Please sign in at the business portal.');
+        return;
+      }
+
       const meta = data.user.user_metadata;
       localStorage.setItem('user', JSON.stringify({
-        user_id:    data.user.id,
-        first_name: meta?.first_name ?? meta?.full_name?.split(' ')[0] ?? '',
-        last_name:  meta?.last_name  ?? meta?.full_name?.split(' ')[1] ?? '',
-        email:      data.user.email,
+        user_id:     data.user.id,
+        first_name:  meta?.first_name ?? meta?.full_name?.split(' ')[0] ?? '',
+        last_name:   meta?.last_name  ?? meta?.full_name?.split(' ')[1] ?? '',
+        email:       data.user.email,
         profile_pic: meta?.avatar_url ?? null,
+        role:        'user',
       }));
 
       navigate('/home-page');
