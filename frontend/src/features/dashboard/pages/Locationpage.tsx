@@ -44,9 +44,26 @@ function Locationpage() {
   const [selectedListing, setSelectedListing] = useState<Listing>(listing);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [savedIds, setSavedIds] = useState<number[]>([]);
 
   useEffect(() => {
     getListings().then(setListings).catch(console.error);
+  }, []);
+
+  // Fetch user's saved listings
+  useEffect(() => {
+    const fetchSaves = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data, error } = await supabase
+        .from('saves')
+        .select('listing_id')
+        .eq('user_id', user.id);
+      if (!error && data) {
+        setSavedIds(data.map((row: any) => row.listing_id));
+      }
+    };
+    fetchSaves();
   }, []);
 
   useEffect(() => {
@@ -113,6 +130,19 @@ function Locationpage() {
       console.error('fetchReviews unexpected error:', err);
     } finally {
       setReviewsLoading(false);
+    }
+  };
+
+  const toggleSave = async (id: number) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const isSaved = savedIds.includes(id);
+    if (isSaved) {
+      await supabase.from('saves').delete().eq('user_id', user.id).eq('listing_id', id);
+      setSavedIds(prev => prev.filter(savedId => savedId !== id));
+    } else {
+      await supabase.from('saves').insert({ user_id: user.id, listing_id: id });
+      setSavedIds(prev => [...prev, id]);
     }
   };
 
@@ -195,6 +225,8 @@ function Locationpage() {
             reviewsCount={reviews.length}
             reviews={reviews}
             reviewsLoading={reviewsLoading}
+            initialSaved={savedIds.includes(selectedListing.id)}
+            onToggleSave={toggleSave}
             onReviewAdded={() => fetchReviews(selectedListing.id)}
           />
         )}
