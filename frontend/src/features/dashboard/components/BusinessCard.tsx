@@ -63,9 +63,10 @@ function BusinessCard({
   };
 
   const handleCardClick = () => {
-    if (!isBusinessSide) {
-      navigate(ROUTES.LOCATION, { state: { listing } });
+    if (isBusinessSide) {
+      onSelect(listing);
     } else {
+      // On consumer homepage: clicking card just selects/highlights on map
       onSelect(listing);
     }
   };
@@ -223,8 +224,8 @@ function BusinessCard({
             ) : (
               <div className="w-full flex justify-end">
                 <button
-                  onClick={(e) => { 
-                    e.stopPropagation(); 
+                  onClick={(e) => {
+                    e.stopPropagation();
                     navigate(ROUTES.LOCATION, { state: { listing } });
                   }}
                   className="flex items-center justify-center gap-2 px-6 py-3.5 bg-[#FFE2A0] text-[#222222] text-xs font-bold rounded-xl hover:bg-[#ffe8b5] transition-all active:scale-95 cursor-pointer shadow-lg"

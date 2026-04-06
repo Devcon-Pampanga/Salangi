@@ -5,9 +5,10 @@ import sampleImage from '@assets/png-files/imagesample.png';
 import bg from '@assets/images/bg.png';
 import DetailedBusinessCard from '../components/DetailedBusinessCard';
 import SearchBar from '../components/SearchBar';
+import type { FilterOptions } from '../components/SearchBar';
 import MapView from '../../../map/MapView';
 import type { Listing } from '../../Data/Listings';
-import { getListings } from '../../Data/Listings';
+import { getListings, getAverageRatings } from '../../Data/Listings';
 import { supabase } from '@/lib/supabase';
 
 interface Review {
@@ -40,14 +41,21 @@ function Locationpage() {
   const listing: Listing = state?.listing ?? DEFAULT_LISTING;
 
   const [listings, setListings] = useState<Listing[]>([]);
+  const [averageRatings, setAverageRatings] = useState<Record<number, number>>({});
   const [searchQuery, setSearchQuery] = useState('');
+  const [filters, setFilters] = useState<FilterOptions>({ minRating: null, sortBy: 'default' });
   const [selectedListing, setSelectedListing] = useState<Listing>(listing);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [savedIds, setSavedIds] = useState<number[]>([]);
 
   useEffect(() => {
-    getListings().then(setListings).catch(console.error);
+    Promise.all([getListings(), getAverageRatings()])
+      .then(([listingsData, ratingsData]) => {
+        setListings(listingsData);
+        setAverageRatings(ratingsData);
+      })
+      .catch(console.error);
   }, []);
 
   // Fetch user's saved listings
@@ -154,14 +162,24 @@ function Locationpage() {
     setSearchQuery(e.target.value);
   };
 
-  const searchResults = searchQuery.trim().length > 0
-    ? listings.filter((item: Listing) =>
-        item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.location.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : [];
-
   const isSearching = searchQuery.trim().length > 0;
+
+  // Apply search + filters together
+  const searchResults = isSearching
+    ? listings
+        .filter((item: Listing) =>
+          item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          item.location.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+        .filter((item: Listing) =>
+          filters.minRating === null || (averageRatings[item.id] ?? 0) >= filters.minRating
+        )
+        .sort((a, b) => {
+          if (filters.sortBy === 'az') return a.name.localeCompare(b.name);
+          if (filters.sortBy === 'za') return b.name.localeCompare(a.name);
+          return 0;
+        })
+    : [];
 
   return (
     <div className="flex h-full w-full bg-[#1A1A1A] text-[#FBFAF8] overflow-hidden">
@@ -180,6 +198,8 @@ function Locationpage() {
             value={searchQuery}
             onChange={handleSearchChange}
             placeholder="Search local spots..."
+            onFilterChange={setFilters}
+            filters={filters}
           />
         </div>
 
@@ -197,6 +217,15 @@ function Locationpage() {
                       <p className="text-sm font-semibold text-[#FBFAF8]">{item.name}</p>
                       <p className="text-xs text-[#FBFAF8]/50">{item.location}</p>
                     </div>
+                    {/* Show average rating in search results if available */}
+                    {averageRatings[item.id] != null && (
+                      <div className="flex items-center gap-1 shrink-0">
+                        <span className="text-[#FFE2A0] text-xs">★</span>
+                        <span className="text-[#FBFAF8]/50 text-xs">
+                          {averageRatings[item.id].toFixed(1)}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
