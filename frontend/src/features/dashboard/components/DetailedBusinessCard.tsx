@@ -43,6 +43,7 @@ interface DetailedBusinessCardProps {
   reviewsLoading?: boolean;
   isVerified?: boolean;
   initialSaved?: boolean;
+  onToggleSave?: (id: number) => void;
   onReviewAdded?: () => void;
 }
 
@@ -63,6 +64,7 @@ function DetailedBusinessCard({
   reviewsLoading = false,
   isVerified = false,
   initialSaved = false,
+  onToggleSave,
   onReviewAdded,
 }: DetailedBusinessCardProps) {
   const [isSaved, setIsSaved] = useState(initialSaved);
@@ -82,6 +84,25 @@ function DetailedBusinessCard({
     setCurrentIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
   };
 
+  const handleToggleSave = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onToggleSave) {
+      // Use parent-controlled save (Locationpage)
+      onToggleSave(listingId);
+      setIsSaved(prev => !prev);
+    } else {
+      // Fallback: handle save directly
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      if (isSaved) {
+        await supabase.from('saves').delete().eq('user_id', user.id).eq('listing_id', listingId);
+      } else {
+        await supabase.from('saves').insert({ user_id: user.id, listing_id: listingId });
+      }
+      setIsSaved(prev => !prev);
+    }
+  };
+
   const handleAddReview = async (rating: number, comment: string) => {
     setSubmitting(true);
     setReviewError(null);
@@ -89,9 +110,9 @@ function DetailedBusinessCard({
       const { data: { user } } = await supabase.auth.getUser();
 
       if (!user) {
-      setReviewError('You must be logged in to leave a review.');
-      setSubmitting(false);
-      return;
+        setReviewError('You must be logged in to leave a review.');
+        setSubmitting(false);
+        return;
       }
 
       const { error } = await supabase.from('reviews').insert({
@@ -107,8 +128,8 @@ function DetailedBusinessCard({
       onReviewAdded?.();
     } catch (err: any) {
       setReviewError('Failed to submit review. Please try again.');
-    }  finally {
-    setSubmitting(false);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -124,10 +145,7 @@ function DetailedBusinessCard({
         {/* Heart Icon */}
         <div className="absolute top-4 left-4 z-30">
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsSaved(!isSaved);
-            }}
+            onClick={handleToggleSave}
             className="flex items-center justify-center w-10 h-10 bg-[#222222]/80 backdrop-blur-sm rounded-full z-20 cursor-pointer hover:scale-110 active:scale-95 shadow-lg border border-white/10"
           >
             <img src={isSaved ? heartActive : heartInactive} width="20" alt="heart" />

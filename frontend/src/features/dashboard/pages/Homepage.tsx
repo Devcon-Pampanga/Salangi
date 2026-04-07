@@ -78,6 +78,7 @@ function Homepage() {
     return result;
   }, [listings, activeCategory, searchQuery, filters, averageRatings]);
 
+  // Card click: just highlight on map, do NOT navigate
   const handleCardSelect = (listing: Listing): void => {
     setSelectedListing((prev: Listing | null) =>
       prev?.id === listing.id ? null : listing

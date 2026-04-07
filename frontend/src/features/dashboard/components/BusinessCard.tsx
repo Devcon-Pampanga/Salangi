@@ -22,11 +22,10 @@ interface BusinessCardProps {
   onDelete?: (id: number) => void;
 }
 
-// ── Placeholder shown when a listing has no images ────────────────────────────
 function NoImagePlaceholder({ name }: { name: string }) {
   return (
     <div className="w-full h-full flex flex-col items-center justify-center bg-[#2D2D2D] gap-3">
-      <span className="text-5xl">🏪</span>
+      <span className="text-5xl">🪧</span>
       <p className="text-[#FBFAF8]/30 text-xs text-center px-4">
         No photos yet for<br />
         <span className="text-[#FBFAF8]/50 font-medium">{name}</span>
@@ -63,10 +62,19 @@ function BusinessCard({
     setCurrentIndex((prev) => (prev === 0 ? listing.images.length - 1 : prev - 1));
   };
 
+  const handleCardClick = () => {
+    if (isBusinessSide) {
+      onSelect(listing);
+    } else {
+      // On consumer homepage: clicking card just selects/highlights on map
+      onSelect(listing);
+    }
+  };
+
   return (
     <div
       id={`listing-card-${listing.id}`}
-      onClick={() => onSelect(listing)}
+      onClick={handleCardClick}
       className={`w-full max-w-120 bg-[#333333] rounded-xl cursor-pointer overflow-hidden shrink-0 transition-all duration-200 border border-zinc-800/50 ${
         isSelected
           ? 'ring-2 ring-[#FFE2A0] shadow-xl shadow-[#FFE2A0]/5'
@@ -115,7 +123,7 @@ function BusinessCard({
               <NoImagePlaceholder name={listing.name} />
             )}
 
-            {/* Prev / Next arrows — only if multiple valid images */}
+            {/* Prev / Next arrows */}
             {hasImages && !imgError && listing.images.length > 1 && (
               <>
                 <button
@@ -207,7 +215,6 @@ function BusinessCard({
                 <button 
                   onClick={(e) => {
                     e.stopPropagation();
-                    // Potential navigation to analytics
                   }}
                   className="flex-1 py-3.5 bg-[#FFE2A0] text-[#222222] text-xs font-bold rounded-xl hover:bg-[#ffe8b5] transition-all active:scale-95 cursor-pointer shadow-lg"
                 >
@@ -217,9 +224,9 @@ function BusinessCard({
             ) : (
               <div className="w-full flex justify-end">
                 <button
-                  onClick={(e) => { 
-                    e.stopPropagation(); 
-                    onSelect(listing); 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(ROUTES.LOCATION, { state: { listing } });
                   }}
                   className="flex items-center justify-center gap-2 px-6 py-3.5 bg-[#FFE2A0] text-[#222222] text-xs font-bold rounded-xl hover:bg-[#ffe8b5] transition-all active:scale-95 cursor-pointer shadow-lg"
                 >
