@@ -10,6 +10,9 @@ import { getListings, getAverageRatings, CATEGORIES } from '../../Data/Listings'
 import type { Listing, Category } from '../../Data/Listings';
 
 import CategoryFilters from '../components/CategoryFilters';
+import { Menu, X, Settings, LogOut } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import SettingsPage from '../../settings/pages/SettingsPage';
 
 function Homepage() {
   const navigate = useNavigate();
@@ -22,6 +25,15 @@ function Homepage() {
   const [savedIds, setSavedIds]               = useState<number[]>([]);
   const [averageRatings, setAverageRatings]   = useState<Record<number, number>>({});
   const [filters, setFilters]                 = useState<FilterOptions>({ minRating: null, sortBy: 'default' });
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen]   = useState(false);
+
+  const handleLogout = async () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    await supabase.auth.signOut();
+    navigate(ROUTES.SIGN_IN);
+  };
 
   useEffect(() => {
     Promise.all([getListings(), getAverageRatings()])
@@ -103,7 +115,7 @@ function Homepage() {
   return (
     <div className="relative w-full h-full bg-[#1A1A1A] text-[#FBFAF8] overflow-hidden">
       <div
-        className="absolute top-0 left-0 rounded-full blur-3xl opacity-60 pointer-events-none"
+        className="absolute top-0 left-0 rounded-full blur-3xl opacity-60 pointer-events-none hidden md:block"
         style={{
           width: '760px',
           height: '680px',
@@ -112,12 +124,87 @@ function Homepage() {
         }}
       />
 
-      <div className="relative z-10 h-full flex px-6 py-6 gap-6">
+      <div className="relative z-10 h-full flex flex-col md:flex-row px-4 py-4 md:px-6 md:py-6 gap-4 md:gap-6 overflow-y-auto md:overflow-hidden">
+
+        {/* ── MOBILE TOP BAR & MENU ── */}
+        <div className="md:hidden flex items-center justify-between w-full shrink-0 relative z-50 order-first">
+          <button 
+            onClick={() => setIsMobileMenuOpen(true)}
+            className="p-2 -ml-2 text-[#FFE2A0] hover:bg-[#FFE2A0]/10 rounded-lg transition-colors cursor-pointer"
+          >
+            <Menu size={28} />
+          </button>
+        </div>
+
+        {/* Mobile Slide-Out Menu */}
+        {isMobileMenuOpen && createPortal(
+          <div className="fixed inset-0 z-9999 bg-[#1A1A1A] p-6 flex flex-col gap-8 md:hidden">
+            <div className="flex justify-between items-center shrink-0">
+              <h2 className="text-[#FFE2A0] font-['Playfair_Display'] text-2xl">Menu</h2>
+              <button 
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="p-2 -mr-2 text-[#FBFAF8]/70 hover:text-[#FFE2A0] rounded-lg transition-colors cursor-pointer"
+              >
+                <X size={28} />
+              </button>
+            </div>
+            
+            <div className="flex flex-col gap-6 flex-1">
+              <div className="flex flex-col gap-2">
+                <p className="text-[#FBFAF8]/50 text-xs font-semibold uppercase tracking-wider">Search Spots</p>
+                <SearchBar
+                  placeholder="Explore local spots"
+                  value={searchQuery}
+                  onChange={(e) => handleSearchChange(e)}
+                  className="py-3 w-full"
+                  containerClassName="w-full shadow-lg"
+                  onFilterChange={setFilters}
+                  filters={filters}
+                />
+              </div>
+
+              <div className="h-px w-full bg-[#373737]/50" />
+
+              <button
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  navigate(ROUTES.LIST_YOUR_BUSINESS);
+                }}
+                className="flex items-center justify-center gap-2 px-4 py-3.5 bg-[#FFE2A0] text-[#1A1A1A] rounded-xl font-bold text-md w-full shadow-lg active:scale-95 transition-all cursor-pointer"
+              >
+                List Your Business
+              </button>
+              
+              <button
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  setIsSettingsOpen(true);
+                }}
+                className="flex items-center justify-center gap-3 px-4 py-3.5 bg-[#373737] text-[#FBFAF8] rounded-xl font-semibold text-md w-full shadow-lg active:scale-95 transition-all cursor-pointer"
+              >
+                <Settings size={20} className="text-[#FFE2A0]" />
+                Settings
+              </button>
+
+              <button
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  handleLogout();
+                }}
+                className="flex items-center justify-center gap-3 px-4 py-3.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl font-semibold text-md w-full shadow-lg active:scale-95 transition-all cursor-pointer mt-auto"
+              >
+                <LogOut size={20} className="opacity-90" />
+                Log out
+              </button>
+            </div>
+          </div>,
+          document.body
+        )}
 
         {/* ── LEFT COLUMN ── */}
-        <div className="h-full flex flex-col overflow-hidden shrink-0" style={{ width: '480px' }}>
-          <div className="shrink-0">
-            <h1 className="font-['Playfair_Display'] text-3xl leading-tight mb-5">
+        <div className="flex flex-col shrink-0 w-full md:w-[480px] md:h-full overflow-visible md:overflow-hidden order-2 md:order-1">
+          <div className="shrink-0 mb-4 md:mb-0">
+            <h1 className="font-['Playfair_Display'] text-2xl md:text-3xl leading-tight mb-5 mt-4 md:mt-0">
               Discover the <span className="text-[#FFE2A0]">heart</span> of Pampanga.
             </h1>
             <CategoryFilters
@@ -128,7 +215,7 @@ function Homepage() {
           </div>
 
           <div
-            className="flex-1 overflow-y-auto flex flex-col gap-6 pb-10 pr-2 pl-1 pt-1"
+            className="flex-none md:flex-1 md:overflow-y-auto flex flex-col gap-4 md:gap-6 pb-10 pr-1 md:pr-2 pl-1 pt-1"
             style={{ scrollbarWidth: 'none' }}
           >
             {isLoading ? (
@@ -158,26 +245,26 @@ function Homepage() {
         </div>
 
         {/* ── RIGHT COLUMN ── */}
-        <div className="flex-1 flex flex-col overflow-visible min-w-0 relative z-50">
-          <div className="flex items-center justify-end gap-3 shrink-0">
+        <div className="hidden md:flex flex-col flex-none md:flex-1 w-full overflow-visible min-w-0 relative z-50 order-1 md:order-2 space-y-4 md:space-y-0">
+          <div className="flex flex-col md:flex-row items-stretch md:items-center justify-end gap-3 shrink-0">
             <SearchBar
               placeholder="Explore local spots"
               value={searchQuery}
               onChange={handleSearchChange}
-              className="py-1"
-              containerClassName="w-80"
+              className="py-1 w-full"
+              containerClassName="w-full md:w-80"
               onFilterChange={setFilters}
               filters={filters}
             />
             <button
               onClick={() => navigate(ROUTES.LIST_YOUR_BUSINESS)}
-              className="flex items-center gap-2 px-4 py-3 bg-[#FFE2A0] text-[#1A1A1A] rounded-lg font-semibold text-sm whitespace-nowrap cursor-pointer hover:bg-[#f5d880] transition-colors"
+              className="flex items-center justify-center gap-2 px-4 py-3 bg-[#FFE2A0] text-[#1A1A1A] rounded-lg font-semibold text-sm whitespace-nowrap cursor-pointer hover:bg-[#f5d880] transition-colors w-full md:w-auto"
             >
               List Your Business
             </button>
           </div>
 
-          <div className="flex-1 min-h-0 mt-2">
+          <div className="hidden md:block w-full h-[300px] md:h-auto md:flex-1 md:mt-2">
             <div className="w-full h-full rounded-2xl overflow-hidden">
               <MapView
                 listings={filteredListings}
@@ -189,6 +276,11 @@ function Homepage() {
         </div>
 
       </div>
+
+      {isSettingsOpen && createPortal(
+        <SettingsPage onClose={() => setIsSettingsOpen(false)} />,
+        document.body
+      )}
     </div>
   );
 }

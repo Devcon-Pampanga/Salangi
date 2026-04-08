@@ -73,8 +73,8 @@ function Savepage() {
 
   return (
     <div className="flex h-screen w-full bg-[#1A1A1A] text-[#F8FAF8] overflow-hidden font-sans">
-      <main className="flex-1 relative flex flex-col overflow-hidden px-10 pt-10">
-        <div className="flex justify-between items-center mb-8 z-10 gap-4">
+      <main className="flex-1 relative flex flex-col overflow-hidden px-4 md:px-10 pt-6 md:pt-10">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 md:mb-8 z-10 gap-4 w-full shrink-0">
           <CategoryFilters
             activeCategory={activeCategory}
             onCategoryChange={setActiveCategory}
@@ -82,7 +82,8 @@ function Savepage() {
           <SearchBar
             glass
             searchIcon={search}
-            className="w-110 py-3"
+            className="w-full md:w-110 py-3"
+            containerClassName="w-full md:w-auto"
             placeholder="Search your saved spots"
             value={searchQuery}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}

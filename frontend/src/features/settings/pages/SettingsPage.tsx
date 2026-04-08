@@ -10,7 +10,7 @@ interface SettingsPageProps {
 
 function Toast({ message, type }: { message: string; type: 'success' | 'error' }) {
   return (
-    <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-2.5 px-5 py-3 rounded-xl shadow-2xl text-sm font-medium animate-in fade-in slide-in-from-bottom-4 duration-300 whitespace-nowrap ${
+    <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-200 flex items-center gap-2.5 px-5 py-3 rounded-xl shadow-2xl text-sm font-medium animate-in fade-in slide-in-from-bottom-4 duration-300 whitespace-nowrap ${
       type === 'success' ? 'bg-[#FFE2A0] text-[#1A1A1A]' : 'bg-red-500 text-white'
     }`}>
       {type === 'success' ? <Check size={15} /> : <AlertCircle size={15} />}
@@ -217,25 +217,21 @@ const SettingsPage = ({ onClose }: SettingsPageProps) => {
 
   return (
     <>
-      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 md:p-10 bg-black/70 backdrop-blur-sm cursor-default animate-in fade-in duration-200">
-        <div className="flex w-full max-w-4xl h-[90vh] md:h-[85vh] bg-[#222222] rounded-2xl md:rounded-3xl overflow-hidden shadow-2xl border border-zinc-800 animate-in zoom-in-95 duration-200">
-
-          {/* Sidebar */}
-          <div className="w-16 md:w-60 bg-[#1A1A1A] border-r border-zinc-800/80 p-3 md:p-6 flex flex-col gap-6 shrink-0">
-            <button onClick={onClose} className="w-10 h-10 flex items-center justify-center hover:bg-zinc-800 rounded-xl transition-colors cursor-pointer" aria-label="Close settings">
-              <X size={18} className="text-zinc-400" />
-            </button>
-            <nav className="flex flex-col gap-1">
-              <button className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-zinc-800 text-white cursor-default">
-                <User size={16} className="text-[#FFE2A0] shrink-0" />
-                <span className="text-sm font-medium hidden md:block">Account</span>
-              </button>
-            </nav>
-          </div>
+      <div className="fixed inset-0 z-9999 flex items-center justify-center p-4 md:p-10 bg-black/70 backdrop-blur-sm cursor-default animate-in fade-in duration-200">
+        <div className="flex flex-col w-full max-w-2xl h-[90vh] md:h-[85vh] md:max-h-[700px] bg-[#222222] rounded-2xl md:rounded-3xl overflow-hidden shadow-2xl border border-zinc-800 animate-in zoom-in-95 duration-200 relative">
+          
+          <button onClick={onClose} className="absolute top-4 right-4 md:top-5 md:right-5 w-9 h-9 flex items-center justify-center bg-zinc-800/50 hover:bg-zinc-700 rounded-full transition-colors cursor-pointer z-50" aria-label="Close settings">
+            <X size={16} className="text-zinc-300" />
+          </button>
 
           {/* Main Content */}
           <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
-            <div className="p-6 md:p-10 max-w-lg">
+            <div className="p-8 md:p-10 w-full pt-12 md:pt-10">
+              
+              <div className="mb-10">
+                <h2 className="text-[#FFE2A0] font-['Playfair_Display'] text-3xl">Account Settings</h2>
+                <p className="text-zinc-500 text-sm mt-1">Manage your account information and preferences.</p>
+              </div>
 
               {/* Profile Picture */}
               <div className="mb-10">

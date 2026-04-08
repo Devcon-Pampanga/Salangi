@@ -23,10 +23,9 @@ interface NavItemProps {
   activeIcon: string;
   alt: string;
   isEnd?: boolean;
-  className?: string;
 }
 
-const NavItem = ({ to, defaultIcon, activeIcon, alt, isEnd = false, className = "w-13 h-13 rounded-lg" }: NavItemProps) => {
+const NavItem = ({ to, defaultIcon, activeIcon, alt, isEnd = false }: NavItemProps) => {
   const [isHovered, setIsHovered] = useState(false);
 
   return (
@@ -37,7 +36,7 @@ const NavItem = ({ to, defaultIcon, activeIcon, alt, isEnd = false, className = 
           <div
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
-            className={`flex items-center justify-center transition-all duration-200 border ${className} ${
+            className={`flex items-center justify-center transition-all duration-200 border w-12 h-12 md:w-14 md:h-14 rounded-xl ${
               showActive ? 'bg-[#222222]' : 'bg-transparent border-transparent'
             } ${isHovered ? 'border-[#FFE2A0]' : 'border-transparent'}`}
           >
@@ -110,7 +109,7 @@ export function Navigator() {
   const AvatarButton = ({ onClick, className }: { onClick?: () => void; className?: string }) => (
     <button
       onClick={onClick}
-      className={`h-15 w-15 bg-[#2E2E2E] rounded-lg cursor-pointer flex items-center justify-center overflow-hidden transition-all hover:bg-[#222222] ${className}`}
+      className={`h-11 w-11 md:h-14 md:w-14 bg-[#2E2E2E] rounded-lg cursor-pointer flex items-center justify-center overflow-hidden transition-all hover:bg-[#222222] ${className}`}
     >
       {displayName.avatarUrl ? (
         <img src={displayName.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
@@ -121,11 +120,11 @@ export function Navigator() {
   );
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex flex-col-reverse md:flex-row h-screen overflow-hidden">
 
-      {/* Sidebar */}
-      <div className="bg-[#373737] w-20 p-3 flex flex-col justify-between items-center h-full shrink-0 relative">
-        <div>
+      {/* Sidebar / Bottom Nav */}
+      <div className="bg-[#373737] w-full h-[72px] md:w-20 md:h-full p-2 md:p-3 flex flex-row md:flex-col justify-between items-center shrink-0 relative z-50">
+        <div className="hidden md:block">
           <button
             onClick={() => navigate('/home-page')}
             className="cursor-pointer flex items-center justify-center hover:opacity-80 transition-opacity duration-200"
@@ -134,7 +133,7 @@ export function Navigator() {
           </button>
         </div>
 
-        <div className="flex flex-col items-center py-10 gap-6">
+        <div className="flex flex-row md:flex-col items-center justify-center gap-6 md:gap-8 w-full md:w-auto px-4 md:px-0">
           <NavItem
             to={ROUTES.HOME}
             defaultIcon={homeBtn}
@@ -147,22 +146,20 @@ export function Navigator() {
             defaultIcon={locBtn}
             activeIcon={locBtnSelected}
             alt="Location"
-            className="w-12 h-12 rounded-xl"
           />
           <NavItem
             to={ROUTES.SAVE}
             defaultIcon={saveBtn}
             activeIcon={saveBtnSelected}
             alt="Save"
-            className="w-12 h-12 rounded-xl"
           />
         </div>
 
-        <div className="relative">
+        <div className="relative pr-4 md:pr-0 hidden md:block">
           {isMenuOpen && (
             <div
               ref={menuRef}
-              className="absolute bottom-18 left-0 w-64 bg-[#2D2D2D] rounded-2xl shadow-2xl border border-zinc-700/50 py-3 px-3 z-50 flex flex-col gap-1 transition-all"
+              className="absolute bottom-16 md:bottom-18 right-4 md:-right-4 md:translate-x-full w-64 bg-[#2D2D2D] rounded-2xl shadow-2xl border border-zinc-700/50 py-3 px-3 z-50 flex flex-col gap-1 transition-all"
             >
               <div className="flex items-center gap-3 p-2 py-3">
                 {/* Mini avatar in menu */}
