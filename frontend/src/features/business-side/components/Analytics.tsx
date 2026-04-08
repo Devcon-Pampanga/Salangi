@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { HiOutlineCursorClick } from "react-icons/hi";
 import StatsCard from "./StatsCard";
-import { supabase } from "../../../lib/supabase"; // adjust path as needed
-import { useAuth } from "../../../hooks/useAuth"; // adjust path as needed
+import { supabase } from "../../../lib/supabase";
+import { useAuth } from "../../../hooks/useAuth";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface DayPoint {
@@ -64,22 +64,23 @@ const EmptyState = () => (
 const EngagementChart = ({ data }: { data: DayPoint[] }) => {
     const [hoveredNode, setHoveredNode] = useState<number | null>(null);
 
-    if (data.length === 0) return <EmptyState />;
+    // ✅ FIX: Show empty state if all values are 0 or there's only 1 data point
+    const hasActivity = data.some(d => d.val > 0);
+    if (data.length === 0 || !hasActivity) return <EmptyState />;
 
-    // Build SVG path from data points
     const svgWidth = 1000;
     const svgHeight = 400;
     const padX = 40;
     const padY = 40;
 
     const vals = data.map((d) => d.val);
-    const minVal = Math.min(...vals);
+    const minVal = 0; // ✅ FIX: always anchor the bottom at 0, never at minVal
     const maxVal = Math.max(...vals);
     const range = maxVal - minVal || 1;
 
     const points = data.map((d, i) => ({
         ...d,
-        sx: padX + (i / (data.length - 1)) * (svgWidth - padX * 2),
+        sx: padX + (i / Math.max(data.length - 1, 1)) * (svgWidth - padX * 2),
         sy: svgHeight - padY - ((d.val - minVal) / range) * (svgHeight - padY * 2),
     }));
 
@@ -92,6 +93,9 @@ const EngagementChart = ({ data }: { data: DayPoint[] }) => {
     }, "");
 
     const fillD = `${pathD} L${points[points.length - 1].sx},${svgHeight} L${points[0].sx},${svgHeight} Z`;
+
+    // ✅ FIX: Only render visible (labelled) points to avoid clutter
+    const visiblePoints = points.filter(pt => pt.day !== "");
 
     return (
         <div className="flex-1 w-full h-full flex flex-col pt-4 relative group/chart">
@@ -157,7 +161,7 @@ const EngagementChart = ({ data }: { data: DayPoint[] }) => {
                         }}
                     >
                         <p className="text-[#a0a0a0] text-[10px] uppercase font-bold tracking-widest mb-1">
-                            {data[hoveredNode].day}
+                            {data[hoveredNode].day || points[hoveredNode].day}
                         </p>
                         <p className="text-white text-lg font-bold">
                             {data[hoveredNode].val.toLocaleString()}{" "}
@@ -167,16 +171,18 @@ const EngagementChart = ({ data }: { data: DayPoint[] }) => {
                 )}
             </div>
 
-            {/* X-axis labels */}
+            {/* X-axis labels — only show labelled points */}
             <div className="flex justify-between items-center mt-6 px-4 pb-2 border-t border-[#4d4d4d] pt-4">
-                {data.map((d, i) => (
+                {visiblePoints.map((pt, i) => (
                     <span
                         key={i}
                         className={`text-[10px] font-bold uppercase tracking-widest transition-colors duration-200 ${
-                            hoveredNode === i ? "text-[#FFE2A0]" : "text-[#a0a0a0]"
+                            hoveredNode !== null && points[hoveredNode]?.day === pt.day
+                                ? "text-[#FFE2A0]"
+                                : "text-[#a0a0a0]"
                         }`}
                     >
-                        {d.day}
+                        {pt.day}
                     </span>
                 ))}
             </div>
@@ -203,6 +209,7 @@ const Analytics = () => {
         attendanceTrend: "—",
     });
 
+    // ✅ FIX: activeFilter added to useCallback dependencies
     const fetchAnalytics = useCallback(async () => {
         if (!user?.id) return;
         setLoading(true);
@@ -211,7 +218,6 @@ const Analytics = () => {
         const currentStart = getDaysAgo(days);
         const previousStart = getDaysAgo(days * 2);
 
-        // 1. Get all listings for this user
         const { data: listings } = await supabase
             .from("listings")
             .select("id, name")
@@ -242,7 +248,6 @@ const Analytics = () => {
             return;
         }
 
-        // ── 2. listing_interactions (current & previous period) ───────────────
         const [
             { data: currInteractions },
             { data: prevInteractions },
@@ -265,7 +270,6 @@ const Analytics = () => {
         const prevViews   = (prevInteractions ?? []).filter((r: any) => r.type === "view").length;
         const prevActions = (prevInteractions ?? []).filter((r: any) => r.type !== "view").length;
 
-        // ── 3. Saves ──────────────────────────────────────────────────────────
         const [{ count: currSaves }, { count: prevSaves }] = await Promise.all([
             supabase
                 .from("saves")
@@ -280,7 +284,6 @@ const Analytics = () => {
                 .lt("created_at", currentStart),
         ]);
 
-        // ── 4. Event attendance (count of events linked to user's listings) ───
         const [{ count: currAttendance }, { count: prevAttendance }] = await Promise.all([
             supabase
                 .from("events")
@@ -306,7 +309,7 @@ const Analytics = () => {
             attendanceTrend: formatTrend(currAttendance ?? 0, prevAttendance ?? 0),
         });
 
-        // ── 5. Build chart data: interactions grouped by day ──────────────────
+        // Build chart data
         const grouped: Record<string, number> = {};
         (currInteractions ?? []).forEach((row: any) => {
             const dateKey = new Date(row.created_at).toLocaleDateString("en-US", {
@@ -316,32 +319,31 @@ const Analytics = () => {
             grouped[dateKey] = (grouped[dateKey] ?? 0) + 1;
         });
 
-        // Fill every day in the range (so gaps show as 0)
         const allDays: DayPoint[] = [];
         for (let i = days - 1; i >= 0; i--) {
             const d = new Date();
             d.setDate(d.getDate() - i);
             const label = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
-            // For readability, only label every N-th day depending on timeframe
             const skipFactor = days <= 7 ? 1 : days <= 30 ? 5 : days <= 90 ? 10 : 30;
             const showLabel = i % skipFactor === 0 || i === 0 || i === days - 1;
 
             allDays.push({
                 day: showLabel ? label : "",
                 val: grouped[label] ?? 0,
-                x: 0, // unused – chart recomputes from index
+                x: 0,
                 y: 0,
             });
         }
 
         setChartData(allDays);
         setLoading(false);
-    }, [user?.id, timeframe]);
+    // ✅ FIX: activeFilter is now in the dependency array
+    }, [user?.id, timeframe, activeFilter]);
 
     useEffect(() => {
         fetchAnalytics();
-    }, [fetchAnalytics, activeFilter]);
+    }, [fetchAnalytics]);
 
     return (
         <div className="w-full h-full pb-10">
