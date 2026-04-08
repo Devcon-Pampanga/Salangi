@@ -96,19 +96,20 @@ function App() {
         <Route
           path={ROUTES.DASHBOARD}
           element={
-            <ProtectedRoute session={session} redirectPath={ROUTES.BUSINESS_SIGNIN}>
-              <Dashboard />
-            </ProtectedRoute>
-          }
-        >
-          <Route path={ROUTES.DASHBOARD_REL.OVERVIEW} element={<Overview />} />
-          <Route path={ROUTES.DASHBOARD_REL.MY_BUSINESS} element={<MyBusiness />} />
-          <Route path={ROUTES.DASHBOARD_REL.EVENTS} element={<Events />} />
-          <Route path={ROUTES.DASHBOARD_REL.REVIEWS} element={<Reviews />} />
-          <Route path={ROUTES.DASHBOARD_REL.ANALYTICS} element={<Analytics />} />
-          <Route path={ROUTES.DASHBOARD_REL.GALLERY} element={<Gallery />} />
-          <Route path={ROUTES.DASHBOARD_REL.SETTINGS} element={<Settings />} />
-        </Route>
+          <ProtectedRoute session={session} redirectPath={ROUTES.BUSINESS_SIGNIN}>
+            <Dashboard />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<Navigate to={ROUTES.DASHBOARD_REL.OVERVIEW} replace />} />
+        <Route path={ROUTES.DASHBOARD_REL.OVERVIEW} element={<Overview />} />
+        <Route path={ROUTES.DASHBOARD_REL.MY_BUSINESS} element={<MyBusiness />} />
+        <Route path={ROUTES.DASHBOARD_REL.EVENTS} element={<Events />} />
+        <Route path={ROUTES.DASHBOARD_REL.REVIEWS} element={<Reviews />} />
+        <Route path={ROUTES.DASHBOARD_REL.ANALYTICS} element={<Analytics />} />
+        <Route path={ROUTES.DASHBOARD_REL.GALLERY} element={<Gallery />} />
+        <Route path={ROUTES.DASHBOARD_REL.SETTINGS} element={<Settings />} />
+      </Route>
 
         {/* Protected routes / Main Application Layout */}
         <Route

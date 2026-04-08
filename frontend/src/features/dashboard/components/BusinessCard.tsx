@@ -87,8 +87,25 @@ function BusinessCard({
     setCurrentIndex((prev) => (prev === 0 ? galleryImages.length - 1 : prev - 1));
   };
 
+  // ✅ Track a view when the card is clicked/selected (consumer side only)
   const handleCardClick = () => {
     onSelect(listing);
+    if (!isBusinessSide) {
+      supabase.from('listing_interactions').insert({
+        listing_id: listing.id,
+        type: 'view',
+      });
+    }
+  };
+
+  // ✅ Track directions when "Show in maps" is clicked
+  const handleShowInMaps = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    await supabase.from('listing_interactions').insert({
+      listing_id: listing.id,
+      type: 'directions',
+    });
+    navigate(ROUTES.LOCATION, { state: { listing } });
   };
 
   return (
@@ -129,7 +146,6 @@ function BusinessCard({
             <NoImagePlaceholder name={listing.name} />
           )}
 
-          {/* Prev / Next arrows */}
           {hasImages && !imgError && galleryImages.length > 1 && (
             <>
               <button
@@ -147,7 +163,6 @@ function BusinessCard({
             </>
           )}
 
-          {/* Dot indicators */}
           {hasImages && !imgError && galleryImages.length > 1 && (
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
               {galleryImages.map((_, idx) => (
@@ -161,7 +176,6 @@ function BusinessCard({
             </div>
           )}
 
-          {/* Image count badge */}
           {hasImages && !imgError && galleryImages.length > 1 && (
             <div className="absolute top-3 right-3 bg-[#222222]/70 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-full z-20">
               {currentIndex + 1} / {galleryImages.length}
@@ -230,11 +244,9 @@ function BusinessCard({
             </div>
           ) : (
             <div className="w-full flex justify-end">
+              {/* ✅ Now uses handleShowInMaps instead of inline navigate */}
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  navigate(ROUTES.LOCATION, { state: { listing } });
-                }}
+                onClick={handleShowInMaps}
                 className="flex items-center justify-center gap-2 px-6 py-3.5 bg-[#FFE2A0] text-[#222222] text-xs font-bold rounded-xl hover:bg-[#ffe8b5] transition-all active:scale-95 cursor-pointer shadow-lg"
               >
                 <img src={locBtn} width="14" alt="show" />

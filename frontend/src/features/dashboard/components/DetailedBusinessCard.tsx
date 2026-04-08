@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import locBtnSelected from '@assets/icons/map-btn-active.svg';
+import locBtn from '@assets/icons/map-btn-default.svg';
 import verifiedIcon from '@assets/icons/verified-btn.svg';
 import heartInactive from '@assets/icons/save-btn-inactive.svg';
 import heartActive from '@assets/icons/save-btn-active.svg';
@@ -43,6 +44,8 @@ interface DetailedBusinessCardProps {
   reviewsLoading?: boolean;
   isVerified?: boolean;
   initialSaved?: boolean;
+  lat?: number;
+  lng?: number;
   onToggleSave?: (id: number) => void;
   onReviewAdded?: () => void;
 }
@@ -64,6 +67,8 @@ function DetailedBusinessCard({
   reviewsLoading = false,
   isVerified = false,
   initialSaved = false,
+  lat,
+  lng,
   onToggleSave,
   onReviewAdded,
 }: DetailedBusinessCardProps) {
@@ -73,6 +78,14 @@ function DetailedBusinessCard({
   const [submitting, setSubmitting] = useState(false);
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
   const [reviewError, setReviewError] = useState<string | null>(null);
+
+  // ✅ Track a view when this detailed card is opened
+  useEffect(() => {
+    supabase.from('listing_interactions').insert({
+      listing_id: listingId,
+      type: 'view',
+    });
+  }, [listingId]);
 
   const nextImage = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -87,11 +100,9 @@ function DetailedBusinessCard({
   const handleToggleSave = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (onToggleSave) {
-      // Use parent-controlled save (Locationpage)
       onToggleSave(listingId);
       setIsSaved(prev => !prev);
     } else {
-      // Fallback: handle save directly
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       if (isSaved) {
@@ -101,6 +112,20 @@ function DetailedBusinessCard({
       }
       setIsSaved(prev => !prev);
     }
+  };
+
+  // ✅ Track directions tap then open Google Maps
+  const handleGetDirections = async () => {
+    await supabase.from('listing_interactions').insert({
+      listing_id: listingId,
+      type: 'directions',
+    });
+
+    // Open Google Maps — uses coordinates if available, falls back to location name
+    const query = lat && lng
+      ? `${lat},${lng}`
+      : encodeURIComponent(location);
+    window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
   };
 
   const handleAddReview = async (rating: number, comment: string) => {
@@ -255,6 +280,15 @@ function DetailedBusinessCard({
                 <span>{website}</span>
               </div>
             )}
+
+            {/* ✅ Get Directions button — tracks the tap then opens Google Maps */}
+            <button
+              onClick={handleGetDirections}
+              className="mt-2 flex items-center gap-3 text-sm text-[#FBFAF8]/80 hover:text-[#FBFAF8] px-3 py-2.5 rounded-xl border border-transparent hover:border-[#FFE2A0] hover:bg-[#FFE2A0]/5 transition-all duration-300 cursor-pointer group w-full text-left"
+            >
+              <img src={locBtn} width="16" className="opacity-70 group-hover:opacity-100" alt="directions" />
+              <span>Get Directions</span>
+            </button>
           </div>
 
           {/* Ratings Summary */}

@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { ROUTES } from '../../../routes/paths';
 import EventPostModal from "./PostEventModal";
 import StatsCard from "./StatsCard";
-import { supabase } from "../../../lib/supabase"; // adjust path if needed
+import { supabase } from "../../../lib/supabase";
 
 interface Event {
   month: string;
@@ -29,13 +29,11 @@ export default function Overview() {
   const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Stats
   const [profileViews, setProfileViews] = useState(0);
   const [savedCount, setSavedCount] = useState(0);
   const [directionsTapped, setDirectionsTapped] = useState(0);
   const [reviewScore, setReviewScore] = useState<string>("—");
 
-  // Greeting based on time
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return "Good Morning";
@@ -46,11 +44,9 @@ export default function Overview() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // 1. Get current user
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // 2. Get first name from users table
       const { data: userData } = await supabase
         .from("users")
         .select("first_name")
@@ -58,7 +54,6 @@ export default function Overview() {
         .single();
       if (userData) setUserName(userData.first_name);
 
-      // 3. Get the user's listings
       const { data: listings } = await supabase
         .from("listings")
         .select("id, name")
@@ -70,7 +65,7 @@ export default function Overview() {
       }
       setUserListings(listings);
 
-      const targetListingIds = activeFilter === "All" 
+      const targetListingIds = activeFilter === "All"
         ? listings.map(l => l.id)
         : [listings.find(l => l.name === activeFilter)?.id].filter(Boolean) as number[];
 
@@ -79,7 +74,7 @@ export default function Overview() {
         return;
       }
 
-      // 4. Profile views (type = 'view')
+      // Profile views
       const { count: views } = await supabase
         .from("listing_interactions")
         .select("*", { count: "exact", head: true })
@@ -87,7 +82,7 @@ export default function Overview() {
         .eq("type", "view");
       setProfileViews(views ?? 0);
 
-      // 5. Directions tapped (type = 'directions')
+      // Directions tapped
       const { count: directions } = await supabase
         .from("listing_interactions")
         .select("*", { count: "exact", head: true })
@@ -95,14 +90,14 @@ export default function Overview() {
         .eq("type", "directions");
       setDirectionsTapped(directions ?? 0);
 
-      // 6. Saved by users
+      // Saved by users
       const { count: saves } = await supabase
         .from("saves")
         .select("*", { count: "exact", head: true })
         .in("listing_id", targetListingIds);
       setSavedCount(saves ?? 0);
 
-      // 7. Review score (average rating)
+      // Review score
       const { data: reviews } = await supabase
         .from("reviews")
         .select("rating")
@@ -114,7 +109,7 @@ export default function Overview() {
         setReviewScore("—");
       }
 
-      // 8. Upcoming events (future dates, approved/active)
+      // Upcoming events
       const today = new Date().toISOString().split("T")[0];
       const { data: eventsData } = await supabase
         .from("events")
@@ -137,17 +132,19 @@ export default function Overview() {
         setEvents(formatted);
       }
 
-      // 9. Recent activity — latest reviews + saves combined
+      // -------------------------------------------------------
+      // UPDATED: Recent activity — now includes listing name
+      // -------------------------------------------------------
       const { data: recentReviews } = await supabase
         .from("reviews")
-        .select("id, rating, comment, created_at")
+        .select("id, rating, comment, created_at, listings(name)")  // <-- joined listing name
         .in("listing_id", targetListingIds)
         .order("created_at", { ascending: false })
         .limit(5);
 
       const { data: recentSaves } = await supabase
         .from("saves")
-        .select("id, created_at")
+        .select("id, created_at, listings(name)")  // <-- joined listing name
         .in("listing_id", targetListingIds)
         .order("created_at", { ascending: false })
         .limit(5);
@@ -155,24 +152,25 @@ export default function Overview() {
       const activityItems: ActivityItem[] = [];
 
       (recentReviews ?? []).forEach((r) => {
+        const listingName = (r.listings as any)?.name ?? "your listing";
         activityItems.push({
           id: `review-${r.id}`,
           type: "review",
-          message: `Someone left a ${r.rating}★ review${r.comment ? `: "${r.comment.slice(0, 60)}${r.comment.length > 60 ? "…" : ""}"` : ""}`,
+          message: `Someone left a ${r.rating}★ review on ${listingName}${r.comment ? `: "${r.comment.slice(0, 60)}${r.comment.length > 60 ? "…" : ""}"` : ""}`,
           created_at: r.created_at,
         });
       });
 
       (recentSaves ?? []).forEach((s) => {
+        const listingName = (s.listings as any)?.name ?? "your listing";
         activityItems.push({
           id: `save-${s.id}`,
           type: "save",
-          message: "A user saved your listing",
+          message: `A user saved ${listingName}`,
           created_at: s.created_at,
         });
       });
 
-      // Sort by most recent
       activityItems.sort(
         (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
@@ -311,8 +309,6 @@ export default function Overview() {
                 <span className="text-[10px] md:text-xs text-[#FFE2A0] opacity-80 truncate">Update gallery</span>
               </div>
             </button>
-
-            
           </div>
         </div>
 
