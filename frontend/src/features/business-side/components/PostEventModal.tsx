@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { supabase } from "../../../lib/supabase";
 import type { Event } from "../../Data/Events";
 
 interface EventPostModalProps {
@@ -12,98 +13,123 @@ interface EventPostModalProps {
 export default function PostEventModal({ isOpen, onClose, onAddEvent, editEvent, userListings }: EventPostModalProps) {
   const [form, setForm] = useState({
     title: "",
-    date: "",
+    dateFrom: "",
+    dateTo: "",
     timeFrom: "",
     timeTo: "",
     location: "",
     description: "",
   });
-  const [selectedListingId, setSelectedListingId] = useState<string>("");
-  const [useBusinessLocation, setUseBusinessLocation] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (editEvent) {
-      const eventLocation = editEvent.location.split(", ")[0] || editEvent.location;
-      
       setForm({
         title: editEvent.title,
-        date: "", 
-        timeFrom: editEvent.time.split(" - ")[0] || "",
-        timeTo: editEvent.time.split(" - ")[1] || "",
-        location: eventLocation,
+        dateFrom: "",
+        dateTo: "",
+        timeFrom: editEvent.time?.split(" - ")[0] || "",
+        timeTo: editEvent.time?.split(" - ")[1] || "",
+        location: editEvent.location?.split(", ")[0] || editEvent.location,
         description: editEvent.description,
       });
-
-      const listingIdStr = (editEvent as any).listing_id?.toString();
-      if (listingIdStr) {
-        setSelectedListingId(listingIdStr);
-        const listing = userListings?.find(l => l.id.toString() === listingIdStr);
-        // If the event's location matches the listing's full location or the derived eventLocation, toggle it on
-        if (listing && (listing.location === editEvent.location || listing.location === eventLocation || editEvent.location.includes(listing.location))) {
-          setUseBusinessLocation(true);
-        } else {
-          setUseBusinessLocation(false);
-        }
-      } else {
-        setSelectedListingId("");
-        setUseBusinessLocation(false);
-      }
+      setImagePreview(editEvent.image_url || null);
+      setImageFile(null);
     } else {
-      setForm({ title: "", date: "", timeFrom: "", timeTo: "", location: "", description: "" });
-      setSelectedListingId("");
-      setUseBusinessLocation(false);
+      setForm({ title: "", dateFrom: "", dateTo: "", timeFrom: "", timeTo: "", location: "", description: "" });
+      setImageFile(null);
+      setImagePreview(null);
     }
   }, [editEvent, isOpen]);
 
-  useEffect(() => {
-    if (useBusinessLocation && selectedListingId) {
-      const listing = userListings?.find(l => l.id.toString() === selectedListingId);
-      if (listing) {
-        setForm(prev => ({ ...prev, location: listing.location }));
-      }
-    }
-  }, [useBusinessLocation, selectedListingId, userListings]);
-
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  const handleSubmit = (e: React.MouseEvent) => {
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImageFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => setImagePreview(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleSubmit = async (e: React.MouseEvent) => {
     e.preventDefault();
-    if (!form.title || (!editEvent && !form.date)) return;
+    if (!form.title || (!editEvent && !form.dateFrom)) return;
 
-    // Use current date if editing and date is empty (to avoid regression)
-    const effectiveDate = form.date || (editEvent ? "2026-05-02" : ""); 
-    
-    // Format date for the high-end display (e.g., "Apr 5")
-    const dateObj = new Date(effectiveDate);
-    const month = dateObj.toLocaleString('en-US', { month: 'short' });
-    const day = dateObj.getDate().toString();
+    setSubmitting(true);
 
-    // Format time and location display
-    const timeDisplay = `${form.timeFrom || ''}${form.timeFrom && form.timeTo ? ' - ' : ''}${form.timeTo || ''}`;
-    const locationDisplay = `${form.location}${timeDisplay ? ` ${timeDisplay}` : ''}`;
+    try {
+      let uploadedImageUrl = editEvent?.image_url || "";
 
-    onAddEvent({
-      id: editEvent?.id,
-      month: effectiveDate ? month : "",
-      day: effectiveDate ? day : "",
-      title: form.title,
-      location: locationDisplay,
-      listing_id: selectedListingId ? parseInt(selectedListingId) : undefined,
-      description: form.description,
-      image_url: (editEvent as any)?.image_url || ""
-    });
-    
-    handleClose();
+      if (imageFile) {
+        const fileExt = imageFile.name.split(".").pop();
+        const fileName = `${Date.now()}.${fileExt}`;
+
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from("events-image")
+          .upload(fileName, imageFile, { upsert: true });
+
+        if (uploadError) {
+          console.error("Image upload error:", uploadError.message);
+        } else {
+          const { data: publicUrlData } = supabase.storage
+            .from("events-image")
+            .getPublicUrl(uploadData.path);
+
+          uploadedImageUrl = publicUrlData.publicUrl;
+        }
+      }
+
+      const effectiveDateFrom = form.dateFrom || (editEvent ? "2026-05-02" : "");
+      const dateObj = new Date(effectiveDateFrom);
+      const month = dateObj.toLocaleString("en-US", { month: "short" });
+      const day = dateObj.getDate().toString();
+
+      const timeDisplay = `${form.timeFrom || ""}${form.timeFrom && form.timeTo ? " - " : ""}${form.timeTo || ""}`;
+      const dateRange =
+        form.dateTo && form.dateTo !== form.dateFrom
+          ? `${effectiveDateFrom} to ${form.dateTo}`
+          : effectiveDateFrom;
+
+      onAddEvent({
+        id: editEvent?.id,
+        month: effectiveDateFrom ? month : "",
+        day: effectiveDateFrom ? day : "",
+        title: form.title,
+        location: form.location,
+        time: timeDisplay,
+        dateRange,
+        description: form.description,
+        image_url: uploadedImageUrl,
+      });
+
+      handleClose();
+    } catch (err) {
+      console.error("Submit error:", err);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleClose = () => {
+    if (submitting) return;
     onClose();
     if (!editEvent) {
-      setForm({ title: "", date: "", timeFrom: "", timeTo: "", location: "", description: "" });
+      setForm({ title: "", dateFrom: "", dateTo: "", timeFrom: "", timeTo: "", location: "", description: "" });
+      setImageFile(null);
+      setImagePreview(null);
     }
   };
 
@@ -133,27 +159,27 @@ export default function PostEventModal({ isOpen, onClose, onAddEvent, editEvent,
       onClick={(e) => e.target === e.currentTarget && handleClose()}
     >
       <div
-        className="relative w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl text-left"
+        className="relative w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl text-left max-h-[90vh] flex flex-col"
         style={{ backgroundColor: "#222222", border: "1px solid #333333" }}
       >
         {/* Top accent bar */}
-        <div className="h-1 w-full" style={{ backgroundColor: "#FFE2A0" }} />
+        <div className="h-1 w-full flex-shrink-0" style={{ backgroundColor: "#FFE2A0" }} />
 
         {/* Header */}
-        <div className="flex items-center justify-between px-6 pt-5 pb-4">
+        <div className="flex items-center justify-between px-6 pt-5 pb-4 flex-shrink-0">
           <div>
-            <h2
-              className="text-lg font-semibold tracking-wide"
-              style={{ color: "#FFE2A0"}}
-            >
+            <h2 className="text-lg font-semibold tracking-wide" style={{ color: "#FFE2A0" }}>
               {editEvent ? "Edit Event" : "Post New Event"}
             </h2>
             <p className="text-xs mt-0.5" style={{ color: "#888888" }}>
-              {editEvent ? "Update your event details" : "Fill in the details to publish your event listing"}
+              {editEvent
+                ? "Update your event details"
+                : "Fill in the details to publish your event listing"}
             </p>
           </div>
           <button
             onClick={handleClose}
+            disabled={submitting}
             className="flex items-center justify-center w-8 h-8 rounded-full transition-all duration-200 cursor-pointer"
             style={{ backgroundColor: "#2e2e2e", color: "#888888" }}
             onMouseEnter={(e) => {
@@ -172,35 +198,59 @@ export default function PostEventModal({ isOpen, onClose, onAddEvent, editEvent,
         </div>
 
         {/* Divider */}
-        <div className="mx-6 h-px" style={{ backgroundColor: "#2e2e2e" }} />
+        <div className="mx-6 h-px flex-shrink-0" style={{ backgroundColor: "#2e2e2e" }} />
 
-        {/* Body */}
-        <div className="px-6 py-5 space-y-4">
-          {/* Business Selection */}
+        {/* Scrollable Body */}
+        <div className="px-6 py-5 space-y-4 overflow-y-auto flex-1">
+
+          {/* Event Image Upload */}
           <div>
             <label className="block font-normal mb-1.5 text-md tracking-wide" style={{ color: "#FFE2A0" }}>
-              For Business
+              Event Image
             </label>
-            <div className="relative">
-              <select
-                value={selectedListingId}
-                onChange={(e) => setSelectedListingId(e.target.value)}
-                className="w-full rounded-lg px-4 py-2.5 text-sm transition-all duration-200 outline-none appearance-none cursor-pointer"
-                style={inputBase}
-                onFocus={handleFocus}
-                onBlur={handleBlur}
-              >
-                <option value="">Select a business</option>
-                {userListings?.map(l => (
-                  <option key={l.id} value={l.id.toString()}>{l.name}</option>
-                ))}
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-[#a0a0a0]">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                  <path fillRule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
-                </svg>
+            {imagePreview ? (
+              <div className="relative w-full rounded-lg overflow-hidden" style={{ height: "160px" }}>
+                <img src={imagePreview} alt="Event preview" className="w-full h-full object-cover" />
+                <button
+                  onClick={handleRemoveImage}
+                  className="absolute top-2 right-2 flex items-center justify-center w-7 h-7 rounded-full transition-all duration-200 cursor-pointer"
+                  style={{ backgroundColor: "rgba(0,0,0,0.7)", color: "#e0e0e0", border: "1px solid #555" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.color = "#FFE2A0"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = "#e0e0e0"; }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
+                    <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  </svg>
+                </button>
               </div>
-            </div>
+            ) : (
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full rounded-lg flex flex-col items-center justify-center gap-2 py-6 transition-all duration-200 cursor-pointer"
+                style={{ backgroundColor: "#2a2a2a", border: "1px dashed #444444", color: "#888888" }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = "#FFE2A0";
+                  e.currentTarget.style.color = "#FFE2A0";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = "#444444";
+                  e.currentTarget.style.color = "#888888";
+                }}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-7 h-7">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                </svg>
+                <span className="text-sm">Click to upload event image</span>
+                <span className="text-xs" style={{ color: "#555" }}>PNG, JPG, WEBP up to 5MB</span>
+              </button>
+            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              className="hidden"
+              onChange={handleImageChange}
+            />
           </div>
 
           {/* Title */}
@@ -220,52 +270,56 @@ export default function PostEventModal({ isOpen, onClose, onAddEvent, editEvent,
             />
           </div>
 
-          {/* Date + Location */}
+          {/* Date From / Date To */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block font-normal mb-1.5 text-md tracking-wide" style={{ color: "#FFE2A0" }}>
-                Date
+                Date From
               </label>
               <input
                 type="date"
-                name="date"
-                value={form.date}
+                name="dateFrom"
+                value={form.dateFrom}
                 onChange={handleChange}
                 onFocus={handleFocus}
                 onBlur={handleBlur}
                 className="w-full rounded-lg px-4 py-2.5 text-sm transition-all duration-200"
-                style={{ ...inputBase, colorScheme: "dark", color: form.date ? "#e0e0e0" : "#555555" }}
+                style={{ ...inputBase, colorScheme: "dark", color: form.dateFrom ? "#e0e0e0" : "#555555" }}
               />
             </div>
             <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="font-normal text-md tracking-wide" style={{ color: "#FFE2A0" }}>
-                  Location
-                </label>
-                <div className="flex items-center gap-2 cursor-pointer group" onClick={() => setUseBusinessLocation(!useBusinessLocation)}>
-                  <span className="text-[10px] uppercase font-bold tracking-tighter" style={{ color: useBusinessLocation ? "#FFE2A0" : "#555555" }}>Business Loc</span>
-                  <div 
-                    className={`w-7 h-4 rounded-full relative transition-all duration-200 ${useBusinessLocation ? "bg-[#FFE2A0]" : "bg-[#333333]"}`}
-                    style={{ border: "1px solid #444444" }}
-                  >
-                    <div 
-                      className={`absolute top-0.5 w-2.5 h-2.5 rounded-full transition-all duration-200 ${useBusinessLocation ? "left-3.5 bg-[#1a1a1a]" : "left-0.5 bg-[#666666]"}`}
-                    />
-                  </div>
-                </div>
-              </div>
+              <label className="block font-normal mb-1.5 text-md tracking-wide" style={{ color: "#FFE2A0" }}>
+                Date To
+              </label>
               <input
-                name="location"
-                value={form.location}
+                type="date"
+                name="dateTo"
+                value={form.dateTo}
+                min={form.dateFrom || undefined}
                 onChange={handleChange}
                 onFocus={handleFocus}
                 onBlur={handleBlur}
-                disabled={useBusinessLocation}
-                placeholder={useBusinessLocation ? "Using business location..." : "e.g. Angeles City"}
                 className="w-full rounded-lg px-4 py-2.5 text-sm transition-all duration-200"
-                style={{ ...inputBase, opacity: useBusinessLocation ? 0.6 : 1 }}
+                style={{ ...inputBase, colorScheme: "dark", color: form.dateTo ? "#e0e0e0" : "#555555" }}
               />
             </div>
+          </div>
+
+          {/* Location */}
+          <div>
+            <label className="block font-normal mb-1.5 text-md tracking-wide" style={{ color: "#FFE2A0" }}>
+              Location
+            </label>
+            <input
+              name="location"
+              value={form.location}
+              onChange={handleChange}
+              onFocus={handleFocus}
+              onBlur={handleBlur}
+              placeholder="e.g. Angeles City"
+              className="w-full rounded-lg px-4 py-2.5 text-sm transition-all duration-200"
+              style={inputBase}
+            />
           </div>
 
           {/* Time */}
@@ -322,9 +376,13 @@ export default function PostEventModal({ isOpen, onClose, onAddEvent, editEvent,
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4" style={{ borderTop: "1px solid #2e2e2e" }}>
+        <div
+          className="flex items-center justify-end gap-3 px-6 py-4 flex-shrink-0"
+          style={{ borderTop: "1px solid #2e2e2e" }}
+        >
           <button
             onClick={handleClose}
+            disabled={submitting}
             className="px-5 py-2 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer"
             style={{ backgroundColor: "#2a2a2a", color: "#888888", border: "1px solid #333333" }}
             onMouseEnter={(e) => {
@@ -340,18 +398,23 @@ export default function PostEventModal({ isOpen, onClose, onAddEvent, editEvent,
           </button>
           <button
             onClick={handleSubmit}
-            className="px-6 py-2 rounded-lg text-sm font-semibold transition-all duration-200 cursor-pointer"
+            disabled={submitting}
+            className="px-6 py-2 rounded-lg text-sm font-semibold transition-all duration-200 cursor-pointer disabled:opacity-50"
             style={{ backgroundColor: "#FFE2A0", color: "#1a1a1a" }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = "#f5d47a";
-              e.currentTarget.style.boxShadow = "0 4px 16px rgba(255,226,160,0.25)";
+              if (!submitting) {
+                e.currentTarget.style.backgroundColor = "#f5d47a";
+                e.currentTarget.style.boxShadow = "0 4px 16px rgba(255,226,160,0.25)";
+              }
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.backgroundColor = "#FFE2A0";
               e.currentTarget.style.boxShadow = "none";
             }}
           >
-            {editEvent ? "Save Changes" : "Post Event"}
+            {submitting
+              ? editEvent ? "Saving..." : "Posting..."
+              : editEvent ? "Save Changes" : "Post Event"}
           </button>
         </div>
       </div>
