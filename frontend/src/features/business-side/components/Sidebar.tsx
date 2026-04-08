@@ -1,4 +1,4 @@
-import { NavLink, NavLinkRenderProps } from 'react-router-dom';
+import { Link, NavLink, NavLinkRenderProps } from 'react-router-dom';
 import { ROUTES } from '../../../routes/paths';
 import { X } from 'lucide-react';
 import { IoCalendarOutline } from "react-icons/io5";
@@ -16,8 +16,10 @@ function Sidebar({ onClose }: SidebarProps) {
     return (
         <div className="bg-[#373737] w-64 lg:w-55 min-h-screen z-10 relative">
             <div className="px-4 py-6">
-                <div className="flex items-center justify-between lg:block mb-8">
-                    <p className="font-['Playfair_Display'] text-[#FFE2A0] text-2xl font-semibold tracking-wide">Dashboard</p>
+                <div className="flex items-center justify-between mb-4 lg:mb-6">
+                    <Link to={ROUTES.HOME} className="flex items-center gap-2 text-[#707070] hover:text-[#FFE2A0] text-sm transition-colors font-medium">
+                        ← Back to Homepage
+                    </Link>
                     {onClose && (
                         <button 
                             onClick={onClose}
@@ -26,6 +28,9 @@ function Sidebar({ onClose }: SidebarProps) {
                             <X size={24} />
                         </button>
                     )}
+                </div>
+                <div className="mb-8">
+                    <p className="font-['Playfair_Display'] text-[#FFE2A0] text-2xl font-semibold tracking-wide">Dashboard</p>
                 </div>
 
                 <div className="space-y-4">
