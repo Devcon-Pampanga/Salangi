@@ -171,15 +171,7 @@ const MyBusiness = () => {
                         </div>
                     </button>
 
-                    <button className="p-3 w-54 h-18 rounded-xl flex flex-row items-center gap-3 bg-[#5a5241] hover:bg-[#857657] border border-[#FFE2A0] text-[#fdfdfd] text-md tracking-wide cursor-pointer text-left transition-all shadow-lg active:scale-95">
-                        <div className="p-3 h-12 w-12 flex justify-center items-center bg-[#474133] rounded-xl text-white">
-                            <HiOutlineSpeakerphone className="size-6" />
-                        </div>
-                        <div className="flex flex-col">
-                            <span className="font-semibold">Promotion</span>
-                            <span className="text-xs text-[#FFE2A0] opacity-80">Boost visibility</span>
-                        </div>
-                    </button>
+                    
                 </div>
 
                 <div className="mt-12 mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
