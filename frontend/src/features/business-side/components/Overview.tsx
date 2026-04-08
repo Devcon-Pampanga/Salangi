@@ -28,6 +28,7 @@ export default function Overview() {
   const [events, setEvents] = useState<Event[]>([]);
   const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAllActivity, setShowAllActivity] = useState(false);
 
   const [profileViews, setProfileViews] = useState(0);
   const [savedCount, setSavedCount] = useState(0);
@@ -132,25 +133,34 @@ export default function Overview() {
         setEvents(formatted);
       }
 
-      // -------------------------------------------------------
-      // UPDATED: Recent activity — now includes listing name
-      // -------------------------------------------------------
+      // Recent reviews
       const { data: recentReviews } = await supabase
         .from("reviews")
-        .select("id, rating, comment, created_at, listings(name)")  // <-- joined listing name
+        .select("id, rating, comment, created_at, listings(name)")
         .in("listing_id", targetListingIds)
         .order("created_at", { ascending: false })
-        .limit(5);
+        .limit(10);
 
+      // Recent saves
       const { data: recentSaves } = await supabase
         .from("saves")
-        .select("id, created_at, listings(name)")  // <-- joined listing name
+        .select("id, created_at, listings(name)")
         .in("listing_id", targetListingIds)
         .order("created_at", { ascending: false })
-        .limit(5);
+        .limit(10);
+
+      // Recent views — individual events (for "Someone viewed [listing]")
+      const { data: recentViews } = await supabase
+        .from("listing_interactions")
+        .select("id, listing_id, created_at")
+        .in("listing_id", targetListingIds)
+        .eq("type", "view")
+        .order("created_at", { ascending: false })
+        .limit(20);
 
       const activityItems: ActivityItem[] = [];
 
+      // Reviews
       (recentReviews ?? []).forEach((r) => {
         const listingName = (r.listings as any)?.name ?? "your listing";
         activityItems.push({
@@ -161,6 +171,7 @@ export default function Overview() {
         });
       });
 
+      // Saves
       (recentSaves ?? []).forEach((s) => {
         const listingName = (s.listings as any)?.name ?? "your listing";
         activityItems.push({
@@ -171,11 +182,54 @@ export default function Overview() {
         });
       });
 
+      // Views — individual "Someone viewed" events
+      (recentViews ?? []).forEach((v) => {
+        const listingName = listings.find(l => l.id === v.listing_id)?.name ?? "your listing";
+        activityItems.push({
+          id: `view-${v.id}`,
+          type: "view",
+          message: `Someone viewed ${listingName}`,
+          created_at: v.created_at,
+        });
+      });
+
+      // Daily view summary — group views by listing and day, emit one summary per group
+      // This appears at end-of-day (after 11 PM) for today, or for any past day
+      const viewsByListingAndDay = new Map<string, { count: number; listingName: string; date: string }>();
+      (recentViews ?? []).forEach((v) => {
+        const listingName = listings.find(l => l.id === v.listing_id)?.name ?? "your listing";
+        const day = v.created_at.split("T")[0];
+        const key = `${v.listing_id}_${day}`;
+        if (!viewsByListingAndDay.has(key)) {
+          viewsByListingAndDay.set(key, { count: 0, listingName, date: day });
+        }
+        viewsByListingAndDay.get(key)!.count++;
+      });
+
+      const nowHour = new Date().getHours();
+      const todayStr = new Date().toISOString().split("T")[0];
+
+      viewsByListingAndDay.forEach(({ count, listingName, date }, key) => {
+        // Show daily summary for past days always, or for today only after 11 PM
+        const isPastDay = date < todayStr;
+        const isEndOfToday = date === todayStr && nowHour >= 23;
+        if ((isPastDay || isEndOfToday) && count > 0) {
+          // Use end-of-day timestamp so it sorts after individual view events
+          const summaryTimestamp = `${date}T23:59:00+00:00`;
+          activityItems.push({
+            id: `view-summary-${key}`,
+            type: "view-summary",
+            message: `${count} ${count === 1 ? "person" : "people"} viewed ${listingName} on ${new Date(date + "T12:00:00").toLocaleDateString("default", { month: "short", day: "numeric" })}`,
+            created_at: summaryTimestamp,
+          });
+        }
+      });
+
       activityItems.sort(
         (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
 
-      setRecentActivity(activityItems.slice(0, 8));
+      setRecentActivity(activityItems);
     } catch (err) {
       console.error("Overview fetch error:", err);
     } finally {
@@ -208,6 +262,36 @@ export default function Overview() {
     const hrs = Math.floor(mins / 60);
     if (hrs < 24) return `${hrs}h ago`;
     return `${Math.floor(hrs / 24)}d ago`;
+  };
+
+  const INITIAL_ACTIVITY_COUNT = 8;
+  const visibleActivity = showAllActivity
+    ? recentActivity
+    : recentActivity.slice(0, INITIAL_ACTIVITY_COUNT);
+
+  const getActivityIcon = (type: string) => {
+    if (type === "review") return (
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-4 text-[#FFE2A0]">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.563.563 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.563.563 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z" />
+      </svg>
+    );
+    if (type === "save") return (
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-4 text-[#FFE2A0]">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0Z" />
+      </svg>
+    );
+    if (type === "view-summary") return (
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-4 text-[#FFE2A0]">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
+      </svg>
+    );
+    // default: view
+    return (
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-4 text-[#FFE2A0]">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+      </svg>
+    );
   };
 
   return (
@@ -357,7 +441,16 @@ export default function Overview() {
         <div className="w-full min-h-40 bg-[#3a3a3a] rounded-xl border border-[#4d4d4d] px-6 py-4 mb-4">
           <div className="flex justify-between mb-4">
             <p className="font-semibold text-white tracking-wide">Recent activity</p>
-            <p className="text-[#FFE2A0] text-sm cursor-pointer">View all</p>
+            {recentActivity.length > INITIAL_ACTIVITY_COUNT && (
+              <button
+                onClick={() => setShowAllActivity(prev => !prev)}
+                className="text-[#FFE2A0] text-sm cursor-pointer hover:underline transition-all"
+              >
+                {showAllActivity
+                  ? "Show less"
+                  : `View all (${recentActivity.length})`}
+              </button>
+            )}
           </div>
 
           {loading ? (
@@ -378,15 +471,11 @@ export default function Overview() {
             </div>
           ) : (
             <div className="space-y-3">
-              {recentActivity.map((item, idx, arr) => (
+              {visibleActivity.map((item, idx, arr) => (
                 <div key={item.id}>
                   <div className="flex items-start gap-3">
                     <div className="mt-1 p-2 rounded-full bg-[#474133] border border-[#5a5241] shrink-0">
-                      {item.type === "review" ? (
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-4 text-[#FFE2A0]"><path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.563.563 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.563.563 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z" /></svg>
-                      ) : (
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-4 text-[#FFE2A0]"><path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0Z" /></svg>
-                      )}
+                      {getActivityIcon(item.type)}
                     </div>
                     <div className="flex-1">
                       <p className="text-sm text-[#d8d8d8]">{item.message}</p>
@@ -396,6 +485,16 @@ export default function Overview() {
                   {idx < arr.length - 1 && <div className="w-full h-px bg-[#4b4b4b] mt-3" />}
                 </div>
               ))}
+
+              {/* Show less button at bottom when expanded */}
+              {showAllActivity && recentActivity.length > INITIAL_ACTIVITY_COUNT && (
+                <button
+                  onClick={() => setShowAllActivity(false)}
+                  className="w-full text-center text-[#FFE2A0] text-xs mt-4 py-2 hover:underline cursor-pointer"
+                >
+                  Show less
+                </button>
+              )}
             </div>
           )}
         </div>
