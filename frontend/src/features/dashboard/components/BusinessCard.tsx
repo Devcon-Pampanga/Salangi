@@ -20,6 +20,7 @@ interface BusinessCardProps {
   isBusinessSide?: boolean;
   onEdit?: (listing: Listing) => void;
   onDelete?: (id: number) => void;
+  onViewAnalytics?: () => void; // ← added
 }
 
 function NoImagePlaceholder({ name }: { name: string }) {
@@ -42,6 +43,7 @@ function BusinessCard({
   onToggleSave, 
   isBusinessSide,
   onEdit,
+  onViewAnalytics, // ← added
 }: BusinessCardProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [imgError, setImgError] = useState(false);
@@ -195,6 +197,7 @@ function BusinessCard({
                 <button 
                   onClick={(e) => {
                     e.stopPropagation();
+                    onViewAnalytics?.(); // ← wired up
                   }}
                   className="flex-1 py-3.5 bg-[#FFE2A0] text-[#222222] text-xs font-bold rounded-xl hover:bg-[#ffe8b5] transition-all active:scale-95 cursor-pointer shadow-lg"
                 >

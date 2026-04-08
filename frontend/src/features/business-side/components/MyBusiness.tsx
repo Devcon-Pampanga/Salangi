@@ -38,7 +38,6 @@ const MyBusiness = () => {
             setError("Failed to load your listings. Please try again.");
             console.error(fetchError);
         } else {
-            // Map Supabase row shape → Listing type
             const mapped: Listing[] = (data ?? []).map((row: any) => ({
                 id: row.id,
                 name: row.name,
@@ -93,9 +92,8 @@ const MyBusiness = () => {
 
         if (updateError) {
             console.error("Failed to save listing:", updateError);
-            // You can surface this to the user via a toast/snackbar
         } else {
-            // Optimistically update local state
+            // Update local state so the card reflects changes immediately
             setListings((prev) =>
                 prev.map((l) =>
                     l.id === editingListing.id ? { ...l, ...updatedListing } : l
@@ -103,6 +101,7 @@ const MyBusiness = () => {
             );
         }
 
+        // Close modal here (EditListingModal no longer calls onClose itself)
         setIsEditModalOpen(false);
         setEditingListing(null);
     };
@@ -211,6 +210,7 @@ const MyBusiness = () => {
                                     onSelect={() => {}}
                                     onToggleSave={() => {}}
                                     onEdit={handleEditListing}
+                                    onViewAnalytics={() => navigate(ROUTES.DASHBOARD_ANALYTICS)} // ← fixed
                                 />
 
                                 {/* Delete confirmation overlay */}
@@ -237,7 +237,7 @@ const MyBusiness = () => {
                                     </div>
                                 )}
 
-                                {/* Delete trigger button (replaces the red trash icon that was hardcoded) */}
+                                {/* Delete trigger button */}
                                 {confirmDeleteId !== listing.id && (
                                     <button
                                         onClick={() => setConfirmDeleteId(listing.id)}
