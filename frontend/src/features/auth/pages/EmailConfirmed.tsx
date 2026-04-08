@@ -7,6 +7,7 @@ import bg from '@assets/images/bg.png';
 
 //icons
 import verify from '@assets/png-files/verify.png';
+import loading from '@assets/png-files/sand-clock.png';
 
 function EmailConfirmed() {
   const [searchParams] = useSearchParams();
@@ -64,7 +65,9 @@ function EmailConfirmed() {
         <div className="w-full max-w-md text-center">
           {status === 'loading' && (
             <div className="motion-preset-fade">
-              <div className="text-6xl mb-6">⏳</div>
+              <div className="text-6xl mb-6">
+                <img src = {loading}/>
+              </div>
               <h2 className="font-['Playfair_Display'] text-white text-4xl font-bold mb-2">
                 Verifying...
               </h2>

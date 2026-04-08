@@ -157,7 +157,7 @@ function Register() {
 
         {/* Error / Success */}
         {error && (
-          <div className="translate-x-180 mt-118 absolute w-150">
+          <div className="translate-x-180 mt-113 z-50 absolute w-150 rounded-lg p-2">
             <p className="text-red-400 text-sm text-center">{error}</p>
           </div>
         )}

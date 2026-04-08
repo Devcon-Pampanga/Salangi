@@ -1,7 +1,12 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import bg from '@assets/images/bg.png';
 import { supabase } from '@/lib/supabase';
+
+//bg
+import bg from '@assets/images/bg.png';
+
+//icons
+import inbox from '@assets/png-files/inbox.png'
 
 function ForgotPassword() {
   const [email, setEmail] = useState('');
@@ -49,7 +54,7 @@ function ForgotPassword() {
       </svg>
 
       {/* Radial spotlight (Copied from Signin for consistency) */}
-      <div className="absolute w-190 h-170 translate-x-113 -mt-97 bg-radial from-[#FFE2A0]/80 via-[#FFE2A0]/20 to-transparent rounded-full blur-3xl opacity-60 pointer-events-none" />
+      <div className="absolute w-190 h-170 translate-x-170 -mt-97 bg-radial from-[#FFE2A0]/80 via-[#FFE2A0]/20 to-transparent rounded-full blur-3xl opacity-60 pointer-events-none" />
 
       {/* Left side — Headline */}
       <div className="w-1/2 relative flex items-end p-20 pb-32 z-10">
@@ -64,7 +69,10 @@ function ForgotPassword() {
         <div className="w-full max-w-md">
           {sent ? (
             <div className="text-center motion-preset-fade">
-              <div className="text-5xl mb-4">📬</div>
+              <div className="flex justify-center items-center mb-8">
+                <img src = {inbox}/>
+              </div>
+
               <h2 className="font-['Playfair_Display'] text-white text-3xl font-bold mb-2">
                 Check your inbox.
               </h2>

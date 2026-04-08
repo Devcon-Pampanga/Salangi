@@ -15,10 +15,9 @@ function ResetPassword() {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    // Supabase automatically handles the token from the URL
     supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') {
-        // User is now in password recovery mode, ready to update
+        // Recovery mode active
       }
     });
   }, []);
@@ -47,27 +46,43 @@ function ResetPassword() {
   };
 
   return (
-    <div className="flex min-h-screen">
-      {/* Left side */}
-      <div
-        className="w-1/2 relative flex items-end p-12"
-        style={{
-          backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.3), rgba(0,0,0,0.7)), url(${bg})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-        }}
-      >
-        <h1 className="font-['Playfair_Display'] text-white text-6xl font-bold leading-tight">
+    <div
+      className="min-h-screen overflow-hidden relative flex"
+      style={{
+        backgroundImage: `linear-gradient(to right, transparent -11%, rgba(26, 26, 26, 0.9), #1a1a1a 50%), url(${bg})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
+    >
+      {/* Dashed curve decoration */}
+      <svg className="absolute inset-0 w-full h-full pointer-events-none" preserveAspectRatio="none">
+        <path
+          d="M 400 0 C 200 200, 600 400, 400 800"
+          transform="translate(200, 0)"
+          fill="none"
+          stroke="white"
+          strokeWidth="1"
+          strokeDasharray="8 8"
+          className="opacity-30"
+        />
+      </svg>
+
+      {/* Radial spotlight */}
+      <div className="absolute w-190 h-170 translate-x-113 -mt-97 bg-radial from-[#FFE2A0]/80 via-[#FFE2A0]/20 to-transparent rounded-full blur-3xl opacity-60 pointer-events-none" />
+
+      {/* Left side — Headline */}
+      <div className="w-1/2 relative flex items-end p-20 pb-32 z-10">
+        <h1 className="font-['Playfair_Display'] text-white text-7xl font-bold leading-tight">
           Set a New <br />
           <span className="text-[#FFE2A0]">Password</span>
         </h1>
       </div>
 
-      {/* Right side */}
-      <div className="w-1/2 bg-[#1a1a1a] flex items-center justify-center px-16">
+      {/* Right side — Form */}
+      <div className="w-1/2 flex items-center justify-center px-16 z-10">
         <div className="w-full max-w-md">
           {success ? (
-            <div className="text-center">
+            <div className="text-center motion-preset-fade">
               <div className="text-5xl mb-4">✅</div>
               <h2 className="font-['Playfair_Display'] text-white text-3xl font-bold mb-2">
                 Password updated!
@@ -77,7 +92,7 @@ function ResetPassword() {
               </p>
             </div>
           ) : (
-            <>
+            <div className="motion-preset-slide-left">
               <h2 className="font-['Playfair_Display'] text-white text-4xl font-bold mb-2">
                 New password.
               </h2>
@@ -93,12 +108,12 @@ function ResetPassword() {
                     value={password}
                     onChange={e => setPassword(e.target.value)}
                     placeholder="Min. 6 characters"
-                    className="w-full bg-[#2E2E2E] text-white placeholder-gray-500 px-4 py-3 rounded-lg outline-none focus:ring-1 focus:ring-[#FFE2A0]"
+                    className="w-full bg-[#2E2E2E] text-white placeholder-gray-500 px-4 py-3 rounded-lg outline-none focus:ring-1 focus:ring-[#FFE2A0] border-none"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white cursor-pointer"
                   >
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
@@ -114,12 +129,12 @@ function ResetPassword() {
                     onChange={e => setConfirmPassword(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleResetPassword()}
                     placeholder="Repeat new password"
-                    className="w-full bg-[#2E2E2E] text-white placeholder-gray-500 px-4 py-3 rounded-lg outline-none focus:ring-1 focus:ring-[#FFE2A0]"
+                    className="w-full bg-[#2E2E2E] text-white placeholder-gray-500 px-4 py-3 rounded-lg outline-none focus:ring-1 focus:ring-[#FFE2A0] border-none"
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirm(!showConfirm)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white cursor-pointer"
                   >
                     {showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
@@ -135,7 +150,7 @@ function ResetPassword() {
               </button>
 
               {error && <p className="text-red-400 text-sm text-center mt-3">{error}</p>}
-            </>
+            </div>
           )}
         </div>
       </div>

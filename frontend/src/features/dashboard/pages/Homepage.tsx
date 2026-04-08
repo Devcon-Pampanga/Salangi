@@ -202,7 +202,7 @@ function Homepage() {
         )}
 
         {/* ── LEFT COLUMN ── */}
-        <div className="flex flex-col shrink-0 w-full md:w-[480px] md:h-full overflow-visible md:overflow-hidden order-2 md:order-1">
+        <div className="flex flex-col shrink-0 w-full md:w-120 md:h-full overflow-visible md:overflow-hidden order-2 md:order-1">
           <div className="shrink-0 mb-4 md:mb-0">
             <h1 className="font-['Playfair_Display'] text-2xl md:text-3xl leading-tight mb-5 mt-4 md:mt-0">
               Discover the <span className="text-[#FFE2A0]">heart</span> of Pampanga.
@@ -264,7 +264,7 @@ function Homepage() {
             </button>
           </div>
 
-          <div className="hidden md:block w-full h-[300px] md:h-auto md:flex-1 md:mt-2">
+          <div className="hidden md:block w-full h-75 md:h-auto md:flex-1 md:mt-2">
             <div className="w-full h-full rounded-2xl overflow-hidden">
               <MapView
                 listings={filteredListings}

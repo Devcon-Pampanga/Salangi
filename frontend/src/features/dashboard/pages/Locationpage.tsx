@@ -203,7 +203,7 @@ function Locationpage() {
       </div>
 
       {/* Main Left Column (Results & Cards) */}
-      <div className="w-full md:w-[500px] flex-1 md:flex-none md:h-full overflow-y-auto md:border-r border-zinc-800 flex flex-col items-center px-4 py-4 md:px-6 md:py-6 scrollbar-hide order-3 md:order-1 min-h-0">
+      <div className="w-full md:w-125 flex-1 md:flex-none md:h-full overflow-y-auto md:border-r border-zinc-800 flex flex-col items-center px-4 py-4 md:px-6 md:py-6 scrollbar-hide order-3 md:order-1 min-h-0">
         
         {/* Desktop-only Search bar */}
         <div className="hidden md:flex items-center gap-2 w-full mb-4 shrink-0">
@@ -281,7 +281,7 @@ function Locationpage() {
         )}
       </div>
 
-      <div className="w-full h-[300px] md:h-full shrink-0 md:flex-1 relative order-2 md:order-2 border-b border-zinc-800 md:border-b-0 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.5)] md:shadow-none z-10">
+      <div className="w-full h-75 md:h-full shrink-0 md:flex-1 relative order-2 md:order-2 border-b border-zinc-800 md:border-b-0 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.5)] md:shadow-none z-10">
         <MapView
           listings={isSearching ? searchResults : [selectedListing]}
           selectedListing={selectedListing}

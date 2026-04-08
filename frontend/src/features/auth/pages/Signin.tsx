@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
+import { ROUTES } from '../../../routes/paths';
 
 //bg
 import bg from '@assets/images/bg.png';
@@ -16,6 +17,8 @@ function Signin() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleSignIn = async () => {
     setError('');
@@ -88,6 +91,19 @@ function Signin() {
           <img src = {salangiLogo} width = {70} height = {70}/>
         </div>
 
+      {/*Create Business*/}
+      <div className = "absolute px-4 py-4 ml-280 mt-4"> 
+          <button
+          onClick={() => {
+            setIsMobileMenuOpen(false);
+            navigate(ROUTES.LIST_YOUR_BUSINESS);
+          }} 
+          className = "border border-amber-200 hover:bg-amber-200 hover:text-black w-37 p-2 rounded-full text-white font-normal cursor-pointer "
+          >
+            Business Acc
+          </button>
+      </div>
+
       {/* Right — form */}
       <div className="motion-preset-slide-left motion-duration-800 ml-15 mt-10">
 
@@ -145,7 +161,7 @@ function Signin() {
 
         {/* Error */}
         {error && (
-          <div className="translate-x-180 mt-102 absolute ml-50">
+          <div className="translate-x-180 mt-102 absolute ml-45">
             <p className="text-red-400 text-sm text-center">{error}</p>
           </div>
         )}
