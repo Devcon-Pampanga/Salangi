@@ -215,8 +215,7 @@ function Homepage() {
           </div>
 
           <div
-            className="flex-none md:flex-1 md:overflow-y-auto flex flex-col gap-4 md:gap-6 pb-10 pr-1 md:pr-2 pl-1 pt-1"
-            style={{ scrollbarWidth: 'none' }}
+            className="flex-none md:flex-1 md:overflow-y-auto flex flex-col gap-4 md:gap-6 pb-10 pr-1 md:pr-2 pl-1 pt-1 no-scrollbar"
           >
             {isLoading ? (
               <div className="flex flex-col items-center justify-center py-20 text-center">
