@@ -8,16 +8,18 @@ interface SupabaseEvent {
   id: number;
   title: string;
   description: string;
-  date: string;
+  date_range: string;
   time: string;
   location: string;
-  venue: string;
-  artists: string;
-  ticket_price: number;
-  category: string;
+  month: string;
+  day: string;
   image_url: string;
-  status: string;
-  listing_id: number;
+  verified: boolean;
+  user_id: string;
+  listing_id: number | null;
+  lat: number | null;
+  lng: number | null;
+  created_at: string;
 }
 
 export default function Events() {
@@ -39,29 +41,15 @@ export default function Events() {
         .select("id, name, location")
         .eq("user_id", user.id);
 
-      if (!listings || listings.length === 0) {
-        setLoading(false);
-        return;
-      }
-      setUserListings(listings);
-
-      const targetListingIds = activeFilter === "All"
-        ? listings.map(l => l.id)
-        : [listings.find(l => l.name === activeFilter)?.id].filter(Boolean) as number[];
-
-      if (targetListingIds.length === 0) {
-        setEvents([]);
-        setLoading(false);
-        return;
-      }
+      setUserListings(listings ?? []);
 
       const { data: eventsData } = await supabase
         .from("events")
         .select("*")
-        .in("listing_id", targetListingIds)
-        .order("date", { ascending: true });
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
 
-      if (eventsData) setEvents(eventsData);
+      if (eventsData) setEvents(eventsData as any);
     } catch (err) {
       console.error("Events fetch error:", err);
     } finally {
@@ -71,7 +59,13 @@ export default function Events() {
 
   useEffect(() => {
     fetchEvents();
-  }, [activeFilter]);
+  }, []);
+
+  const filteredEvents = events.filter(e => {
+    if (activeFilter === "All") return true;
+    const listing = userListings.find(l => l.id === e.listing_id);
+    return listing?.name === activeFilter;
+  });
 
   const handleEdit = (event: SupabaseEvent) => {
     setEditingEvent(event);
@@ -88,7 +82,7 @@ export default function Events() {
     setEditingEvent(null);
   };
 
-  const handleAddEvent = (newEvent: SupabaseEvent) => {
+  const handleAddEvent = (newEvent: any) => {
     setEvents((prev) => [newEvent, ...prev]);
   };
 
@@ -143,20 +137,38 @@ export default function Events() {
 
         {loading ? (
           <p className="text-[#a0a0a0] text-sm mt-6">Loading events...</p>
-        ) : events.length > 0 ? (
+        ) : filteredEvents.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-6 mb-8">
-            {events.map((event) => (
-              <EventCard
-                key={event.id}
-                event={{
-                  ...event,
-                  image: event.image_url,
-                  organizer: userListings.find(l => l.id === event.listing_id)?.name || "Business"
-                } as any}
-                isBusinessSide={true}
-                onEdit={() => handleEdit(event)}
-                onDelete={() => handleDelete(event.id)}
-              />
+            {filteredEvents.map((event) => (
+              <div key={event.id} className="relative">
+                {/* Pending badge */}
+                {!event.verified && (
+                  <div className="absolute top-3 left-3 z-20 flex items-center gap-1.5 bg-amber-500 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-lg">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2m6-2a10 10 0 11-20 0 10 10 0 0120 0z" />
+                    </svg>
+                    Pending Review
+                  </div>
+                )}
+                {event.verified && (
+                  <div className="absolute top-3 left-3 z-20 flex items-center gap-1.5 bg-green-600 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-lg">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    Approved
+                  </div>
+                )}
+                <EventCard
+                  event={{
+                    ...event,
+                    image: event.image_url,
+                    organizer: userListings.find(l => l.id === event.listing_id)?.name || "My Business",
+                  } as any}
+                  isBusinessSide={true}
+                  onEdit={() => handleEdit(event)}
+                  onDelete={() => handleDelete(event.id)}
+                />
+              </div>
             ))}
           </div>
         ) : (
@@ -182,8 +194,8 @@ export default function Events() {
           editEvent={editingEvent ? {
             ...editingEvent,
             image: editingEvent.image_url,
-            organizer: userListings.find(l => l.id === editingEvent.listing_id)?.name || "Business"
-          } as Event : null}
+            organizer: userListings.find(l => l.id === editingEvent.listing_id)?.name || "My Business"
+          } as any : null}
           userListings={userListings}
         />
       </div>
