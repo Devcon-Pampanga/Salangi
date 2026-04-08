@@ -7,7 +7,7 @@ import { ROUTES } from './routes/paths';
 // Auth & Protected Components
 import ProtectedRoute from './routes/ProtectedRoute';
 
-// Feature Components - Business Side (Standardized to features/business-side)
+// Feature Components - Business Side
 import Dashboard from './features/business-side/pages/Dashboard'
 import Overview from './features/business-side/components/Overview'
 import MyBusiness from './features/business-side/components/MyBusiness'
@@ -32,6 +32,7 @@ import BusinessRegister from './features/auth/pages/BusinessRegister'
 import BusinessSignin from './features/auth/pages/BusinessSignin'
 import HeroListBusiness from './features/dashboard/pages/HeroListBusiness'
 import ListBusiness from './features/business-side/components/ListBusiness'
+import EmailConfirmed from './features/auth/pages/EmailConfirmed'
 
 // Feature Components - Admin Side
 import AdminLogin from './features/admin/pages/AdminLogin'
@@ -77,6 +78,10 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/auth/callback" element={<AuthCallback />} />
+
+        {/* ✅ Email confirmation — must be public and BEFORE the wildcard */}
+        <Route path="/email-confirmed" element={<EmailConfirmed />} />
+
         <Route path="/sign-up" element={session ? <Navigate to="/home-page" replace /> : <Register />} />
         <Route path={ROUTES.SIGN_IN} element={session ? <Navigate to="/home-page" replace /> : <Signin />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -96,20 +101,20 @@ function App() {
         <Route
           path={ROUTES.DASHBOARD}
           element={
-          <ProtectedRoute session={session} redirectPath={ROUTES.BUSINESS_SIGNIN}>
-            <Dashboard />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<Navigate to={ROUTES.DASHBOARD_REL.OVERVIEW} replace />} />
-        <Route path={ROUTES.DASHBOARD_REL.OVERVIEW} element={<Overview />} />
-        <Route path={ROUTES.DASHBOARD_REL.MY_BUSINESS} element={<MyBusiness />} />
-        <Route path={ROUTES.DASHBOARD_REL.EVENTS} element={<Events />} />
-        <Route path={ROUTES.DASHBOARD_REL.REVIEWS} element={<Reviews />} />
-        <Route path={ROUTES.DASHBOARD_REL.ANALYTICS} element={<Analytics />} />
-        <Route path={ROUTES.DASHBOARD_REL.GALLERY} element={<Gallery />} />
-        <Route path={ROUTES.DASHBOARD_REL.SETTINGS} element={<Settings />} />
-      </Route>
+            <ProtectedRoute session={session} redirectPath={ROUTES.BUSINESS_SIGNIN}>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<Navigate to={ROUTES.DASHBOARD_REL.OVERVIEW} replace />} />
+          <Route path={ROUTES.DASHBOARD_REL.OVERVIEW} element={<Overview />} />
+          <Route path={ROUTES.DASHBOARD_REL.MY_BUSINESS} element={<MyBusiness />} />
+          <Route path={ROUTES.DASHBOARD_REL.EVENTS} element={<Events />} />
+          <Route path={ROUTES.DASHBOARD_REL.REVIEWS} element={<Reviews />} />
+          <Route path={ROUTES.DASHBOARD_REL.ANALYTICS} element={<Analytics />} />
+          <Route path={ROUTES.DASHBOARD_REL.GALLERY} element={<Gallery />} />
+          <Route path={ROUTES.DASHBOARD_REL.SETTINGS} element={<Settings />} />
+        </Route>
 
         {/* Protected routes / Main Application Layout */}
         <Route

@@ -13,11 +13,17 @@ function EmailConfirmed() {
 
     if (tokenHash && type) {
       supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'email' })
-        .then(({ error }) => {
-          setStatus(error ? 'error' : 'success');
+        .then(async ({ error }) => {
+          if (error) {
+            setStatus('error');
+          } else {
+            // Sign out immediately so the session doesn't trigger
+            // a redirect to /home-page before the user clicks Sign In
+            await supabase.auth.signOut();
+            setStatus('success');
+          }
         });
     } else {
-      // Already verified or direct visit
       setStatus('success');
     }
   }, [searchParams]);
