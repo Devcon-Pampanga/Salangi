@@ -23,3 +23,10 @@ dist-ssr
 *.sln
 *.sw?
 frontend/tsconfig.app.tsbuildinfo
+
+# Python
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
