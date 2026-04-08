@@ -506,6 +506,7 @@ function ListBusiness() {
 
   const step2Valid: boolean = form.businessPermit !== null && form.governmentId !== null;
 
+  // ── FIX: handleSubmit now saves user_id ───────────────────────────────────
   const handleSubmit = async (): Promise<void> => {
     setSubmitting(true);
     setSubmitError('');
@@ -531,6 +532,9 @@ function ListBusiness() {
         form.selfie ? uploadFile(form.selfie, 'selfies') : Promise.resolve(null),
       ]);
 
+      // Get the currently logged-in user
+      const { data: { user } } = await supabase.auth.getUser();
+
       const { error } = await supabase.from('listings').insert({
         name: form.name,
         category: form.category,
@@ -548,6 +552,7 @@ function ListBusiness() {
         business_permit: businessPermitUrl,
         government_id: governmentIdUrl,
         selfie_verification: selfieUrl,
+        user_id: user?.id ?? null,   // ← FIX: tag the owner so it shows in My Business
       });
 
       if (error) throw error;
