@@ -22,20 +22,13 @@ L.Icon.Default.mergeOptions({
 // ── Types ────────────────────────────────────────────────────────────────────
 
 type Category = 'Resto' | 'Cafe' | 'Activities' | '';
-type OperatingDays =
-  | 'Daily'
-  | 'Monday – Saturday'
-  | 'Monday – Friday'
-  | 'Weekends Only'
-  | 'Tuesday – Sunday'
-  | 'Wednesday – Sunday'
-  | '';
+type OperatingDays = string;
 
 interface FormState {
   name: string;
   category: Category;
   description: string;
-  operatingDays: OperatingDays;
+  operatingDays: string[];
   openingTime: string;
   closingTime: string;
   city: string;
@@ -72,14 +65,7 @@ interface TextInputProps {
 
 const CATEGORIES: Category[] = ['Resto', 'Cafe', 'Activities'];
 
-const OPERATING_DAYS: OperatingDays[] = [
-  'Daily',
-  'Monday – Saturday',
-  'Monday – Friday',
-  'Weekends Only',
-  'Tuesday – Sunday',
-  'Wednesday – Sunday',
-];
+const OPERATING_DAYS = ['Daily', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 const STEPS = [
   { id: 1, label: 'Business Details' },
@@ -127,7 +113,7 @@ const CITY_COORDS: Record<string, { lat: number; lng: number }> = {
 };
 
 const INITIAL_FORM: FormState = {
-  name: '', category: '', description: '', operatingDays: '',
+  name: '', category: '', description: '', operatingDays: [],
   openingTime: '', closingTime: '', city: '', barangay: '',
   street: '', otherDetails: '', phone: '', facebook: '', website: '',
   images: [], imagePreviews: [],
@@ -375,7 +361,7 @@ function ListBusiness() {
 
   const step1Valid: boolean =
     form.name.trim() !== '' && form.category !== '' && form.description.trim() !== '' &&
-    form.operatingDays !== '' && form.openingTime !== '' && form.closingTime !== '' &&
+    form.operatingDays.length > 0 && form.openingTime !== '' && form.closingTime !== '' &&
     form.city !== '' && form.barangay !== '' && form.street.trim() !== '' &&
     form.lat !== null && form.lng !== null;
 
@@ -391,7 +377,7 @@ function ListBusiness() {
         const hour = h % 12 || 12;
         return `${hour}:${String(m).padStart(2, '0')} ${ampm}`;
       };
-      const hours = `${form.operatingDays}, ${fmt(form.openingTime)} – ${fmt(form.closingTime)}`;
+      const hours = `${form.operatingDays.join(', ')}, ${fmt(form.openingTime)} – ${fmt(form.closingTime)}`;
       const location = [
         form.street, form.barangay, form.city, 'Pampanga',
         form.otherDetails ? `(${form.otherDetails})` : '',
@@ -416,7 +402,7 @@ function ListBusiness() {
         lng,
         images: imageUrls,
         verified: false,
-        phone: form.phone.trim() || null,
+        phone: form.phone ? `+63${form.phone}` : null,
         facebook: form.facebook.trim() || null,
         website: form.website.trim() || null,
         business_permit: businessPermitUrl,
@@ -507,15 +493,33 @@ function ListBusiness() {
 
             <Field label="Operating Days *">
               <div className="flex flex-wrap gap-2">
-                {OPERATING_DAYS.map((day) => (
-                  <button key={day} onClick={() => update('operatingDays', day)}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-all border ${
-                      form.operatingDays === day ? 'bg-[#FFE2A0] text-[#1A1A1A] border-[#FFE2A0]' : 'bg-[#2D2D2D] text-[#FBFAF8]/70 border-transparent hover:border-[#FFE2A0]/40'
-                    }`}>{day}</button>
-                ))}
+                {OPERATING_DAYS.map((day) => {
+                  const isActive =
+                    day === 'Daily'
+                      ? form.operatingDays.includes('Daily')
+                      : form.operatingDays.includes(day) && !form.operatingDays.includes('Daily');
+                  return (
+                    <button
+                      key={day}
+                      onClick={() => {
+                        if (day === 'Daily') {
+                            update('operatingDays', form.operatingDays.includes('Daily') ? [] : ['Daily']);
+                        } else {
+                          const without = form.operatingDays.filter(d => d !== 'Daily');
+                          const toggled = without.includes(day)
+                          ? without.filter(d => d !== day)
+                          : [...without, day];
+                        update('operatingDays', toggled);
+                        }
+                      }}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-all border ${
+                        isActive ? 'bg-[#FFE2A0] text-[#1A1A1A] border-[#FFE2A0]' : 'bg-[#2D2D2D] text-[#FBFAF8]/70 border-transparent hover:border-[#FFE2A0]/40'
+                      }`}
+                    >{day}</button>
+                  );
+                })}
               </div>
             </Field>
-
             <div className="flex gap-4">
               <Field label="Opening Time *">
                 <TextInput type="time" value={form.openingTime} onChange={(e) => update('openingTime', e.target.value)} />
@@ -563,7 +567,19 @@ function ListBusiness() {
               <div className="flex flex-col gap-4">
                 <div className="flex items-center gap-3">
                   <span className="text-lg w-8 text-center">📞</span>
-                  <div className="flex-1"><TextInput value={form.phone} onChange={(e) => update('phone', e.target.value)} placeholder="e.g. +63 912 345 6789" type="tel" /></div>
+                  <div className="flex-1 flex items-center bg-[#2D2D2D] rounded-lg border border-transparent focus-within:border-[#FFE2A0]/40 transition-all overflow-hidden">
+                    <span className="px-3 text-sm text-[#FBFAF8]/50 border-r border-[#FBFAF8]/10 py-3 select-none">+63</span>
+                    <input
+                      type="tel"
+                      value={form.phone}
+                      onChange={(e) => {
+                        const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                        update('phone', digits);
+                      }}
+                      placeholder="912 345 6789"
+                      className="flex-1 bg-transparent text-[#FBFAF8] text-sm px-3 py-3 outline-none placeholder-[#FBFAF8]/30"
+                   />
+                  </div>
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-lg w-8 text-center">🌐</span>
@@ -640,7 +656,7 @@ function ListBusiness() {
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div><p className="text-[#FBFAF8]/40 text-xs mb-1">Business Name</p><p className="text-[#FBFAF8] font-medium">{form.name}</p></div>
                 <div><p className="text-[#FBFAF8]/40 text-xs mb-1">Category</p><p className="text-[#FBFAF8] font-medium">{form.category}</p></div>
-                <div><p className="text-[#FBFAF8]/40 text-xs mb-1">Operating Days</p><p className="text-[#FBFAF8] font-medium">{form.operatingDays}</p></div>
+                <div><p className="text-[#FBFAF8]/40 text-xs mb-1">Operating Days</p><p className="text-[#FBFAF8] font-medium">{form.operatingDays.join(', ') || '—'}</p></div>
                 <div><p className="text-[#FBFAF8]/40 text-xs mb-1">Hours</p><p className="text-[#FBFAF8] font-medium">{form.openingTime} – {form.closingTime}</p></div>
                 <div><p className="text-[#FBFAF8]/40 text-xs mb-1">City</p><p className="text-[#FBFAF8] font-medium">{form.city}, Pampanga</p></div>
                 <div><p className="text-[#FBFAF8]/40 text-xs mb-1">Barangay</p><p className="text-[#FBFAF8] font-medium">{form.barangay}</p></div>
