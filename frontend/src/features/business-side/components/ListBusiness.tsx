@@ -27,20 +27,12 @@ L.Icon.Default.mergeOptions({
 // ── Types ────────────────────────────────────────────────────────────────────
 
 type Category = 'Resto' | 'Cafe' | 'Activities' | '';
-type OperatingDays =
-  | 'Daily'
-  | 'Monday – Saturday'
-  | 'Monday – Friday'
-  | 'Weekends Only'
-  | 'Tuesday – Sunday'
-  | 'Wednesday – Sunday'
-  | '';
 
 interface FormState {
   name: string;
   category: Category;
   description: string;
-  operatingDays: OperatingDays;
+  operatingDays: string[];
   openingTime: string;
   closingTime: string;
   city: string;
@@ -78,14 +70,7 @@ interface TextInputProps {
 
 const CATEGORIES: Category[] = ['Resto', 'Cafe', 'Activities'];
 
-const OPERATING_DAYS: OperatingDays[] = [
-  'Daily',
-  'Monday – Saturday',
-  'Monday – Friday',
-  'Weekends Only',
-  'Tuesday – Sunday',
-  'Wednesday – Sunday',
-];
+const OPERATING_DAYS = ['Daily', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 const STEPS = [
   { id: 1, label: 'Business Details' },
@@ -95,45 +80,184 @@ const STEPS = [
 
 const LOCATIONS: Record<string, string[]> = {
   'Angeles City': [
-    'Balibago', 'Capaya', 'Claro M. Recto', 'Cuayan', 'Cutcut',
-    'Lourdes North West', 'Lourdes Sur', 'Malabanias', 'Pampang',
-    'Pulung Cacutud', 'Pulung Maragul', 'Salapungan', 'San Jose',
-    'Santa Trinidad', 'Santo Cristo', 'Santo Domingo', 'Santo Rosario',
-    'Telecom', 'Agapito del Rosario', 'Anunas', 'Margot', 'Mining',
-    'Ninoy Aquino', 'Pandan', 'Pulungbulo', 'Virgen Delos Remedios',
+    'Agapito del Rosario', 'Anunas', 'Balibago', 'Capaya', 'Claro M. Recto',
+    'Cuayan', 'Cutcut', 'Lourdes North West', 'Lourdes Sur', 'Malabanias',
+    'Margot', 'Mining', 'Ninoy Aquino', 'Pampang', 'Pandan', 'Pulung Cacutud',
+    'Pulung Maragul', 'Pulungbulo', 'Salapungan', 'San Jose', 'Santa Trinidad',
+    'Santo Cristo', 'Santo Domingo', 'Santo Rosario', 'Telecom',
+    'Virgen Delos Remedios',
   ],
   'San Fernando': [
-    'Alasas', 'Baliti', 'Bulaon', 'Calulut', 'Del Carmen',
-    'Del Pilar', 'Del Rosario', 'Dolores', 'Juliana', 'Lara',
-    'Lourdes', 'Magliman', 'Maimpis', 'Malino', 'Malpitic',
-    'Pandaras', 'Panipuan', 'Pulung Bulu', 'Quebiawan', 'Saguin',
-    'San Agustin', 'San Felipe', 'San Isidro', 'San Jose',
-    'San Nicolas', 'San Pedro', 'Santa Lucia', 'Santa Teresita',
+    'Alasas', 'Baliti', 'Bulaon', 'Calulut', 'Del Carmen', 'Del Pilar',
+    'Del Rosario', 'Dolores', 'Juliana', 'Lara', 'Lourdes', 'Magliman',
+    'Maimpis', 'Malino', 'Malpitic', 'Pandaras', 'Panipuan', 'Pulung Bulu',
+    'Quebiawan', 'Saguin', 'San Agustin', 'San Felipe', 'San Isidro',
+    'San Jose', 'San Nicolas', 'San Pedro', 'Santa Lucia', 'Santa Teresita',
     'Santiago', 'Sindalan', 'Telabastagan',
   ],
   'Mabalacat': [
-    'Atlu-Bola', 'Bical', 'Bundagul', 'Cacutud', 'Calumpang',
-    'Camachiles', 'Dapdap', 'Dau', 'Dolores', 'Duquit',
-    'Lakandula', 'Mabiga', 'Macapagal', 'Mamatitang', 'Mangalit',
-    'Marcos Village', 'Mawaque', 'Paralayunan', 'Poblacion',
-    'San Francisco', 'San Joaquin', 'Santa Ines', 'Santa Maria',
+    'Atlu-Bola', 'Bical', 'Bundagul', 'Cacutud', 'Calumpang', 'Camachiles',
+    'Dapdap', 'Dau', 'Dolores', 'Duquit', 'Lakandula', 'Mabiga', 'Macapagal',
+    'Mamatitang', 'Mangalit', 'Marcos Village', 'Mawaque', 'Paralayunan',
+    'Poblacion', 'San Francisco', 'San Joaquin', 'Santa Ines', 'Santa Maria',
     'Santo Rosario', 'Sapang Balen', 'Sapang Biabas', 'Tabun',
   ],
   'Clark': [
     'Clark Freeport Zone', 'Hadrian', 'Jose Abad Santos',
     'Leonico', 'Marcos', 'Philippine-American Friendship',
   ],
+  'Apalit': [
+    'Balucuc', 'Calantipe', 'Cansinala', 'Capalangan', 'Cargados', 'Lanang',
+    'San Juan', 'San Vicente', 'Santa Ana', 'Sucad', 'Sulipan', 'Tabuyuc',
+  ],
+  'Arayat': [
+    'Arenas', 'Baliti', 'Batasan', 'Buensuceso', 'Candating', 'Gatiawin',
+    'Guemasan', 'La Paz', 'Lacmit', 'Lacquios', 'Mangga-Cacutud', 'Mapalad',
+    'Palinlang', 'Paralaya', 'Poblacion', 'San Agustin Norte', 'San Agustin Sur',
+    'San Antonio', 'San Jose Mesulo', 'San Juan Bano', 'San Mateo', 'San Nicolas',
+    'San Roque Bano', 'San Roque Dau', 'Santa Lucia', 'Santo Niño', 'Suclayin',
+    'Tibag', 'Vizal San Pablo', 'Vizal Santo Cristo', 'Vizal Santo Niño',
+  ],
+  'Bacolor': [
+    'Balas', 'Cabalantian', 'Cabambangan', 'Cabetican', 'Calibutbut', 'Concepcion',
+    'Dolores', 'Duat', 'Macabacle', 'Magliman', 'Maliwalu', 'Mesalipit',
+    'Parulog', 'Potrero', 'San Antonio', 'San Isidro', 'San Vicente', 'Santa Barbara',
+    'Santa Ines', 'Talba', 'Tinajero',
+  ],
+  'Candaba': [
+    'Bahay Pare', 'Bambang', 'Baranday', 'Batasan Matanda', 'Bulaon', 'Burdeos',
+    'Gulap', 'Lanang', 'Lourdes', 'Magumbali', 'Mandasig', 'Mandili', 'Mangga',
+    'Mapaniqui', 'Paligui', 'Sampaloc', 'San Agustin', 'San Ildefonso', 'San Jose',
+    'San Pedro', 'Santa Filomena', 'Santo Cristo', 'Tagulod', 'Talang',
+    'Telapayong', 'Vizal San Pablo',
+  ],
+  'Floridablanca': [
+    'Anon', 'Apalit', 'Bacong', 'Basa Air Base', 'Benedicto', 'Bodega',
+    'Cabangcalan', 'Calantas', 'Carmencita', 'Consuelo', 'Dampe', 'Del Carmen',
+    'Fortuna', 'Gutad', 'Mabical', 'Magalang', 'Maligaya', 'Nabuclod',
+    'Pabanlag', 'Paguiruan', 'Palmayo', 'Pandaguirig', 'Poblacion', 'San Antonio',
+    'San Isidro', 'San Jose', 'San Nicolas', 'San Pedro', 'San Ramon',
+    'San Roque', 'Santa Monica', 'Santo Rosario', 'Solib', 'Valdez',
+  ],
+  'Guagua': [
+    'Ascomo', 'Bancal', 'Jose Abad Santos', 'Lambac', 'Magsaysay', 'Maquiapo',
+    'Mitla', 'Palanan', 'Poblacion', 'Pulungmasle', 'Rizal', 'San Agustin',
+    'San Francisco', 'San Isidro', 'San Jose', 'San Juan', 'San Matias',
+    'San Miguel', 'San Nicolas 1st', 'San Nicolas 2nd', 'San Pablo',
+    'San Pedro Palcarangan', 'San Pedro Sasmuan', 'Santa Filomena', 'Santa Ines',
+    'Santa Ursula', 'Santo Cristo',
+  ],
+  'Lubao': [
+    'Balantacan', 'Baruya', 'Batasan Matanda', 'Buensuceso', 'Calangain',
+    'Concepcion', 'Del Carmen', 'Don Ignacio Dimson', 'Lourdes', 'Prado Siongco',
+    'Remedios', 'San Agustin', 'San Antonio', 'San Francisco', 'San Isidro',
+    'San Jose Gumi', 'San Nicolas 1st', 'San Pablo 1st', 'San Pedro',
+    'San Ramon', 'San Roque', 'Santa Barbara', 'Santa Cruz', 'Santa Catalina',
+    'Santa Lucia', 'Santa Maria', 'Santo Tomas', 'Seriales', 'Sulipan',
+  ],
+  'Macabebe': [
+    'Batasan', 'Caduang Tete', 'Candelaria', 'Castuli', 'Consuelo', 'Dalayap',
+    'Macabebe Poblacion', 'Malusac', 'Saguin', 'San Esteban', 'San Francisco',
+    'San Gabriel', 'San Isidro', 'San Jose', 'San Juan', 'San Nicolas',
+    'San Rafael', 'Santa Cruz', 'Santa Lutgarda', 'Santa Maria', 'Santa Rita',
+    'Santo Niño', 'Santo Rosario', 'Saplad David', 'Tacasan',
+  ],
+  'Magalang': [
+    'Abacan', 'Ali Aga', 'Ayala', 'Ayala Kanluran', 'Balaiti', 'Batasan',
+    'Bulaon', 'Camias', 'Dolores', 'Escaler', 'La Paz', 'Navaling', 'San Agustin',
+    'San Antonio', 'San Francisco', 'San Ildefonso', 'San Isidro', 'San Jose',
+    'San Miguel', 'San Nicolas 1st', 'San Nicolas 2nd', 'San Pablo',
+    'San Pedro', 'San Roque', 'San Vicente', 'Santa Cruz', 'Santa Lucia',
+    'Santa Maria', 'Santo Niño', 'Santo Rosario', 'Santo Tomas', 'Turu',
+  ],
+  'Masantol': [
+    'Alauli', 'Bagang', 'Balibago', 'Bebe Anac', 'Bebe Matua', 'Bulac',
+    'Cambasi', 'Malauli', 'Nigui', 'Palimpe', 'Puti', 'Sagrada Familia',
+    'San Agustin Anac', 'San Agustin Matua', 'San Antonio', 'San Isidro Anac',
+    'San Isidro Matua', 'San Nicolas', 'San Pedro', 'Santa Cruz Anac',
+    'Santa Cruz Matua', 'Santa Lucia', 'Santa Monica', 'Santo Niño',
+    'Santo Rosario Anac', 'Santo Rosario Matua', 'Sua',
+  ],
+  'Mexico': [
+    'Acli', 'Anao', 'Balas', 'Buenavista', 'Camuning', 'Cawayan', 'Concepcion',
+    'Culubasa', 'Divisoria', 'Dolores', 'Eden', 'Gandus', 'Lagundi', 'Laput',
+    'Laug', 'Lazaro', 'Lourdes', 'Malino', 'Masamat', 'Masangsang', 'Nueva Victoria',
+    'Pandacaqui', 'Pangatlan', 'Panipuan', 'Parian', 'Poblacion', 'Puti',
+    'Sabanilla', 'San Antonio', 'San Carlos', 'San Jose', 'San Juan', 'San Lorenzo',
+    'San Miguel', 'San Nicolas', 'San Pablo', 'San Patricio', 'San Rafael',
+    'San Roque', 'San Vicente', 'Santa Cruz', 'Santa Maria', 'Santo Tomas',
+    'Sapang Maisac', 'Suclaban', 'Tangle',
+  ],
+  'Minalin': [
+    'Bulac', 'Dawe', 'Lourdes', 'Maniango', 'San Francisco 1st', 'San Francisco 2nd',
+    'San Isidro', 'San Nicolas', 'San Pedro', 'Santa Catalina', 'Santa Maria',
+    'Santa Rita', 'Santo Domingo', 'Saplad',
+  ],
+  'Porac': [
+    'Babo Pangulo', 'Babo Sacan', 'Balubad', 'Calzadang Bayu', 'Camias',
+    'Cangatba', 'Diaz', 'Dolores', 'Inararo', 'Jalung', 'Mancatian', 'Manuali',
+    'Mitla Proper', 'Palat', 'Pias', 'Pio', 'Poblacion', 'Pulong Santol',
+    'Sap-Ang', 'San Jose Malubago', 'San Marcos', 'San Nicholas', 'Santa Cruz',
+    'Santa Cruz Nery', 'Sepung Bulaun', 'Sinubli', 'Tartaro',
+  ],
+  'San Luis': [
+    'San Agustin', 'San Carlos', 'San Isidro', 'San Jose', 'San Juan',
+    'San Nicolas', 'San Roque', 'San Sebastian', 'Santa Catalina', 'Santa Cruz',
+    'Santa Lucia', 'Santa Maria', 'Santa Rita', 'Santo Niño', 'Santo Rosario',
+  ],
+  'San Simon': [
+    'Concepcion', 'De La Paz', 'San Agustin', 'San Isidro', 'San Jose',
+    'San Juan', 'San Miguel', 'San Nicolas', 'San Pablo', 'San Pedro',
+    'San Roque', 'San Vicente', 'Santa Cruz', 'Santa Monica', 'Santo Niño',
+  ],
+  'Santa Ana': [
+    'San Agustin', 'San Bartolome', 'San Isidro', 'San Jose', 'San Juan',
+    'San Nicolas', 'San Pablo', 'San Pedro', 'San Roque', 'San Vicente',
+    'Santa Cruz', 'Santa Lucia', 'Santo Niño',
+  ],
+  'Santa Rita': [
+    'Becuran', 'Dau', 'San Agustin', 'San Basilio', 'San Isidro', 'San Jose',
+    'San Juan', 'San Matias', 'San Nicolas', 'San Pablo Lipit', 'San Pablo Proper',
+    'San Pedro Calangain', 'Santa Monica', 'Santo Cristo', 'Silab',
+  ],
+  'Santo Tomas': [
+    'Moras De La Paz', 'Poblacion', 'San Bartolome', 'San Matias', 'San Vicente',
+    'Santo Rosario', 'Santo Tomas Propio',
+  ],
+  'Sasmuan': [
+    'Batang 1st', 'Batang 2nd', 'Mabuanbuan', 'Malusac', 'Sasmuan Pob.',
+    'San Nicolas 1st', 'San Nicolas 2nd', 'San Pedro', 'Santa Lucia', 'Santo Tomas',
+  ],
 };
 
 const CITY_COORDS: Record<string, { lat: number; lng: number }> = {
-  'Angeles City': { lat: 15.1450, lng: 120.5887 },
+  'Angeles City':  { lat: 15.1450, lng: 120.5887 },
   'San Fernando':  { lat: 15.0289, lng: 120.6898 },
   'Mabalacat':     { lat: 15.2167, lng: 120.5833 },
   'Clark':         { lat: 15.1860, lng: 120.5540 },
+  'Apalit':        { lat: 14.9528, lng: 120.7597 },
+  'Arayat':        { lat: 15.1478, lng: 120.7706 },
+  'Bacolor':       { lat: 15.0567, lng: 120.6531 },
+  'Candaba':       { lat: 15.0936, lng: 120.8278 },
+  'Floridablanca': { lat: 14.9997, lng: 120.5019 },
+  'Guagua':        { lat: 14.9736, lng: 120.6367 },
+  'Lubao':         { lat: 14.9303, lng: 120.6017 },
+  'Macabebe':      { lat: 14.9078, lng: 120.7150 },
+  'Magalang':      { lat: 15.2147, lng: 120.6625 },
+  'Masantol':      { lat: 14.8958, lng: 120.7283 },
+  'Mexico':        { lat: 15.0681, lng: 120.7197 },
+  'Minalin':       { lat: 14.9678, lng: 120.7003 },
+  'Porac':         { lat: 15.0736, lng: 120.5381 },
+  'San Luis':      { lat: 15.0367, lng: 120.7897 },
+  'San Simon':     { lat: 14.9978, lng: 120.7756 },
+  'Santa Ana':     { lat: 15.0897, lng: 120.7681 },
+  'Santa Rita':    { lat: 15.0078, lng: 120.6467 },
+  'Santo Tomas':   { lat: 15.0547, lng: 120.6767 },
+  'Sasmuan':       { lat: 14.9303, lng: 120.6753 },
 };
 
 const INITIAL_FORM: FormState = {
-  name: '', category: '', description: '', operatingDays: '',
+  name: '', category: '', description: '', operatingDays: [],
   openingTime: '', closingTime: '', city: '', barangay: '',
   street: '', otherDetails: '', phone: '', email: '', facebook: '', website: '',
   images: [], imagePreviews: [],
@@ -381,7 +505,7 @@ function ListBusiness() {
 
   const step1Valid: boolean =
     form.name.trim() !== '' && form.category !== '' && form.description.trim() !== '' &&
-    form.operatingDays !== '' && form.openingTime !== '' && form.closingTime !== '' &&
+    form.operatingDays.length > 0 && form.openingTime !== '' && form.closingTime !== '' &&
     form.city !== '' && form.barangay !== '' && form.street.trim() !== '' &&
     form.lat !== null && form.lng !== null;
 
@@ -397,7 +521,7 @@ function ListBusiness() {
         const hour = h % 12 || 12;
         return `${hour}:${String(m).padStart(2, '0')} ${ampm}`;
       };
-      const hours = `${form.operatingDays}, ${fmt(form.openingTime)} – ${fmt(form.closingTime)}`;
+      const hours = `${form.operatingDays.join(', ')}, ${fmt(form.openingTime)} – ${fmt(form.closingTime)}`;
       const location = [
         form.street, form.barangay, form.city, 'Pampanga',
         form.otherDetails ? `(${form.otherDetails})` : '',
@@ -422,7 +546,7 @@ function ListBusiness() {
         lng,
         images: imageUrls,
         verified: false,
-        phone: form.phone.trim() || null,
+        phone: form.phone ? `+63${form.phone}` : null,
         email: form.email.trim() || null,
         facebook: form.facebook.trim() || null,
         website: form.website.trim() || null,
@@ -514,12 +638,31 @@ function ListBusiness() {
 
             <Field label="Operating Days *">
               <div className="flex flex-wrap gap-2">
-                {OPERATING_DAYS.map((day) => (
-                  <button key={day} onClick={() => update('operatingDays', day)}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-all border ${
-                      form.operatingDays === day ? 'bg-[#FFE2A0] text-[#1A1A1A] border-[#FFE2A0]' : 'bg-[#2D2D2D] text-[#FBFAF8]/70 border-transparent hover:border-[#FFE2A0]/40'
-                    }`}>{day}</button>
-                ))}
+                {OPERATING_DAYS.map((day) => {
+                  const isActive =
+                    day === 'Daily'
+                      ? form.operatingDays.includes('Daily')
+                      : form.operatingDays.includes(day) && !form.operatingDays.includes('Daily');
+                  return (
+                    <button
+                      key={day}
+                      onClick={() => {
+                        if (day === 'Daily') {
+                          update('operatingDays', form.operatingDays.includes('Daily') ? [] : ['Daily']);
+                        } else {
+                          const without = form.operatingDays.filter(d => d !== 'Daily');
+                          const toggled = without.includes(day)
+                            ? without.filter(d => d !== day)
+                            : [...without, day];
+                          update('operatingDays', toggled);
+                        }
+                      }}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-all border ${
+                        isActive ? 'bg-[#FFE2A0] text-[#1A1A1A] border-[#FFE2A0]' : 'bg-[#2D2D2D] text-[#FBFAF8]/70 border-transparent hover:border-[#FFE2A0]/40'
+                      }`}
+                    >{day}</button>
+                  );
+                })}
               </div>
             </Field>
 
@@ -535,7 +678,7 @@ function ListBusiness() {
             <Field label="City *">
               <select value={form.city} onChange={(e) => { update('city', e.target.value); update('barangay', ''); }}
                 className="w-full bg-[#2D2D2D] text-[#FBFAF8] text-sm rounded-lg px-4 py-3 outline-none border border-transparent focus:border-[#FFE2A0]/40 transition-all">
-                <option value="">Select a city</option>
+                <option value="">Select a city / municipality</option>
                 {Object.keys(LOCATIONS).map(city => <option key={city} value={city}>{city}</option>)}
               </select>
             </Field>
@@ -568,21 +711,48 @@ function ListBusiness() {
             <div className="border-t border-[#373737] pt-5">
               <p className="text-xs text-[#FFE2A0]/70 font-semibold uppercase tracking-wider mb-4">Contact & Social (optional)</p>
               <div className="flex flex-col gap-4">
+                {/* Phone */}
                 <div className="flex items-center gap-3">
-                  <div className="w-8 flex justify-center"><img src={phoneIcon} alt="phone" className="w-5 h-5" /></div>
-                  <div className="flex-1"><TextInput value={form.phone} onChange={(e) => update('phone', e.target.value)} placeholder="e.g. +63 912 345 6789" type="tel" /></div>
+                  <span className="text-lg w-8 text-center">📞</span>
+                  <div className="flex-1 flex items-center bg-[#2D2D2D] rounded-lg border border-transparent focus-within:border-[#FFE2A0]/40 transition-all overflow-hidden">
+                    <span className="px-3 text-sm text-[#FBFAF8]/50 border-r border-[#FBFAF8]/10 py-3 select-none">+63</span>
+                    <input
+                      type="tel"
+                      value={form.phone}
+                      onChange={(e) => {
+                        const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                        update('phone', digits);
+                      }}
+                      placeholder="912 345 6789"
+                      className="flex-1 bg-transparent text-[#FBFAF8] text-sm px-3 py-3 outline-none placeholder-[#FBFAF8]/30"
+                    />
+                  </div>
                 </div>
+                {/* Email */}
                 <div className="flex items-center gap-3">
-                  <div className="w-8 flex justify-center"><img src={emailIcon} alt="email" className="w-5 h-5" /></div>
-                  <div className="flex-1"><TextInput value={form.email} onChange={(e) => update('email', e.target.value)} placeholder="e.g. business@example.com" type="email" /></div>
+                  <span className="text-lg w-8 text-center">✉️</span>
+                  <div className="flex-1">
+                    <TextInput
+                      type="email"
+                      value={form.email}
+                      onChange={(e) => update('email', e.target.value)}
+                      placeholder="business@email.com"
+                    />
+                  </div>
                 </div>
+                {/* Facebook */}
                 <div className="flex items-center gap-3">
-                  <div className="w-8 flex justify-center"><img src={fbIcon} alt="facebook" className="w-5 h-5" /></div>
-                  <div className="flex-1"><TextInput value={form.facebook} onChange={(e) => update('facebook', e.target.value)} placeholder="e.g. facebook.com/yourbusiness" /></div>
+                  <span className="text-lg w-8 text-center">🌐</span>
+                  <div className="flex-1">
+                    <TextInput value={form.facebook} onChange={(e) => update('facebook', e.target.value)} placeholder="facebook.com/yourbusiness" />
+                  </div>
                 </div>
+                {/* Website */}
                 <div className="flex items-center gap-3">
-                  <div className="w-8 flex justify-center"><img src={webIcon} alt="website" className="w-5 h-5" /></div>
-                  <div className="flex-1"><TextInput value={form.website} onChange={(e) => update('website', e.target.value)} placeholder="e.g. www.yourbusiness.com" /></div>
+                  <span className="text-lg w-8 text-center">🔗</span>
+                  <div className="flex-1">
+                    <TextInput value={form.website} onChange={(e) => update('website', e.target.value)} placeholder="www.yourbusiness.com" />
+                  </div>
                 </div>
               </div>
             </div>
@@ -651,7 +821,7 @@ function ListBusiness() {
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div><p className="text-[#FBFAF8]/40 text-xs mb-1">Business Name</p><p className="text-[#FBFAF8] font-medium">{form.name}</p></div>
                 <div><p className="text-[#FBFAF8]/40 text-xs mb-1">Category</p><p className="text-[#FBFAF8] font-medium">{form.category}</p></div>
-                <div><p className="text-[#FBFAF8]/40 text-xs mb-1">Operating Days</p><p className="text-[#FBFAF8] font-medium">{form.operatingDays}</p></div>
+                <div><p className="text-[#FBFAF8]/40 text-xs mb-1">Operating Days</p><p className="text-[#FBFAF8] font-medium">{form.operatingDays.join(', ') || '—'}</p></div>
                 <div><p className="text-[#FBFAF8]/40 text-xs mb-1">Hours</p><p className="text-[#FBFAF8] font-medium">{form.openingTime} – {form.closingTime}</p></div>
                 <div><p className="text-[#FBFAF8]/40 text-xs mb-1">City</p><p className="text-[#FBFAF8] font-medium">{form.city}, Pampanga</p></div>
                 <div><p className="text-[#FBFAF8]/40 text-xs mb-1">Barangay</p><p className="text-[#FBFAF8] font-medium">{form.barangay}</p></div>
@@ -666,7 +836,7 @@ function ListBusiness() {
                 <div className="mt-4 border-t border-zinc-700 pt-4">
                   <p className="text-[#FBFAF8]/40 text-xs mb-3">Contact & Social</p>
                   <div className="flex flex-col gap-2 text-sm">
-                    {form.phone && <div className="flex items-center gap-2"><img src={phoneIcon} className="w-4 h-4 opacity-50" /><span className="text-[#FBFAF8]/80">{form.phone}</span></div>}
+                    {form.phone && <div className="flex items-center gap-2"><img src={phoneIcon} className="w-4 h-4 opacity-50" /><span className="text-[#FBFAF8]/80">+63{form.phone}</span></div>}
                     {form.email && <div className="flex items-center gap-2"><img src={emailIcon} className="w-4 h-4 opacity-50" /><span className="text-[#FBFAF8]/80">{form.email}</span></div>}
                     {form.facebook && <div className="flex items-center gap-2"><img src={fbIcon} className="w-4 h-4 opacity-50" /><span className="text-[#FBFAF8]/80">{form.facebook}</span></div>}
                     {form.website && <div className="flex items-center gap-2"><img src={webIcon} className="w-4 h-4 opacity-50" /><span className="text-[#FBFAF8]/80">{form.website}</span></div>}

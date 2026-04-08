@@ -46,11 +46,12 @@ export default function EditListingModal({ isOpen, onClose, onSave, listing }: E
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // ← removed onClose() here; MyBusiness.handleSaveListing closes the modal
+    //   after the Supabase update succeeds, preventing a race condition
     onSave({
       ...listing,
       ...form,
     } as Listing);
-    onClose();
   };
 
   if (!isOpen) return null;
