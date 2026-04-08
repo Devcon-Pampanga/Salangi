@@ -1,12 +1,12 @@
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { HiOutlineOfficeBuilding, HiOutlineSpeakerphone } from "react-icons/hi";
+import { HiOutlineOfficeBuilding } from "react-icons/hi";
 import { ROUTES } from '../../../routes/paths';
 import BusinessCard from "../../dashboard/components/BusinessCard";
 import EditListingModal from "./EditListingModal";
 import type { Listing } from "../../Data/Listings";
 import { supabase } from "../../../lib/supabase";
-import { useAuth } from "../../../hooks/useAuth"; 
+import { useAuth } from "../../../hooks/useAuth";
 
 const MyBusiness = () => {
     const navigate = useNavigate();
@@ -95,7 +95,6 @@ const MyBusiness = () => {
         if (updateError) {
             console.error("Failed to save listing:", updateError);
         } else {
-            // Update local state so the card reflects changes immediately
             setListings((prev) =>
                 prev.map((l) =>
                     l.id === editingListing.id ? { ...l, ...updatedListing } : l
@@ -103,7 +102,6 @@ const MyBusiness = () => {
             );
         }
 
-        // Close modal here (EditListingModal no longer calls onClose itself)
         setIsEditModalOpen(false);
         setEditingListing(null);
     };
@@ -126,6 +124,15 @@ const MyBusiness = () => {
         setDeletingId(null);
         setConfirmDeleteId(null);
     };
+
+    const filteredListings = listings
+        .filter(l => activeFilter === "All" || l.name === activeFilter)
+        .filter(l => {
+            if (statusFilter === "All") return true;
+            if (statusFilter === "Approved") return l.verified === true;
+            if (statusFilter === "Pending") return l.verified === false;
+            return true;
+        });
 
     // ─── Render ───────────────────────────────────────────────────────────────
     return (
@@ -169,13 +176,22 @@ const MyBusiness = () => {
                             <span className="text-xs text-[#FFE2A0] opacity-80">Add your listing</span>
                         </div>
                     </button>
-
-                    
                 </div>
 
                 <div className="mt-12 mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <h2 className="text-[#FFE2A0] text-xl font-['Playfair_Display'] font-semibold">Your Listings</h2>
-                    
+                    <div className="flex items-center gap-3">
+                        <h2 className="text-[#FFE2A0] text-xl font-['Playfair_Display'] font-semibold">Your Listings</h2>
+                        {/* Summary counts */}
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs bg-green-600/20 text-green-400 border border-green-600/30 px-2 py-0.5 rounded-full font-medium">
+                                {listings.filter(l => l.verified).length} Approved
+                            </span>
+                            <span className="text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-medium">
+                                {listings.filter(l => !l.verified).length} Pending
+                            </span>
+                        </div>
+                    </div>
+
                     <div className="flex flex-row items-center gap-2 bg-[#3a3a3a] p-1.5 rounded-xl border border-[#4d4d4d] w-full sm:w-fit overflow-x-auto scrollbar-hide">
                         {["All", "Approved", "Pending"].map((status) => (
                             <button
@@ -228,16 +244,26 @@ const MyBusiness = () => {
 
                 {!loading && !error && listings.length > 0 && (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-6">
-                        {listings
-                            .filter(l => activeFilter === "All" || l.name === activeFilter)
-                            .filter(l => {
-                                if (statusFilter === "All") return true;
-                                if (statusFilter === "Approved") return l.verified === true;
-                                if (statusFilter === "Pending") return l.verified === false;
-                                return true;
-                            })
-                            .map((listing) => (
+                        {filteredListings.map((listing) => (
                             <div key={listing.id} className="relative">
+
+                                {/* ── Status badge ─────────────────────────── */}
+                                {listing.verified ? (
+                                    <div className="absolute top-3 left-3 z-20 flex items-center gap-1.5 bg-green-600 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-lg pointer-events-none">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                        Approved
+                                    </div>
+                                ) : (
+                                    <div className="absolute top-3 left-3 z-20 flex items-center gap-1.5 bg-amber-500 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-lg pointer-events-none">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2m6-2a10 10 0 11-20 0 10 10 0 0120 0z" />
+                                        </svg>
+                                        Pending Review
+                                    </div>
+                                )}
+
                                 <BusinessCard
                                     listing={listing}
                                     isBusinessSide={true}
@@ -246,10 +272,10 @@ const MyBusiness = () => {
                                     onSelect={() => {}}
                                     onToggleSave={() => {}}
                                     onEdit={handleEditListing}
-                                    onViewAnalytics={() => navigate(ROUTES.DASHBOARD_ANALYTICS)} // ← fixed
+                                    onViewAnalytics={() => navigate(ROUTES.DASHBOARD_ANALYTICS)}
                                 />
 
-                                {/* Delete confirmation overlay */}
+                                {/* ── Delete confirmation overlay ───────────── */}
                                 {confirmDeleteId === listing.id && (
                                     <div className="absolute inset-0 bg-black/70 rounded-2xl flex flex-col items-center justify-center gap-4 z-20 p-6">
                                         <p className="text-white text-sm text-center font-semibold">
@@ -273,7 +299,7 @@ const MyBusiness = () => {
                                     </div>
                                 )}
 
-                                {/* Delete trigger button */}
+                                {/* ── Delete trigger button ─────────────────── */}
                                 {confirmDeleteId !== listing.id && (
                                     <button
                                         onClick={() => setConfirmDeleteId(listing.id)}
