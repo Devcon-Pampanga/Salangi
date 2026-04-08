@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { IoChatbubbleEllipsesOutline } from "react-icons/io5";
 import { supabase } from "../../../lib/supabase";
 
 interface Review {
@@ -12,6 +13,8 @@ interface Review {
 }
 
 export default function Review() {
+  const [userListings, setUserListings] = useState<{id: number, name: string}[]>([]);
+  const [activeFilter, setActiveFilter] = useState("All");
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalReviews, setTotalReviews] = useState(0);
@@ -25,21 +28,44 @@ export default function Review() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
-        const { data: listing } = await supabase
+        const { data: listings } = await supabase
           .from("listings")
-          .select("id")
-          .eq("user_id", user.id)
-          .single();
+          .select("id, name")
+          .eq("user_id", user.id);
 
-        if (!listing) return;
+        if (!listings || listings.length === 0) {
+          setLoading(false);
+          return;
+        }
+        setUserListings(listings);
+
+        const targetListingIds = activeFilter === "All"
+          ? listings.map(l => l.id)
+          : [listings.find(l => l.name === activeFilter)?.id].filter(Boolean) as number[];
+
+        if (targetListingIds.length === 0) {
+          setReviews([]);
+          setTotalReviews(0);
+          setAverageRating(0);
+          setRatingCounts({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 });
+          setLoading(false);
+          return;
+        }
 
         const { data: reviewsData } = await supabase
           .from("reviews")
           .select("id, rating, comment, created_at, user_id")
-          .eq("listing_id", listing.id)
+          .in("listing_id", targetListingIds)
           .order("created_at", { ascending: false });
 
-        if (!reviewsData) return;
+        if (!reviewsData) {
+          setReviews([]);
+          setTotalReviews(0);
+          setAverageRating(0);
+          setRatingCounts({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 });
+          setLoading(false);
+          return;
+        }
 
         // Fetch user info for each review
         const enriched: Review[] = await Promise.all(
@@ -83,7 +109,7 @@ export default function Review() {
     };
 
     fetchReviews();
-  }, []);
+  }, [activeFilter]);
 
   const maxCount = Math.max(...Object.values(ratingCounts), 1);
 
@@ -102,11 +128,29 @@ export default function Review() {
 
   return (
     <div className="px-4 md:px-6 py-4">
-      <div className="mb-4">
-        <h1 className="font-['Playfair_Display'] text-white text-3xl font-semibold tracking-wide cursor-default">
-          Customer <span className="text-[#FFE2A0]">Reviews</span>
-        </h1>
-        <p className="text-white text-sm">Monitor and respond to your latest business feedback</p>
+      <div className="flex flex-col lg:flex-row justify-between items-start gap-4 lg:gap-0">
+        <div className="mb-4">
+          <h1 className="font-['Playfair_Display'] text-white text-3xl font-semibold tracking-wide cursor-default">
+            Customer <span className="text-[#FFE2A0]">Reviews</span>
+          </h1>
+          <p className="text-white text-sm">Monitor and respond to your latest business feedback</p>
+        </div>
+
+        <div className="flex flex-row items-center overflow-x-auto lg:overflow-visible gap-2 bg-[#3a3a3a] p-2 rounded-xl border border-[#4d4d4d] w-full lg:w-fit scrollbar-hide">
+          {["All", ...userListings.map(l => l.name)].map((name) => (
+            <button
+              key={name}
+              onClick={() => setActiveFilter(name)}
+              className={`px-4 py-1.5 rounded-lg text-xs md:text-sm font-medium transition-all whitespace-nowrap relative ${
+                activeFilter === name
+                  ? 'bg-[#FFE2A0] text-[#1a1a1a] shadow-md scale-[1.02] z-10 font-semibold'
+                  : 'text-white hover:bg-white/5'
+              }`}
+            >
+              {name}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mt-8 mb-6 gap-3">
@@ -170,9 +214,7 @@ export default function Review() {
             {reviews.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
                 <div className="bg-[#474133] p-4 rounded-full border border-[#5a5241] shadow-inner transition-transform hover:scale-110">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-10 text-[#FFE2A0]">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a.75.75 0 0 1-1.154-.63 4.5 4.5 0 0 1 .767-2.327C3.392 16.483 2.25 14.366 2.25 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" />
-                  </svg>
+                  <IoChatbubbleEllipsesOutline className="size-10 text-[#FFE2A0]" />
                 </div>
                 <div className="space-y-1">
                   <h3 className="text-white text-xl font-semibold tracking-wide font-['Playfair_Display']">No Reviews Yet</h3>

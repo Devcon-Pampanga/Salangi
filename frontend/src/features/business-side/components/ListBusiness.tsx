@@ -12,6 +12,11 @@ import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 
+import phoneIcon from '../../../assets/icons/phone-icon.svg';
+import emailIcon from '../../../assets/icons/emain-icon.svg';
+import fbIcon from '../../../assets/icons/fb-icon.svg';
+import webIcon from '../../../assets/icons/web-icon.svg';
+
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: markerIcon2x,
@@ -43,6 +48,7 @@ interface FormState {
   street: string;
   otherDetails: string;
   phone: string;
+  email: string;
   facebook: string;
   website: string;
   images: File[];
@@ -129,7 +135,7 @@ const CITY_COORDS: Record<string, { lat: number; lng: number }> = {
 const INITIAL_FORM: FormState = {
   name: '', category: '', description: '', operatingDays: '',
   openingTime: '', closingTime: '', city: '', barangay: '',
-  street: '', otherDetails: '', phone: '', facebook: '', website: '',
+  street: '', otherDetails: '', phone: '', email: '', facebook: '', website: '',
   images: [], imagePreviews: [],
   businessPermit: null, permitPreview: null,
   governmentId: null, idPreview: null,
@@ -417,6 +423,7 @@ function ListBusiness() {
         images: imageUrls,
         verified: false,
         phone: form.phone.trim() || null,
+        email: form.email.trim() || null,
         facebook: form.facebook.trim() || null,
         website: form.website.trim() || null,
         business_permit: businessPermitUrl,
@@ -562,16 +569,20 @@ function ListBusiness() {
               <p className="text-xs text-[#FFE2A0]/70 font-semibold uppercase tracking-wider mb-4">Contact & Social (optional)</p>
               <div className="flex flex-col gap-4">
                 <div className="flex items-center gap-3">
-                  <span className="text-lg w-8 text-center">📞</span>
+                  <div className="w-8 flex justify-center"><img src={phoneIcon} alt="phone" className="w-5 h-5" /></div>
                   <div className="flex-1"><TextInput value={form.phone} onChange={(e) => update('phone', e.target.value)} placeholder="e.g. +63 912 345 6789" type="tel" /></div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-lg w-8 text-center">🌐</span>
-                  <div className="flex-1"><TextInput value={form.facebook} onChange={(e) => update('facebook', e.target.value)} placeholder="facebook.com/yourbusiness" /></div>
+                  <div className="w-8 flex justify-center"><img src={emailIcon} alt="email" className="w-5 h-5" /></div>
+                  <div className="flex-1"><TextInput value={form.email} onChange={(e) => update('email', e.target.value)} placeholder="e.g. business@example.com" type="email" /></div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-lg w-8 text-center">🔗</span>
-                  <div className="flex-1"><TextInput value={form.website} onChange={(e) => update('website', e.target.value)} placeholder="www.yourbusiness.com" /></div>
+                  <div className="w-8 flex justify-center"><img src={fbIcon} alt="facebook" className="w-5 h-5" /></div>
+                  <div className="flex-1"><TextInput value={form.facebook} onChange={(e) => update('facebook', e.target.value)} placeholder="e.g. facebook.com/yourbusiness" /></div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-8 flex justify-center"><img src={webIcon} alt="website" className="w-5 h-5" /></div>
+                  <div className="flex-1"><TextInput value={form.website} onChange={(e) => update('website', e.target.value)} placeholder="e.g. www.yourbusiness.com" /></div>
                 </div>
               </div>
             </div>
@@ -651,13 +662,14 @@ function ListBusiness() {
                 <p className="text-[#FBFAF8]/40 text-xs mb-1">Description</p>
                 <p className="text-[#FBFAF8] text-sm">{form.description}</p>
               </div>
-              {(form.phone || form.facebook || form.website) && (
+              {(form.phone || form.email || form.facebook || form.website) && (
                 <div className="mt-4 border-t border-zinc-700 pt-4">
                   <p className="text-[#FBFAF8]/40 text-xs mb-3">Contact & Social</p>
-                  <div className="flex flex-col gap-1 text-sm">
-                    {form.phone && <p className="text-[#FBFAF8]/80">📞 {form.phone}</p>}
-                    {form.facebook && <p className="text-[#FBFAF8]/80">🌐 {form.facebook}</p>}
-                    {form.website && <p className="text-[#FBFAF8]/80">🔗 {form.website}</p>}
+                  <div className="flex flex-col gap-2 text-sm">
+                    {form.phone && <div className="flex items-center gap-2"><img src={phoneIcon} className="w-4 h-4 opacity-50" /><span className="text-[#FBFAF8]/80">{form.phone}</span></div>}
+                    {form.email && <div className="flex items-center gap-2"><img src={emailIcon} className="w-4 h-4 opacity-50" /><span className="text-[#FBFAF8]/80">{form.email}</span></div>}
+                    {form.facebook && <div className="flex items-center gap-2"><img src={fbIcon} className="w-4 h-4 opacity-50" /><span className="text-[#FBFAF8]/80">{form.facebook}</span></div>}
+                    {form.website && <div className="flex items-center gap-2"><img src={webIcon} className="w-4 h-4 opacity-50" /><span className="text-[#FBFAF8]/80">{form.website}</span></div>}
                   </div>
                 </div>
               )}

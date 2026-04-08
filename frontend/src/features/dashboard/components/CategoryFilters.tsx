@@ -32,7 +32,7 @@ const CategoryFilters = ({ className = "", activeCategory, onCategoryChange }: C
     ];
 
     return (
-        <div className={`flex gap-4 ${className}`}>
+        <div className={`flex gap-3 md:gap-4 overflow-x-auto w-full pb-1 ${className}`} style={{ scrollbarWidth: 'none' }}>
             {categories.map((cat) => {
                 const isActive = activeCategory === cat.key;
                 const isHovered = hoveredCategory === cat.key;
@@ -48,14 +48,14 @@ const CategoryFilters = ({ className = "", activeCategory, onCategoryChange }: C
                         onMouseEnter={() => setHoveredCategory(cat.key)}
                         onMouseLeave={() => setHoveredCategory(null)}
                         onClick={() => onCategoryChange(cat.key)}
-                        className={`flex items-center cursor-pointer gap-2 p-2.5 px-5 rounded-lg border transition-all duration-200 
+                        className={`flex items-center cursor-pointer shrink-0 gap-2 p-2.5 px-4 md:px-5 rounded-lg border transition-all duration-200 
                             ${isActive 
                                 ? 'bg-[#FFE2A0] text-[#222222] border-[#FFE2A0]' 
                                 : 'bg-[#373737] text-white border-transparent hover:text-[#FFE2A0] hover:border-[#FFE2A0]'
                             }`}
                     >
                         <img src={currentIcon} alt={cat.label.toLowerCase()} className="w-5 h-5" />
-                        <p className="font-semibold text-sm">{cat.label}</p>
+                        <p className="font-semibold text-sm whitespace-nowrap">{cat.label}</p>
                     </button>
                 );
             })}

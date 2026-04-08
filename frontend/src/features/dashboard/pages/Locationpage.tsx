@@ -182,11 +182,31 @@ function Locationpage() {
     : [];
 
   return (
-    <div className="flex h-full w-full bg-[#1A1A1A] text-[#FBFAF8] overflow-hidden">
-      <div className="w-125 h-full overflow-y-auto border-r border-zinc-800 flex flex-col items-center px-6 py-6 scrollbar-hide">
+    <div className="flex flex-col md:flex-row h-full w-full bg-[#1A1A1A] text-[#FBFAF8] overflow-hidden">
+      
+      {/* Mobile-only Search Bar (above Map) */}
+      <div className="md:hidden flex items-center gap-2 w-full px-4 py-4 shrink-0 order-1 border-b border-zinc-800/50 bg-[#1A1A1A] z-10">
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center justify-center w-10 h-10 rounded-full bg-[#2D2D2D] hover:bg-[#3D3D3D] transition-colors cursor-pointer shrink-0"
+        >
+          <img src={search} width="18" alt="back" />
+        </button>
+        <SearchBar
+          containerClassName="flex-1"
+          value={searchQuery}
+          onChange={handleSearchChange}
+          placeholder="Search local spots..."
+          onFilterChange={setFilters}
+          filters={filters}
+        />
+      </div>
+
+      {/* Main Left Column (Results & Cards) */}
+      <div className="w-full md:w-[500px] flex-1 md:flex-none md:h-full overflow-y-auto md:border-r border-zinc-800 flex flex-col items-center px-4 py-4 md:px-6 md:py-6 scrollbar-hide order-3 md:order-1 min-h-0">
         
-        {/* Search bar with back button */}
-        <div className="flex items-center gap-2 w-full mb-4 shrink-0">
+        {/* Desktop-only Search bar */}
+        <div className="hidden md:flex items-center gap-2 w-full mb-4 shrink-0">
           <button
             onClick={() => navigate(-1)}
             className="flex items-center justify-center w-10 h-10 rounded-full bg-[#2D2D2D] hover:bg-[#3D3D3D] transition-colors cursor-pointer shrink-0"
@@ -261,7 +281,7 @@ function Locationpage() {
         )}
       </div>
 
-      <div className="flex-1 h-full relative">
+      <div className="w-full h-[300px] md:h-full shrink-0 md:flex-1 relative order-2 md:order-2 border-b border-zinc-800 md:border-b-0 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.5)] md:shadow-none z-10">
         <MapView
           listings={isSearching ? searchResults : [selectedListing]}
           selectedListing={selectedListing}

@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import EventPostModal from "./PostEventModal";
+import type { Event } from "../../Data/Events";
 import EventCard from "../../dashboard/components/EventCard";
 import { supabase } from "../../../lib/supabase";
 
-interface Event {
+interface SupabaseEvent {
   id: number;
   title: string;
   description: string;
@@ -20,10 +21,12 @@ interface Event {
 }
 
 export default function Events() {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [events, setEvents] = useState<Event[]>([]);
-  const [editingEvent, setEditingEvent] = useState<Event | null>(null);
+  const [events, setEvents] = useState<SupabaseEvent[]>([]);
+  const [userListings, setUserListings] = useState<{id: number, name: string, location: string}[]>([]);
+  const [activeFilter, setActiveFilter] = useState("All");
+  const [editingEvent, setEditingEvent] = useState<SupabaseEvent | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const fetchEvents = async () => {
     setLoading(true);
@@ -31,18 +34,31 @@ export default function Events() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data: listing } = await supabase
+      const { data: listings } = await supabase
         .from("listings")
-        .select("id")
-        .eq("user_id", user.id)
-        .single();
+        .select("id, name, location")
+        .eq("user_id", user.id);
 
-      if (!listing) return;
+      if (!listings || listings.length === 0) {
+        setLoading(false);
+        return;
+      }
+      setUserListings(listings);
+
+      const targetListingIds = activeFilter === "All"
+        ? listings.map(l => l.id)
+        : [listings.find(l => l.name === activeFilter)?.id].filter(Boolean) as number[];
+
+      if (targetListingIds.length === 0) {
+        setEvents([]);
+        setLoading(false);
+        return;
+      }
 
       const { data: eventsData } = await supabase
         .from("events")
         .select("*")
-        .eq("listing_id", listing.id)
+        .in("listing_id", targetListingIds)
         .order("date", { ascending: true });
 
       if (eventsData) setEvents(eventsData);
@@ -55,9 +71,9 @@ export default function Events() {
 
   useEffect(() => {
     fetchEvents();
-  }, []);
+  }, [activeFilter]);
 
-  const handleEdit = (event: Event) => {
+  const handleEdit = (event: SupabaseEvent) => {
     setEditingEvent(event);
     setIsModalOpen(true);
   };
@@ -72,18 +88,36 @@ export default function Events() {
     setEditingEvent(null);
   };
 
-  const handleAddEvent = (newEvent: Event) => {
+  const handleAddEvent = (newEvent: SupabaseEvent) => {
     setEvents((prev) => [newEvent, ...prev]);
   };
 
   return (
     <div className="w-full h-full">
       <div className="px-4 md:px-6 py-4">
-        <div className="mb-4">
-          <h1 className="font-['Playfair_Display'] text-white text-3xl font-semibold tracking-wide cursor-default">
-            Business <span className="text-[#FFE2A0]">Events</span>
-          </h1>
-          <p className="text-white text-sm">Create and manage your upcoming promotional events</p>
+        <div className="flex flex-col lg:flex-row justify-between items-start gap-4 lg:gap-0">
+          <div className="mb-4">
+            <h1 className="font-['Playfair_Display'] text-white text-3xl font-semibold tracking-wide cursor-default">
+              Business <span className="text-[#FFE2A0]">Events</span>
+            </h1>
+            <p className="text-white text-sm">Create and manage your upcoming promotional events</p>
+          </div>
+
+          <div className="flex flex-row items-center overflow-x-auto lg:overflow-visible gap-2 bg-[#3a3a3a] p-2 rounded-xl border border-[#4d4d4d] w-full lg:w-fit scrollbar-hide">
+            {["All", ...userListings.map(l => l.name)].map((name) => (
+              <button
+                key={name}
+                onClick={() => setActiveFilter(name)}
+                className={`px-4 py-1.5 rounded-lg text-xs md:text-sm font-medium transition-all whitespace-nowrap relative ${
+                  activeFilter === name
+                    ? 'bg-[#FFE2A0] text-[#1a1a1a] shadow-md scale-[1.02] z-10 font-semibold'
+                    : 'text-white hover:bg-white/5'
+                }`}
+              >
+                {name}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="flex flex-row gap-4 mt-6">
@@ -103,14 +137,22 @@ export default function Events() {
           </button>
         </div>
 
+        <div className="mt-12 mb-6">
+          <h2 className="text-[#FFE2A0] text-xl font-['Playfair_Display'] font-semibold">Your Events</h2>
+        </div>
+
         {loading ? (
-          <p className="text-[#a0a0a0] text-sm mt-12">Loading events...</p>
+          <p className="text-[#a0a0a0] text-sm mt-6">Loading events...</p>
         ) : events.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-12 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-6 mb-8">
             {events.map((event) => (
               <EventCard
                 key={event.id}
-                event={event}
+                event={{
+                  ...event,
+                  image: event.image_url,
+                  organizer: userListings.find(l => l.id === event.listing_id)?.name || "Business"
+                } as any}
                 isBusinessSide={true}
                 onEdit={() => handleEdit(event)}
                 onDelete={() => handleDelete(event.id)}
@@ -137,7 +179,12 @@ export default function Events() {
           isOpen={isModalOpen}
           onClose={handleCloseModal}
           onAddEvent={handleAddEvent}
-          editEvent={editingEvent}
+          editEvent={editingEvent ? {
+            ...editingEvent,
+            image: editingEvent.image_url,
+            organizer: userListings.find(l => l.id === editingEvent.listing_id)?.name || "Business"
+          } as Event : null}
+          userListings={userListings}
         />
       </div>
     </div>

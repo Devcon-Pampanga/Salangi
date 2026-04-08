@@ -13,6 +13,8 @@ const MyBusiness = () => {
     const { user } = useAuth();
 
     const [listings, setListings] = useState<Listing[]>([]);
+    const [activeFilter, setActiveFilter] = useState("All");
+    const [statusFilter, setStatusFilter] = useState("All");
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -130,11 +132,29 @@ const MyBusiness = () => {
     return (
         <div>
             <div className="px-4 md:px-6 py-4">
-                <div className="mb-4">
-                    <h1 className="font-['Playfair_Display'] text-white text-2xl md:text-3xl font-semibold tracking-wide cursor-default">
-                        My <span className="text-[#FFE2A0]">Business</span>
-                    </h1>
-                    <p className="text-white text-sm">Overview and management of your professional presence</p>
+                <div className="flex flex-col lg:flex-row justify-between items-start gap-4 lg:gap-0">
+                    <div className="mb-4">
+                        <h1 className="font-['Playfair_Display'] text-white text-2xl md:text-3xl font-semibold tracking-wide cursor-default">
+                            My <span className="text-[#FFE2A0]">Business</span>
+                        </h1>
+                        <p className="text-white text-sm">Overview and management of your professional presence</p>
+                    </div>
+
+                    <div className="flex flex-row items-center overflow-x-auto lg:overflow-visible gap-2 bg-[#3a3a3a] p-2 rounded-xl border border-[#4d4d4d] w-full lg:w-fit scrollbar-hide">
+                        {["All", ...listings.map(l => l.name)].map((name) => (
+                            <button
+                                key={name}
+                                onClick={() => setActiveFilter(name)}
+                                className={`px-4 py-1.5 rounded-lg text-xs md:text-sm font-medium transition-all whitespace-nowrap relative ${
+                                    activeFilter === name
+                                        ? 'bg-[#FFE2A0] text-[#1a1a1a] shadow-md scale-[1.02] z-10 font-semibold'
+                                        : 'text-white hover:bg-white/5'
+                                }`}
+                            >
+                                {name}
+                            </button>
+                        ))}
+                    </div>
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-4 mt-6">
@@ -151,19 +171,27 @@ const MyBusiness = () => {
                         </div>
                     </button>
 
-                    <button className="p-3 w-54 h-18 rounded-xl flex flex-row items-center gap-3 bg-[#5a5241] hover:bg-[#857657] border border-[#FFE2A0] text-[#fdfdfd] text-md tracking-wide cursor-pointer text-left transition-all shadow-lg active:scale-95">
-                        <div className="p-3 h-12 w-12 flex justify-center items-center bg-[#474133] rounded-xl text-white">
-                            <HiOutlineSpeakerphone className="size-6" />
-                        </div>
-                        <div className="flex flex-col">
-                            <span className="font-semibold">Promotion</span>
-                            <span className="text-xs text-[#FFE2A0] opacity-80">Boost visibility</span>
-                        </div>
-                    </button>
+                    
                 </div>
 
-                <div className="mt-12 mb-6">
+                <div className="mt-12 mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <h2 className="text-[#FFE2A0] text-xl font-['Playfair_Display'] font-semibold">Your Listings</h2>
+                    
+                    <div className="flex flex-row items-center gap-2 bg-[#3a3a3a] p-1.5 rounded-xl border border-[#4d4d4d] w-full sm:w-fit overflow-x-auto scrollbar-hide">
+                        {["All", "Approved", "Pending"].map((status) => (
+                            <button
+                                key={status}
+                                onClick={() => setStatusFilter(status)}
+                                className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
+                                    statusFilter === status
+                                        ? 'bg-[#FFE2A0] text-[#1a1a1a] shadow-md font-semibold'
+                                        : 'text-white hover:bg-white/5'
+                                }`}
+                            >
+                                {status}
+                            </button>
+                        ))}
+                    </div>
                 </div>
 
                 {/* States */}
@@ -201,7 +229,15 @@ const MyBusiness = () => {
 
                 {!loading && !error && listings.length > 0 && (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-6">
-                        {listings.map((listing) => (
+                        {listings
+                            .filter(l => activeFilter === "All" || l.name === activeFilter)
+                            .filter(l => {
+                                if (statusFilter === "All") return true;
+                                if (statusFilter === "Approved") return l.verified === true;
+                                if (statusFilter === "Pending") return l.verified === false;
+                                return true;
+                            })
+                            .map((listing) => (
                             <div key={listing.id} className="relative">
                                 <BusinessCard
                                     listing={listing}
