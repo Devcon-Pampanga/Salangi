@@ -1,4 +1,4 @@
-const LOCATIONS: Record<string, string[]> = {
+export const LOCATIONS: Record<string, string[]> = {
   'Angeles City': [
     'Agapito del Rosario', 'Anunas', 'Balibago', 'Capaya', 'Claro M. Recto',
     'Cuayan', 'Cutcut', 'Lourdes North West', 'Lourdes Sur', 'Malabanias',
@@ -148,4 +148,30 @@ const LOCATIONS: Record<string, string[]> = {
     'Batang 1st', 'Batang 2nd', 'Mabuanbuan', 'Malusac', 'Sasmuan Pob.',
     'San Nicolas 1st', 'San Nicolas 2nd', 'San Pedro', 'Santa Lucia', 'Santo Tomas',
   ],
+};
+
+export const CITY_COORDS: Record<string, { lat: number; lng: number }> = {
+  'Angeles City':  { lat: 15.1450, lng: 120.5887 },
+  'San Fernando':  { lat: 15.0289, lng: 120.6898 },
+  'Mabalacat':     { lat: 15.2167, lng: 120.5833 },
+  'Clark':         { lat: 15.1860, lng: 120.5540 },
+  'Apalit':        { lat: 14.9528, lng: 120.7597 },
+  'Arayat':        { lat: 15.1478, lng: 120.7706 },
+  'Bacolor':       { lat: 15.0567, lng: 120.6531 },
+  'Candaba':       { lat: 15.0936, lng: 120.8278 },
+  'Floridablanca': { lat: 14.9997, lng: 120.5019 },
+  'Guagua':        { lat: 14.9736, lng: 120.6367 },
+  'Lubao':         { lat: 14.9303, lng: 120.6017 },
+  'Macabebe':      { lat: 14.9078, lng: 120.7150 },
+  'Magalang':      { lat: 15.2147, lng: 120.6625 },
+  'Masantol':      { lat: 14.8958, lng: 120.7283 },
+  'Mexico':        { lat: 15.0681, lng: 120.7197 },
+  'Minalin':       { lat: 14.9678, lng: 120.7003 },
+  'Porac':         { lat: 15.0736, lng: 120.5381 },
+  'San Luis':      { lat: 15.0367, lng: 120.7897 },
+  'San Simon':     { lat: 14.9978, lng: 120.7756 },
+  'Santa Ana':     { lat: 15.0897, lng: 120.7681 },
+  'Santa Rita':    { lat: 15.0078, lng: 120.6467 },
+  'Santo Tomas':   { lat: 15.0547, lng: 120.6767 },
+  'Sasmuan':       { lat: 14.9303, lng: 120.6753 },
 };
