@@ -713,7 +713,7 @@ function ListBusiness() {
               <div className="flex flex-col gap-4">
                 {/* Phone */}
                 <div className="flex items-center gap-3">
-                  <span className="text-lg w-8 text-center">📞</span>
+                  <div className="w-8 flex justify-center"><img src={phoneIcon} alt="phone" className="w-5 h-5" /></div>
                   <div className="flex-1 flex items-center bg-[#2D2D2D] rounded-lg border border-transparent focus-within:border-[#FFE2A0]/40 transition-all overflow-hidden">
                     <span className="px-3 text-sm text-[#FBFAF8]/50 border-r border-[#FBFAF8]/10 py-3 select-none">+63</span>
                     <input
@@ -730,7 +730,7 @@ function ListBusiness() {
                 </div>
                 {/* Email */}
                 <div className="flex items-center gap-3">
-                  <span className="text-lg w-8 text-center">✉️</span>
+                  <div className="w-8 flex justify-center"><img src={emailIcon} alt="email" className="w-5 h-5" /></div>
                   <div className="flex-1">
                     <TextInput
                       type="email"
@@ -742,14 +742,14 @@ function ListBusiness() {
                 </div>
                 {/* Facebook */}
                 <div className="flex items-center gap-3">
-                  <span className="text-lg w-8 text-center">🌐</span>
+                  <div className="w-8 flex justify-center"><img src={fbIcon} alt="facebook" className="w-5 h-5" /></div>
                   <div className="flex-1">
                     <TextInput value={form.facebook} onChange={(e) => update('facebook', e.target.value)} placeholder="facebook.com/yourbusiness" />
                   </div>
                 </div>
                 {/* Website */}
                 <div className="flex items-center gap-3">
-                  <span className="text-lg w-8 text-center">🔗</span>
+                  <div className="w-8 flex justify-center"><img src={webIcon} alt="website" className="w-5 h-5" /></div>
                   <div className="flex-1">
                     <TextInput value={form.website} onChange={(e) => update('website', e.target.value)} placeholder="www.yourbusiness.com" />
                   </div>
