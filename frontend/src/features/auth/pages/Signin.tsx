@@ -1,8 +1,13 @@
 import { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import bg from '@assets/images/bg.png';
 import { supabase } from '@/lib/supabase';
+
+//bg
+import bg from '@assets/images/bg.png';
+
+//icons
+import salangiLogo from '@assets/png-files/salangi-logo.png'
 
 function Signin() {
   const navigate = useNavigate();
@@ -78,8 +83,13 @@ function Signin() {
         </h1>
       </div>
 
+      {/*Logo*/}
+        <div className = "absolute px-4 py-4 ml-320 -mt-1"> 
+          <img src = {salangiLogo} width = {70} height = {70}/>
+        </div>
+
       {/* Right — form */}
-      <div className="motion-preset-slide-left motion-duration-800">
+      <div className="motion-preset-slide-left motion-duration-800 ml-15 mt-10">
 
         {/* Heading */}
         <div className="ml-180 mt-25 absolute">
@@ -91,7 +101,7 @@ function Signin() {
 
         {/* Email */}
         <div className="translate-x-180 mt-53 absolute">
-          <div className="flex flex-col gap-2 w-150">
+          <div className="flex flex-col gap-2 w-120">
             <label className="text-[#FBFAF8] text-md">Email</label>
             <input
               type="text"
@@ -106,7 +116,7 @@ function Signin() {
 
         {/* Password */}
         <div className="translate-x-180 mt-79 absolute">
-          <div className="flex flex-col gap-2 w-150">
+          <div className="flex flex-col gap-2 w-120">
             <div className="flex items-center justify-between">
               <label className="text-[#FBFAF8] text-md">Password</label>
               <Link to="/forgot-password" className="text-[#FFE2A0] text-sm hover:underline">
@@ -135,7 +145,7 @@ function Signin() {
 
         {/* Error */}
         {error && (
-          <div className="translate-x-180 mt-103 absolute w-150">
+          <div className="translate-x-180 mt-102 absolute ml-50">
             <p className="text-red-400 text-sm text-center">{error}</p>
           </div>
         )}
@@ -145,7 +155,7 @@ function Signin() {
           <button
             onClick={handleSignIn}
             disabled={loading}
-            className="px-4 py-3 bg-[#FFE2A0] hover:bg-[#fcd789] active:bg-[#f5cc70] w-150 rounded-lg cursor-pointer font-semibold text-[#222222] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            className="px-4 py-3 bg-[#FFE2A0] hover:bg-[#fcd789] active:bg-[#f5cc70] w-120 rounded-lg cursor-pointer font-semibold text-[#222222] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {loading ? 'Signing in...' : 'Sign in'}
           </button>

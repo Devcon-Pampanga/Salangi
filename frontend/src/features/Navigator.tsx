@@ -10,7 +10,7 @@ import { supabase } from '@/lib/supabase';
 import homeBtn from '@assets/icons/home-btn-default.svg';
 import locBtn from '@assets/icons/map-btn-default.svg';
 import saveBtn from '@assets/icons/save-btn-default.svg';
-import salangiLogo from '@assets/icons/salangi-logo.png';
+import salangiLogo from '@assets/png-files/salangi-logo.png';
 
 // colored icons
 import homeBtnSelected from '@assets/icons/home-btn-active.svg';
@@ -123,7 +123,7 @@ export function Navigator() {
     <div className="flex flex-col-reverse md:flex-row h-screen overflow-hidden">
 
       {/* Sidebar / Bottom Nav */}
-      <div className="bg-[#373737] w-full h-[72px] md:w-20 md:h-full p-2 md:p-3 flex flex-row md:flex-col justify-between items-center shrink-0 relative z-50">
+      <div className="bg-[#373737] w-full h-18 md:w-20 md:h-full p-2 md:p-3 flex flex-row md:flex-col justify-between items-center shrink-0 relative z-50">
         <div className="hidden md:block">
           <button
             onClick={() => navigate('/home-page')}
