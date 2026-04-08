@@ -188,6 +188,8 @@ const EngagementChart = ({ data }: { data: DayPoint[] }) => {
 const Analytics = () => {
     const { user } = useAuth();
     const [timeframe, setTimeframe] = useState("30D");
+    const [activeFilter, setActiveFilter] = useState("All");
+    const [userListings, setUserListings] = useState<{id: number, name: string}[]>([]);
     const [loading, setLoading] = useState(true);
     const [chartData, setChartData] = useState<DayPoint[]>([]);
     const [stats, setStats] = useState<StatsState>({
@@ -209,15 +211,28 @@ const Analytics = () => {
         const currentStart = getDaysAgo(days);
         const previousStart = getDaysAgo(days * 2);
 
-        // 1. Get all listing IDs for this user
-        const { data: userListings } = await supabase
+        // 1. Get all listings for this user
+        const { data: listings } = await supabase
             .from("listings")
-            .select("id")
+            .select("id, name")
             .eq("user_id", user.id);
 
-        const listingIds: number[] = (userListings ?? []).map((l: any) => l.id);
+        if (!listings || listings.length === 0) {
+            setStats({
+                profileViews: 0, totalInteractions: 0, listingSaves: 0, eventAttendance: 0,
+                profileViewsTrend: "—", interactionsTrend: "—", savesTrend: "—", attendanceTrend: "—",
+            });
+            setChartData([]);
+            setLoading(false);
+            return;
+        }
+        setUserListings(listings);
 
-        if (listingIds.length === 0) {
+        const targetListingIds = activeFilter === "All"
+            ? listings.map(l => l.id)
+            : [listings.find(l => l.name === activeFilter)?.id].filter(Boolean) as number[];
+
+        if (targetListingIds.length === 0) {
             setStats({
                 profileViews: 0, totalInteractions: 0, listingSaves: 0, eventAttendance: 0,
                 profileViewsTrend: "—", interactionsTrend: "—", savesTrend: "—", attendanceTrend: "—",
@@ -235,12 +250,12 @@ const Analytics = () => {
             supabase
                 .from("listing_interactions")
                 .select("id, type, created_at")
-                .in("listing_id", listingIds)
+                .in("listing_id", targetListingIds)
                 .gte("created_at", currentStart),
             supabase
                 .from("listing_interactions")
                 .select("id, type")
-                .in("listing_id", listingIds)
+                .in("listing_id", targetListingIds)
                 .gte("created_at", previousStart)
                 .lt("created_at", currentStart),
         ]);
@@ -255,12 +270,12 @@ const Analytics = () => {
             supabase
                 .from("saves")
                 .select("id", { count: "exact", head: true })
-                .in("listing_id", listingIds)
+                .in("listing_id", targetListingIds)
                 .gte("created_at", currentStart),
             supabase
                 .from("saves")
                 .select("id", { count: "exact", head: true })
-                .in("listing_id", listingIds)
+                .in("listing_id", targetListingIds)
                 .gte("created_at", previousStart)
                 .lt("created_at", currentStart),
         ]);
@@ -270,12 +285,12 @@ const Analytics = () => {
             supabase
                 .from("events")
                 .select("id", { count: "exact", head: true })
-                .in("listing_id", listingIds)
+                .in("listing_id", targetListingIds)
                 .gte("created_at", currentStart),
             supabase
                 .from("events")
                 .select("id", { count: "exact", head: true })
-                .in("listing_id", listingIds)
+                .in("listing_id", targetListingIds)
                 .gte("created_at", previousStart)
                 .lt("created_at", currentStart),
         ]);
@@ -326,17 +341,35 @@ const Analytics = () => {
 
     useEffect(() => {
         fetchAnalytics();
-    }, [fetchAnalytics]);
+    }, [fetchAnalytics, activeFilter]);
 
     return (
         <div className="w-full h-full pb-10">
             {/* Header */}
-            <div className="px-4 md:px-6 py-4 flex flex-col md:flex-row md:items-end justify-between gap-4">
-                <div>
-                    <h1 className="font-['Playfair_Display'] text-white text-3xl font-semibold tracking-wide cursor-default">
-                        Business <span className="text-[#FFE2A0]">Analytics</span>
-                    </h1>
-                    <p className="text-white text-sm">Deep dive into your business growth and customer behavior</p>
+            <div className="px-4 md:px-6 py-4">
+                <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
+                    <div>
+                        <h1 className="font-['Playfair_Display'] text-white text-3xl font-semibold tracking-wide cursor-default">
+                            Business <span className="text-[#FFE2A0]">Analytics</span>
+                        </h1>
+                        <p className="text-white text-sm">Deep dive into your business growth and customer behavior</p>
+                    </div>
+
+                    <div className="flex flex-row items-center overflow-x-auto lg:overflow-visible gap-2 bg-[#3a3a3a] p-2 rounded-xl border border-[#4d4d4d] w-full lg:w-fit scrollbar-hide">
+                        {["All", ...userListings.map(l => l.name)].map((name) => (
+                            <button
+                                key={name}
+                                onClick={() => setActiveFilter(name)}
+                                className={`px-4 py-1.5 rounded-lg text-xs md:text-sm font-medium transition-all whitespace-nowrap relative ${
+                                    activeFilter === name
+                                        ? 'bg-[#FFE2A0] text-[#1a1a1a] shadow-md scale-[1.02] z-10 font-semibold'
+                                        : 'text-white hover:bg-white/5'
+                                }`}
+                            >
+                                {name}
+                            </button>
+                        ))}
+                    </div>
                 </div>
 
                 <div className="flex w-full md:w-fit bg-[#3a3a3a] p-1 rounded-xl border border-[#4d4d4d]">

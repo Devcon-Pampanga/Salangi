@@ -12,6 +12,8 @@ interface Review {
 }
 
 export default function Review() {
+  const [userListings, setUserListings] = useState<{id: number, name: string}[]>([]);
+  const [activeFilter, setActiveFilter] = useState("All");
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalReviews, setTotalReviews] = useState(0);
@@ -25,21 +27,44 @@ export default function Review() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
-        const { data: listing } = await supabase
+        const { data: listings } = await supabase
           .from("listings")
-          .select("id")
-          .eq("user_id", user.id)
-          .single();
+          .select("id, name")
+          .eq("user_id", user.id);
 
-        if (!listing) return;
+        if (!listings || listings.length === 0) {
+          setLoading(false);
+          return;
+        }
+        setUserListings(listings);
+
+        const targetListingIds = activeFilter === "All"
+          ? listings.map(l => l.id)
+          : [listings.find(l => l.name === activeFilter)?.id].filter(Boolean) as number[];
+
+        if (targetListingIds.length === 0) {
+          setReviews([]);
+          setTotalReviews(0);
+          setAverageRating(0);
+          setRatingCounts({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 });
+          setLoading(false);
+          return;
+        }
 
         const { data: reviewsData } = await supabase
           .from("reviews")
           .select("id, rating, comment, created_at, user_id")
-          .eq("listing_id", listing.id)
+          .in("listing_id", targetListingIds)
           .order("created_at", { ascending: false });
 
-        if (!reviewsData) return;
+        if (!reviewsData) {
+          setReviews([]);
+          setTotalReviews(0);
+          setAverageRating(0);
+          setRatingCounts({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 });
+          setLoading(false);
+          return;
+        }
 
         // Fetch user info for each review
         const enriched: Review[] = await Promise.all(
@@ -83,7 +108,7 @@ export default function Review() {
     };
 
     fetchReviews();
-  }, []);
+  }, [activeFilter]);
 
   const maxCount = Math.max(...Object.values(ratingCounts), 1);
 
@@ -102,11 +127,29 @@ export default function Review() {
 
   return (
     <div className="px-4 md:px-6 py-4">
-      <div className="mb-4">
-        <h1 className="font-['Playfair_Display'] text-white text-3xl font-semibold tracking-wide cursor-default">
-          Customer <span className="text-[#FFE2A0]">Reviews</span>
-        </h1>
-        <p className="text-white text-sm">Monitor and respond to your latest business feedback</p>
+      <div className="flex flex-col lg:flex-row justify-between items-start gap-4 lg:gap-0">
+        <div className="mb-4">
+          <h1 className="font-['Playfair_Display'] text-white text-3xl font-semibold tracking-wide cursor-default">
+            Customer <span className="text-[#FFE2A0]">Reviews</span>
+          </h1>
+          <p className="text-white text-sm">Monitor and respond to your latest business feedback</p>
+        </div>
+
+        <div className="flex flex-row items-center overflow-x-auto lg:overflow-visible gap-2 bg-[#3a3a3a] p-2 rounded-xl border border-[#4d4d4d] w-full lg:w-fit scrollbar-hide">
+          {["All", ...userListings.map(l => l.name)].map((name) => (
+            <button
+              key={name}
+              onClick={() => setActiveFilter(name)}
+              className={`px-4 py-1.5 rounded-lg text-xs md:text-sm font-medium transition-all whitespace-nowrap relative ${
+                activeFilter === name
+                  ? 'bg-[#FFE2A0] text-[#1a1a1a] shadow-md scale-[1.02] z-10 font-semibold'
+                  : 'text-white hover:bg-white/5'
+              }`}
+            >
+              {name}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mt-8 mb-6 gap-3">

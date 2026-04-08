@@ -13,6 +13,7 @@ const MyBusiness = () => {
     const { user } = useAuth();
 
     const [listings, setListings] = useState<Listing[]>([]);
+    const [activeFilter, setActiveFilter] = useState("All");
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -130,11 +131,29 @@ const MyBusiness = () => {
     return (
         <div>
             <div className="px-4 md:px-6 py-4">
-                <div className="mb-4">
-                    <h1 className="font-['Playfair_Display'] text-white text-2xl md:text-3xl font-semibold tracking-wide cursor-default">
-                        My <span className="text-[#FFE2A0]">Business</span>
-                    </h1>
-                    <p className="text-white text-sm">Overview and management of your professional presence</p>
+                <div className="flex flex-col lg:flex-row justify-between items-start gap-4 lg:gap-0">
+                    <div className="mb-4">
+                        <h1 className="font-['Playfair_Display'] text-white text-2xl md:text-3xl font-semibold tracking-wide cursor-default">
+                            My <span className="text-[#FFE2A0]">Business</span>
+                        </h1>
+                        <p className="text-white text-sm">Overview and management of your professional presence</p>
+                    </div>
+
+                    <div className="flex flex-row items-center overflow-x-auto lg:overflow-visible gap-2 bg-[#3a3a3a] p-2 rounded-xl border border-[#4d4d4d] w-full lg:w-fit scrollbar-hide">
+                        {["All", ...listings.map(l => l.name)].map((name) => (
+                            <button
+                                key={name}
+                                onClick={() => setActiveFilter(name)}
+                                className={`px-4 py-1.5 rounded-lg text-xs md:text-sm font-medium transition-all whitespace-nowrap relative ${
+                                    activeFilter === name
+                                        ? 'bg-[#FFE2A0] text-[#1a1a1a] shadow-md scale-[1.02] z-10 font-semibold'
+                                        : 'text-white hover:bg-white/5'
+                                }`}
+                            >
+                                {name}
+                            </button>
+                        ))}
+                    </div>
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-4 mt-6">
@@ -201,7 +220,9 @@ const MyBusiness = () => {
 
                 {!loading && !error && listings.length > 0 && (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-6">
-                        {listings.map((listing) => (
+                        {listings
+                            .filter(l => activeFilter === "All" || l.name === activeFilter)
+                            .map((listing) => (
                             <div key={listing.id} className="relative">
                                 <BusinessCard
                                     listing={listing}

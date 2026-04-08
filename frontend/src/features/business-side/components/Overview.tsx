@@ -23,7 +23,8 @@ export default function Overview() {
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [userName, setUserName] = useState("there");
-  const [listingId, setListingId] = useState<number | null>(null);
+  const [userListings, setUserListings] = useState<{id: number, name: string}[]>([]);
+  const [activeFilter, setActiveFilter] = useState("All");
   const [events, setEvents] = useState<Event[]>([]);
   const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -57,26 +58,32 @@ export default function Overview() {
         .single();
       if (userData) setUserName(userData.first_name);
 
-      // 3. Get the user's listing
-      const { data: listing } = await supabase
+      // 3. Get the user's listings
+      const { data: listings } = await supabase
         .from("listings")
-        .select("id")
-        .eq("user_id", user.id)
-        .single();
+        .select("id, name")
+        .eq("user_id", user.id);
 
-      if (!listing) {
+      if (!listings || listings.length === 0) {
         setLoading(false);
         return;
       }
+      setUserListings(listings);
 
-      const lid = listing.id;
-      setListingId(lid);
+      const targetListingIds = activeFilter === "All" 
+        ? listings.map(l => l.id)
+        : [listings.find(l => l.name === activeFilter)?.id].filter(Boolean) as number[];
+
+      if (targetListingIds.length === 0) {
+        setLoading(false);
+        return;
+      }
 
       // 4. Profile views (type = 'view')
       const { count: views } = await supabase
         .from("listing_interactions")
         .select("*", { count: "exact", head: true })
-        .eq("listing_id", lid)
+        .in("listing_id", targetListingIds)
         .eq("type", "view");
       setProfileViews(views ?? 0);
 
@@ -84,7 +91,7 @@ export default function Overview() {
       const { count: directions } = await supabase
         .from("listing_interactions")
         .select("*", { count: "exact", head: true })
-        .eq("listing_id", lid)
+        .in("listing_id", targetListingIds)
         .eq("type", "directions");
       setDirectionsTapped(directions ?? 0);
 
@@ -92,14 +99,14 @@ export default function Overview() {
       const { count: saves } = await supabase
         .from("saves")
         .select("*", { count: "exact", head: true })
-        .eq("listing_id", lid);
+        .in("listing_id", targetListingIds);
       setSavedCount(saves ?? 0);
 
       // 7. Review score (average rating)
       const { data: reviews } = await supabase
         .from("reviews")
         .select("rating")
-        .eq("listing_id", lid);
+        .in("listing_id", targetListingIds);
       if (reviews && reviews.length > 0) {
         const avg = reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
         setReviewScore(avg.toFixed(1));
@@ -112,7 +119,7 @@ export default function Overview() {
       const { data: eventsData } = await supabase
         .from("events")
         .select("title, date, location, venue")
-        .eq("listing_id", lid)
+        .in("listing_id", targetListingIds)
         .gte("date", today)
         .order("date", { ascending: true })
         .limit(5);
@@ -134,14 +141,14 @@ export default function Overview() {
       const { data: recentReviews } = await supabase
         .from("reviews")
         .select("id, rating, comment, created_at")
-        .eq("listing_id", lid)
+        .in("listing_id", targetListingIds)
         .order("created_at", { ascending: false })
         .limit(5);
 
       const { data: recentSaves } = await supabase
         .from("saves")
         .select("id, created_at")
-        .eq("listing_id", lid)
+        .in("listing_id", targetListingIds)
         .order("created_at", { ascending: false })
         .limit(5);
 
@@ -180,7 +187,7 @@ export default function Overview() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [activeFilter]);
 
   const handleAddEvent = (newEvent: any) => {
     const d = new Date(newEvent.date);
@@ -209,10 +216,30 @@ export default function Overview() {
     <div className="w-full h-full pb-10">
       {/* Greeting */}
       <div className="px-4 md:px-6 py-4">
-        <h1 className="font-['Playfair_Display'] text-white text-2xl md:text-3xl font-semibold tracking-wide">
-          {getGreeting()}, <span className="text-[#FFE2A0]">{userName}</span>
-        </h1>
-        <p className="text-white text-sm">Here's what's happening with your listing today.</p>
+        <div className="flex flex-col lg:flex-row justify-between items-start gap-4 lg:gap-0">
+          <div className="mb-2">
+            <h1 className="font-['Playfair_Display'] text-white text-2xl md:text-3xl font-semibold tracking-wide">
+              {getGreeting()}, <span className="text-[#FFE2A0]">{userName}</span>
+            </h1>
+            <p className="text-white text-sm">Here's what's happening with your listing today.</p>
+          </div>
+
+          <div className="flex flex-row items-center overflow-x-auto lg:overflow-visible gap-2 bg-[#3a3a3a] p-2 rounded-xl border border-[#4d4d4d] w-full lg:w-fit scrollbar-hide">
+            {["All", ...userListings.map(l => l.name)].map((name) => (
+              <button
+                key={name}
+                onClick={() => setActiveFilter(name)}
+                className={`px-4 py-1.5 rounded-lg text-xs md:text-sm font-medium transition-all whitespace-nowrap relative ${
+                  activeFilter === name
+                    ? 'bg-[#FFE2A0] text-[#1a1a1a] shadow-md scale-[1.02] z-10 font-semibold'
+                    : 'text-white hover:bg-white/5'
+                }`}
+              >
+                {name}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Stats Cards */}

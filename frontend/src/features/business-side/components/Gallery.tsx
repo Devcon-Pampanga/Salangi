@@ -158,14 +158,14 @@ const Gallery = () => {
                         <p className="text-white text-sm">Organize your visuals by business branch</p>
                     </div>
 
-                    <div className="flex flex-row overflow-x-auto lg:overflow-visible pb-2 lg:pb-0 gap-2 bg-[#3a3a3a] p-1.5 rounded-xl border border-[#4d4d4d] w-full lg:w-fit scrollbar-hide">
+                    <div className="flex flex-row items-center overflow-x-auto lg:overflow-visible gap-2 bg-[#3a3a3a] p-2 rounded-xl border border-[#4d4d4d] w-full lg:w-fit scrollbar-hide">
                         {filterOptions.map((name) => (
                             <button
                                 key={name}
                                 onClick={() => setActiveFilter(name)}
-                                className={`px-4 py-1.5 rounded-lg text-xs md:text-sm font-medium transition-all whitespace-nowrap ${
+                                className={`px-4 py-1.5 rounded-lg text-xs md:text-sm font-medium transition-all whitespace-nowrap relative ${
                                     activeFilter === name
-                                        ? 'bg-[#FFE2A0] text-[#1a1a1a] shadow-md scale-105'
+                                        ? 'bg-[#FFE2A0] text-[#1a1a1a] shadow-md scale-[1.02] z-10 font-semibold'
                                         : 'text-white hover:bg-white/5'
                                 }`}
                             >
