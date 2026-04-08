@@ -1,26 +1,43 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
-    HiOutlineOfficeBuilding, 
-    HiOutlinePhone, 
-    HiOutlineMail, 
-    HiOutlineGlobeAlt, 
-    HiOutlineClock, 
     HiOutlineBell, 
     HiOutlineShieldCheck,
     HiOutlineTrash
 } from "react-icons/hi";
 import ChangePasswordModal from "./ChangePasswordModal";
 import DeleteAccountModal from "./DeleteAccountModal";
+import { supabase } from "../../../lib/supabase";
+import { useAuth } from "../../../hooks/useAuth";
 
 const Settings = () => {
+    // 1. Auth and State Hooks
+    const { user } = useAuth();
+    const [businessName, setBusinessName] = useState("");
     const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-    const [businessName] = useState("The Grand Bistro");
     const [notifications, setNotifications] = useState({
         savedListing: true,
         eventAttendance: true,
     });
 
+    // 2. Fetch Business Name from Supabase
+    useEffect(() => {
+        if (!user?.id) return;
+        
+        supabase
+            .from("listings")
+            .select("name")
+            .eq("user_id", user.id)
+            .limit(1)
+            .single()
+            .then(({ data, error }) => {
+                if (data && !error) {
+                    setBusinessName(data.name);
+                }
+            });
+    }, [user?.id]);
+
+    // 3. Handlers
     const toggleNotification = (key: keyof typeof notifications) => {
         setNotifications(prev => ({ ...prev, [key]: !prev[key] }));
     };
@@ -108,6 +125,7 @@ const Settings = () => {
                 </div>
             </div>
             
+            {/* Modals */}
             <ChangePasswordModal 
                 isOpen={isPasswordModalOpen} 
                 onClose={() => setIsPasswordModalOpen(false)} 

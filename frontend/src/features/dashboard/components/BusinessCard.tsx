@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Listing } from '../../Data/Listings';
 import { ROUTES } from '../../../routes/paths';
 
@@ -42,7 +42,6 @@ function BusinessCard({
   onToggleSave, 
   isBusinessSide,
   onEdit,
-  onDelete 
 }: BusinessCardProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [imgError, setImgError] = useState(false);
@@ -63,12 +62,7 @@ function BusinessCard({
   };
 
   const handleCardClick = () => {
-    if (isBusinessSide) {
-      onSelect(listing);
-    } else {
-      // On consumer homepage: clicking card just selects/highlights on map
-      onSelect(listing);
-    }
+    onSelect(listing);
   };
 
   return (
@@ -82,20 +76,6 @@ function BusinessCard({
       }`}
     >
         <div className="relative group">
-          {/* Delete Button - Only for Business Side */}
-          {isBusinessSide && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete?.(listing.id);
-              }}
-              className="absolute top-4 right-4 flex items-center justify-center w-10 h-10 bg-red-600/90 hover:bg-red-700 backdrop-blur-md rounded-full z-30 cursor-pointer shadow-xl border border-white/10 transition-all duration-300 hover:scale-110 active:scale-95"
-              title="Delete Listing"
-            >
-              <Trash2 size={18} className="text-white" />
-            </button>
-          )}
-
           {/* Save Button - Only for Consumer Side */}
           {!isBusinessSide && (
             <button
