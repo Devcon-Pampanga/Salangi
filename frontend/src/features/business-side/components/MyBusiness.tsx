@@ -14,6 +14,7 @@ const MyBusiness = () => {
 
     const [listings, setListings] = useState<Listing[]>([]);
     const [activeFilter, setActiveFilter] = useState("All");
+    const [statusFilter, setStatusFilter] = useState("All");
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -181,8 +182,24 @@ const MyBusiness = () => {
                     </button>
                 </div>
 
-                <div className="mt-12 mb-6">
+                <div className="mt-12 mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <h2 className="text-[#FFE2A0] text-xl font-['Playfair_Display'] font-semibold">Your Listings</h2>
+                    
+                    <div className="flex flex-row items-center gap-2 bg-[#3a3a3a] p-1.5 rounded-xl border border-[#4d4d4d] w-full sm:w-fit overflow-x-auto scrollbar-hide">
+                        {["All", "Approved", "Pending"].map((status) => (
+                            <button
+                                key={status}
+                                onClick={() => setStatusFilter(status)}
+                                className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
+                                    statusFilter === status
+                                        ? 'bg-[#FFE2A0] text-[#1a1a1a] shadow-md font-semibold'
+                                        : 'text-white hover:bg-white/5'
+                                }`}
+                            >
+                                {status}
+                            </button>
+                        ))}
+                    </div>
                 </div>
 
                 {/* States */}
@@ -222,6 +239,12 @@ const MyBusiness = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-6">
                         {listings
                             .filter(l => activeFilter === "All" || l.name === activeFilter)
+                            .filter(l => {
+                                if (statusFilter === "All") return true;
+                                if (statusFilter === "Approved") return l.verified === true;
+                                if (statusFilter === "Pending") return l.verified === false;
+                                return true;
+                            })
                             .map((listing) => (
                             <div key={listing.id} className="relative">
                                 <BusinessCard

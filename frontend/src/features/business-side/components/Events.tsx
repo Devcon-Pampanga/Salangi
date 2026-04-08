@@ -22,7 +22,7 @@ interface SupabaseEvent {
 
 export default function Events() {
   const [events, setEvents] = useState<SupabaseEvent[]>([]);
-  const [userListings, setUserListings] = useState<{id: number, name: string}[]>([]);
+  const [userListings, setUserListings] = useState<{id: number, name: string, location: string}[]>([]);
   const [activeFilter, setActiveFilter] = useState("All");
   const [editingEvent, setEditingEvent] = useState<SupabaseEvent | null>(null);
   const [loading, setLoading] = useState(true);
@@ -36,7 +36,7 @@ export default function Events() {
 
       const { data: listings } = await supabase
         .from("listings")
-        .select("id, name")
+        .select("id, name, location")
         .eq("user_id", user.id);
 
       if (!listings || listings.length === 0) {
@@ -137,10 +137,14 @@ export default function Events() {
           </button>
         </div>
 
+        <div className="mt-12 mb-6">
+          <h2 className="text-[#FFE2A0] text-xl font-['Playfair_Display'] font-semibold">Your Events</h2>
+        </div>
+
         {loading ? (
-          <p className="text-[#a0a0a0] text-sm mt-12">Loading events...</p>
+          <p className="text-[#a0a0a0] text-sm mt-6">Loading events...</p>
         ) : events.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-12 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-6 mb-8">
             {events.map((event) => (
               <EventCard
                 key={event.id}
@@ -180,6 +184,7 @@ export default function Events() {
             image: editingEvent.image_url,
             organizer: userListings.find(l => l.id === editingEvent.listing_id)?.name || "Business"
           } as Event : null}
+          userListings={userListings}
         />
       </div>
     </div>

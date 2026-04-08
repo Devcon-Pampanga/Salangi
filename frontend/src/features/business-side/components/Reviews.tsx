@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { IoChatbubbleEllipsesOutline } from "react-icons/io5";
 import { supabase } from "../../../lib/supabase";
 
 interface Review {
@@ -213,9 +214,7 @@ export default function Review() {
             {reviews.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
                 <div className="bg-[#474133] p-4 rounded-full border border-[#5a5241] shadow-inner transition-transform hover:scale-110">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-10 text-[#FFE2A0]">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a.75.75 0 0 1-1.154-.63 4.5 4.5 0 0 1 .767-2.327C3.392 16.483 2.25 14.366 2.25 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" />
-                  </svg>
+                  <IoChatbubbleEllipsesOutline className="size-10 text-[#FFE2A0]" />
                 </div>
                 <div className="space-y-1">
                   <h3 className="text-white text-xl font-semibold tracking-wide font-['Playfair_Display']">No Reviews Yet</h3>
