@@ -13,6 +13,7 @@ interface PublicEvent {
   location: string;
   image_url: string;
   verified: boolean;
+  status?: string;
   listing_id: number | null;
   organizer?: string;
   interest_count?: number;
@@ -30,10 +31,11 @@ function Eventspage() {
     const fetchEvents = async () => {
       setLoading(true);
       try {
+        // ✅ FIX: Fetch events that are either verified=true OR status='approved'
         const { data: eventsData, error } = await supabase
           .from('events')
           .select('*, listings(name)')
-          .eq('verified', true)
+          .or('verified.eq.true,status.eq.approved')
           .order('created_at', { ascending: false });
 
         if (error) console.error('Supabase error:', error);
