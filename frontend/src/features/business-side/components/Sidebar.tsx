@@ -1,4 +1,6 @@
-import { Link, NavLink, NavLinkRenderProps } from 'react-router-dom';
+import { useState } from 'react';
+import { NavLink, NavLinkRenderProps, useNavigate } from 'react-router-dom'; // add useNavigate
+import { createPortal } from 'react-dom';
 import { ROUTES } from '../../../routes/paths';
 import { X } from 'lucide-react';
 import { IoCalendarOutline } from "react-icons/io5";
@@ -8,18 +10,61 @@ interface SidebarProps {
 }
 
 function Sidebar({ onClose }: SidebarProps) {
+    const navigate = useNavigate(); // ← add this
+    const [isRedirecting, setIsRedirecting] = useState(false);
+
     const navClass = ({ isActive }: NavLinkRenderProps): string => 
         `flex items-center gap-2 transition-colors ${
-            isActive ? 'bg-[#222222] border border-[#222222] text-[#FFE2A0] py-1 px-2 rounded-md' : 'bg-[#373737] border border-[#373737] hover:bg-[#222222] hover:border-[#FFE2A0] py-1 px-2 rounded-md text-white hover:text-[#FFE2A0]'
+            isActive 
+              ? 'bg-[#222222] border border-[#222222] text-[#FFE2A0] py-1 px-2 rounded-md' 
+              : 'bg-[#373737] border border-[#373737] hover:bg-[#222222] hover:border-[#FFE2A0] py-1 px-2 rounded-md text-white hover:text-[#FFE2A0]'
         }`;
+
+    const handleBackToHomepage = () => {
+        setIsRedirecting(true);
+        setTimeout(() => {
+            navigate(ROUTES.HOME); // ← was window.location.href, now uses React Router
+            setIsRedirecting(false);
+        }, 400);
+    };
 
     return (
         <div className="bg-[#373737] w-64 lg:w-55 min-h-screen z-10 relative">
+
+            {/* ── Loading overlay ── */}
+            {isRedirecting && createPortal(
+                <div
+                    className="fixed inset-0 z-[9999] flex flex-col items-center justify-center gap-6"
+                    style={{ backgroundColor: '#1A1A1A' }}
+                >
+                    <div
+                        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl opacity-30 pointer-events-none"
+                        style={{
+                            width: '400px',
+                            height: '400px',
+                            background: 'radial-gradient(circle, rgba(255,226,160,0.8) 0%, rgba(255,226,160,0.1) 60%, transparent 80%)',
+                        }}
+                    />
+                    <div className="relative w-16 h-16">
+                        <div className="absolute inset-0 rounded-full border-4 border-[#FFE2A0]/10" />
+                        <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-[#FFE2A0] animate-spin" />
+                    </div>
+                    <div className="text-center space-y-1 relative z-10">
+                        <p className="text-[#FFE2A0] font-semibold text-lg tracking-wide">Going back</p>
+                        <p className="text-[#FBFAF8]/40 text-sm">Taking you there...</p>
+                    </div>
+                </div>,
+                document.body
+            )}
+
             <div className="px-4 py-6">
                 <div className="flex items-center justify-between mb-4 lg:mb-6">
-                    <Link to={ROUTES.HOME} className="flex items-center gap-2 text-[#707070] hover:text-[#FFE2A0] text-sm transition-colors font-medium">
+                    <button
+                        onClick={handleBackToHomepage}
+                        className="flex items-center gap-2 text-[#707070] hover:text-[#FFE2A0] text-sm transition-colors font-medium cursor-pointer"
+                    >
                         ← Back to Homepage
-                    </Link>
+                    </button>
                     {onClose && (
                         <button 
                             onClick={onClose}

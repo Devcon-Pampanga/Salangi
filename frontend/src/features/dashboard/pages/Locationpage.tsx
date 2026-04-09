@@ -48,6 +48,7 @@ function Locationpage() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [savedIds, setSavedIds] = useState<number[]>([]);
+  const [galleryImages, setGalleryImages] = useState<string[]>([]);
 
   useEffect(() => {
     Promise.all([getListings(), getAverageRatings()])
@@ -73,6 +74,31 @@ function Locationpage() {
     };
     fetchSaves();
   }, []);
+
+  // Fetch gallery images — listing's own image always first, then gallery images
+  useEffect(() => {
+    const fetchGalleryImages = async () => {
+      const { data } = await supabase
+        .from('gallery_images')
+        .select('url')
+        .eq('listing_id', selectedListing.id)
+        .order('added_date', { ascending: false });
+
+      const listingMainImage = selectedListing.images?.[0];
+
+      if (data && data.length > 0) {
+        const galleryUrls = data.map((row: any) => row.url);
+        setGalleryImages([
+          ...(listingMainImage ? [listingMainImage] : []),
+          ...galleryUrls,
+        ]);
+      } else {
+        // No gallery images, just use the listing's own images
+        setGalleryImages(selectedListing.images ?? []);
+      }
+    };
+    fetchGalleryImages();
+  }, [selectedListing.id]);
 
   useEffect(() => {
     fetchReviews(selectedListing.id);
@@ -164,7 +190,6 @@ function Locationpage() {
 
   const isSearching = searchQuery.trim().length > 0;
 
-  // Apply search + filters together
   const searchResults = isSearching
     ? listings
         .filter((item: Listing) =>
@@ -202,7 +227,7 @@ function Locationpage() {
         />
       </div>
 
-      {/* Main Left Column (Results & Cards) */}
+      {/* Main Left Column */}
       <div className="w-full md:w-[500px] flex-1 md:flex-none md:h-full overflow-y-auto md:border-r border-zinc-800 flex flex-col items-center px-4 py-4 md:px-6 md:py-6 scrollbar-hide order-3 md:order-1 min-h-0">
         
         {/* Desktop-only Search bar */}
@@ -237,7 +262,6 @@ function Locationpage() {
                       <p className="text-sm font-semibold text-[#FBFAF8]">{item.name}</p>
                       <p className="text-xs text-[#FBFAF8]/50">{item.location}</p>
                     </div>
-                    {/* Show average rating in search results if available */}
                     {averageRatings[item.id] != null && (
                       <div className="flex items-center gap-1 shrink-0">
                         <span className="text-[#FFE2A0] text-xs">★</span>
@@ -264,7 +288,7 @@ function Locationpage() {
             location={selectedListing.location}
             hours={selectedListing.hours}
             description={selectedListing.description}
-            images={selectedListing.images}
+            images={galleryImages}
             isVerified={selectedListing.verified}
             phone={selectedListing.phone}
             email={selectedListing.email}

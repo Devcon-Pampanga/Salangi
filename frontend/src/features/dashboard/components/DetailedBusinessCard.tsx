@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import locBtnSelected from '@assets/icons/map-btn-active.svg';
+import locBtn from '@assets/icons/map-btn-default.svg';
 import verifiedIcon from '@assets/icons/verified-btn.svg';
 import heartInactive from '@assets/icons/save-btn-inactive.svg';
 import heartActive from '@assets/icons/save-btn-active.svg';
@@ -43,9 +44,53 @@ interface DetailedBusinessCardProps {
   reviewsLoading?: boolean;
   isVerified?: boolean;
   initialSaved?: boolean;
+  lat?: number;
+  lng?: number;
   onToggleSave?: (id: number) => void;
   onReviewAdded?: () => void;
 }
+
+// ── Hours formatter ───────────────────────────────────────────────────────────
+
+const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+function formatHours(hours: string): string {
+  if (!hours) return '';
+
+  // Extract time part (e.g. "11:11 AM – 2:22 PM") from the end of the string
+  const timeMatch = hours.match(/,?\s*(\d{1,2}:\d{2}\s*(?:AM|PM)\s*[–—-]\s*\d{1,2}:\d{2}\s*(?:AM|PM))\s*$/i);
+  const timePart = timeMatch ? timeMatch[1].trim() : '';
+  const daysPart = timeMatch ? hours.slice(0, timeMatch.index) : hours;
+
+  // Find which days from our ordered list are present in the string
+  const activeDays = DAYS.filter(d => daysPart.includes(d));
+
+  if (activeDays.length === 0) return hours;
+
+  // Collapse consecutive days into ranges e.g. Mon–Wed
+  const ranges: string[] = [];
+  let rangeStart = activeDays[0];
+  let rangePrev = activeDays[0];
+
+  for (let i = 1; i <= activeDays.length; i++) {
+    const curr = activeDays[i];
+    const prevIdx = DAYS.indexOf(rangePrev);
+    const currIdx = curr ? DAYS.indexOf(curr) : -1;
+
+    if (curr && currIdx === prevIdx + 1) {
+      rangePrev = curr;
+    } else {
+      ranges.push(rangeStart === rangePrev ? rangeStart : `${rangeStart} – ${rangePrev}`);
+      rangeStart = curr!;
+      rangePrev = curr!;
+    }
+  }
+
+  const dayString = ranges.join(', ');
+  return timePart ? `${dayString}, ${timePart}` : dayString;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 function DetailedBusinessCard({
   listingId,
@@ -64,6 +109,8 @@ function DetailedBusinessCard({
   reviewsLoading = false,
   isVerified = false,
   initialSaved = false,
+  lat,
+  lng,
   onToggleSave,
   onReviewAdded,
 }: DetailedBusinessCardProps) {
@@ -73,6 +120,13 @@ function DetailedBusinessCard({
   const [submitting, setSubmitting] = useState(false);
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
   const [reviewError, setReviewError] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.from('listing_interactions').insert({
+      listing_id: listingId,
+      type: 'view',
+    });
+  }, [listingId]);
 
   const nextImage = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -87,11 +141,9 @@ function DetailedBusinessCard({
   const handleToggleSave = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (onToggleSave) {
-      // Use parent-controlled save (Locationpage)
       onToggleSave(listingId);
       setIsSaved(prev => !prev);
     } else {
-      // Fallback: handle save directly
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       if (isSaved) {
@@ -103,27 +155,34 @@ function DetailedBusinessCard({
     }
   };
 
+  const handleGetDirections = async () => {
+    await supabase.from('listing_interactions').insert({
+      listing_id: listingId,
+      type: 'directions',
+    });
+    const query = lat && lng
+      ? `${lat},${lng}`
+      : encodeURIComponent(location);
+    window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
+  };
+
   const handleAddReview = async (rating: number, comment: string) => {
     setSubmitting(true);
     setReviewError(null);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-
       if (!user) {
         setReviewError('You must be logged in to leave a review.');
         setSubmitting(false);
         return;
       }
-
       const { error } = await supabase.from('reviews').insert({
         listing_id: listingId,
         user_id: user.id,
         rating,
         comment,
       });
-
       if (error) throw error;
-
       setIsAddingReview(false);
       onReviewAdded?.();
     } catch (err: any) {
@@ -219,7 +278,8 @@ function DetailedBusinessCard({
             </div>
             <div className="flex items-center gap-2">
               <img src={timeIcon} width="14" alt="hours" className="opacity-70" />
-              <span className="text-[#FBFAF8]/50 text-xs font-medium">{hours}</span>
+              {/* ✅ formatHours applied here */}
+              <span className="text-[#FBFAF8]/50 text-xs font-medium">{formatHours(hours)}</span>
             </div>
           </div>
 
@@ -255,6 +315,13 @@ function DetailedBusinessCard({
                 <span>{website}</span>
               </div>
             )}
+            <button
+              onClick={handleGetDirections}
+              className="mt-2 flex items-center gap-3 text-sm text-[#FBFAF8]/80 hover:text-[#FBFAF8] px-3 py-2.5 rounded-xl border border-transparent hover:border-[#FFE2A0] hover:bg-[#FFE2A0]/5 transition-all duration-300 cursor-pointer group w-full text-left"
+            >
+              <img src={locBtn} width="16" className="opacity-70 group-hover:opacity-100" alt="directions" />
+              <span>Get Directions</span>
+            </button>
           </div>
 
           {/* Ratings Summary */}

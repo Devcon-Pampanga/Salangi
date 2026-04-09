@@ -8,22 +8,26 @@ interface SupabaseEvent {
   id: number;
   title: string;
   description: string;
-  date: string;
+  date_range: string;
   time: string;
   location: string;
-  venue: string;
-  artists: string;
-  ticket_price: number;
-  category: string;
+  month: string;
+  day: string;
   image_url: string;
-  status: string;
-  listing_id: number;
+  verified: boolean;
+  user_id: string;
+  listing_id: number | null;
+  lat: number | null;
+  lng: number | null;
+  created_at: string;
+  interest_count?: number;
 }
 
 export default function Events() {
   const [events, setEvents] = useState<SupabaseEvent[]>([]);
   const [userListings, setUserListings] = useState<{id: number, name: string, location: string}[]>([]);
   const [activeFilter, setActiveFilter] = useState("All");
+  const [statusFilter, setStatusFilter] = useState("All");
   const [editingEvent, setEditingEvent] = useState<SupabaseEvent | null>(null);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -39,29 +43,35 @@ export default function Events() {
         .select("id, name, location")
         .eq("user_id", user.id);
 
-      if (!listings || listings.length === 0) {
-        setLoading(false);
-        return;
-      }
-      setUserListings(listings);
-
-      const targetListingIds = activeFilter === "All"
-        ? listings.map(l => l.id)
-        : [listings.find(l => l.name === activeFilter)?.id].filter(Boolean) as number[];
-
-      if (targetListingIds.length === 0) {
-        setEvents([]);
-        setLoading(false);
-        return;
-      }
+      setUserListings(listings ?? []);
 
       const { data: eventsData } = await supabase
         .from("events")
         .select("*")
-        .in("listing_id", targetListingIds)
-        .order("date", { ascending: true });
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
 
-      if (eventsData) setEvents(eventsData);
+      if (!eventsData) { setLoading(false); return; }
+
+      // Fetch interest counts for all events in one go
+      const eventIds = eventsData.map((e: any) => e.id);
+      const { data: interestData } = await supabase
+        .from("event_interests")
+        .select("event_id")
+        .in("event_id", eventIds);
+
+      // Count interests per event
+      const interestMap: Record<number, number> = {};
+      (interestData ?? []).forEach((row: any) => {
+        interestMap[row.event_id] = (interestMap[row.event_id] ?? 0) + 1;
+      });
+
+      const eventsWithCounts = eventsData.map((e: any) => ({
+        ...e,
+        interest_count: interestMap[e.id] ?? 0,
+      }));
+
+      setEvents(eventsWithCounts as any);
     } catch (err) {
       console.error("Events fetch error:", err);
     } finally {
@@ -71,7 +81,16 @@ export default function Events() {
 
   useEffect(() => {
     fetchEvents();
-  }, [activeFilter]);
+  }, []);
+
+  const filteredEvents = events.filter(e => {
+    const matchesListing = activeFilter === "All" || userListings.find(l => l.id === e.listing_id)?.name === activeFilter;
+    const matchesStatus =
+      statusFilter === "All" ||
+      (statusFilter === "Approved" && e.verified) ||
+      (statusFilter === "Pending" && !e.verified);
+    return matchesListing && matchesStatus;
+  });
 
   const handleEdit = (event: SupabaseEvent) => {
     setEditingEvent(event);
@@ -88,13 +107,18 @@ export default function Events() {
     setEditingEvent(null);
   };
 
-  const handleAddEvent = (newEvent: SupabaseEvent) => {
-    setEvents((prev) => [newEvent, ...prev]);
+  const handleAddEvent = (newEvent: any) => {
+    setEvents((prev) => [{ ...newEvent, interest_count: 0 }, ...prev]);
   };
+
+  // Total interests across all events
+  const totalInterests = events.reduce((sum, e) => sum + (e.interest_count ?? 0), 0);
 
   return (
     <div className="w-full h-full">
       <div className="px-4 md:px-6 py-4">
+
+        {/* Header */}
         <div className="flex flex-col lg:flex-row justify-between items-start gap-4 lg:gap-0">
           <div className="mb-4">
             <h1 className="font-['Playfair_Display'] text-white text-3xl font-semibold tracking-wide cursor-default">
@@ -103,6 +127,7 @@ export default function Events() {
             <p className="text-white text-sm">Create and manage your upcoming promotional events</p>
           </div>
 
+          {/* Listing filter */}
           <div className="flex flex-row items-center overflow-x-auto lg:overflow-visible gap-2 bg-[#3a3a3a] p-2 rounded-xl border border-[#4d4d4d] w-full lg:w-fit scrollbar-hide">
             {["All", ...userListings.map(l => l.name)].map((name) => (
               <button
@@ -120,7 +145,8 @@ export default function Events() {
           </div>
         </div>
 
-        <div className="flex flex-row gap-4 mt-6">
+        {/* Post Event button + total interests summary */}
+        <div className="flex flex-row flex-wrap gap-4 mt-6 items-center">
           <button
             onClick={() => { setEditingEvent(null); setIsModalOpen(true); }}
             className="p-3 w-54 h-18 rounded-xl flex flex-row items-center gap-3 bg-[#5a5241] hover:bg-[#857657] border border-[#FFE2A0] text-[#fdfdfd] text-md tracking-wide cursor-pointer text-left transition-all shadow-lg active:scale-95"
@@ -135,28 +161,96 @@ export default function Events() {
               <span className="text-xs text-[#FFE2A0] opacity-80">Create new event</span>
             </div>
           </button>
+
+          {/* Total interests pill */}
+          {totalInterests > 0 && (
+            <div className="flex items-center gap-2 bg-[#3a3a3a] border border-[#4d4d4d] rounded-xl px-4 py-3">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-4 text-[#FFE2A0]">
+                <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 0 1-.383-.218 25.18 25.18 0 0 1-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0 1 12 5.052 5.5 5.5 0 0 1 16.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 0 1-4.244 3.17 15.247 15.247 0 0 1-.383.219l-.022.012-.007.004-.003.001a.752.752 0 0 1-.704 0l-.003-.001Z" />
+              </svg>
+              <div className="flex flex-col leading-tight">
+                <span className="text-white text-sm font-bold">{totalInterests}</span>
+                <span className="text-[#a0a0a0] text-[10px]">Total interests</span>
+              </div>
+            </div>
+          )}
         </div>
 
-        <div className="mt-12 mb-6">
-          <h2 className="text-[#FFE2A0] text-xl font-['Playfair_Display'] font-semibold">Your Events</h2>
+        {/* Your Events heading + summary counts + status filter */}
+        <div className="mt-12 mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="flex items-center gap-3">
+            <h2 className="text-[#FFE2A0] text-xl font-['Playfair_Display'] font-semibold">Your Events</h2>
+            <div className="flex items-center gap-2">
+              <span className="text-xs bg-green-600/20 text-green-400 border border-green-600/30 px-2 py-0.5 rounded-full font-medium">
+                {events.filter(e => e.verified).length} Approved
+              </span>
+              <span className="text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-medium">
+                {events.filter(e => !e.verified).length} Pending
+              </span>
+            </div>
+          </div>
+
+          {/* Status filter */}
+          <div className="flex flex-row items-center gap-2 bg-[#3a3a3a] p-1.5 rounded-xl border border-[#4d4d4d] w-full sm:w-fit overflow-x-auto scrollbar-hide">
+            {["All", "Approved", "Pending"].map((status) => (
+              <button
+                key={status}
+                onClick={() => setStatusFilter(status)}
+                className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
+                  statusFilter === status
+                    ? 'bg-[#FFE2A0] text-[#1a1a1a] shadow-md font-semibold'
+                    : 'text-white hover:bg-white/5'
+                }`}
+              >
+                {status}
+              </button>
+            ))}
+          </div>
         </div>
 
+        {/* Event list */}
         {loading ? (
-          <p className="text-[#a0a0a0] text-sm mt-6">Loading events...</p>
-        ) : events.length > 0 ? (
+          <div className="flex items-center justify-center h-48 text-[#a0a0a0]">
+            <svg className="animate-spin h-6 w-6 mr-3 text-[#FFE2A0]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+            </svg>
+            Loading events...
+          </div>
+        ) : filteredEvents.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-6 mb-8">
-            {events.map((event) => (
-              <EventCard
-                key={event.id}
-                event={{
-                  ...event,
-                  image: event.image_url,
-                  organizer: userListings.find(l => l.id === event.listing_id)?.name || "Business"
-                } as any}
-                isBusinessSide={true}
-                onEdit={() => handleEdit(event)}
-                onDelete={() => handleDelete(event.id)}
-              />
+            {filteredEvents.map((event) => (
+              <div key={event.id} className="relative">
+                {/* Status badge */}
+                {event.verified ? (
+                  <div className="absolute top-3 left-3 z-20 flex items-center gap-1.5 bg-green-600 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-lg pointer-events-none">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    Approved
+                  </div>
+                ) : (
+                  <div className="absolute top-3 left-3 z-20 flex items-center gap-1.5 bg-amber-500 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-lg pointer-events-none">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2m6-2a10 10 0 11-20 0 10 10 0 0120 0z" />
+                    </svg>
+                    Pending Review
+                  </div>
+                )}
+
+                <EventCard
+                  event={{
+                    ...event,
+                    image: event.image_url,
+                    date: event.date_range,
+                    organizer: userListings.find(l => l.id === event.listing_id)?.name || "My Business",
+                    interest_count: event.interest_count ?? 0,
+                  } as any}
+                  isBusinessSide={true}
+                  onEdit={() => handleEdit(event)}
+                  onDelete={() => handleDelete(event.id)}
+                />
+              </div>
             ))}
           </div>
         ) : (
@@ -167,9 +261,13 @@ export default function Events() {
               </svg>
             </div>
             <div className="space-y-1">
-              <h3 className="text-white text-xl font-semibold tracking-wide font-['Playfair_Display']">No Events Found</h3>
+              <h3 className="text-white text-xl font-semibold tracking-wide font-['Playfair_Display']">
+                {statusFilter !== "All" ? `No ${statusFilter} Events` : "No Events Found"}
+              </h3>
               <p className="text-[#a0a0a0] text-sm font-light max-w-xs mx-auto leading-relaxed">
-                Host your first event to reach more customers and grow your community.
+                {statusFilter !== "All"
+                  ? `You have no ${statusFilter.toLowerCase()} events yet.`
+                  : "Host your first event to reach more customers and grow your community."}
               </p>
             </div>
           </div>
@@ -182,8 +280,8 @@ export default function Events() {
           editEvent={editingEvent ? {
             ...editingEvent,
             image: editingEvent.image_url,
-            organizer: userListings.find(l => l.id === editingEvent.listing_id)?.name || "Business"
-          } as Event : null}
+            organizer: userListings.find(l => l.id === editingEvent.listing_id)?.name || "My Business"
+          } as any : null}
           userListings={userListings}
         />
       </div>

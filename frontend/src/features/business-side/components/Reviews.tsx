@@ -8,8 +8,10 @@ interface Review {
   comment: string;
   created_at: string;
   user_id: string;
+  listing_id: number;
   userName: string;
   userAvatar: string | null;
+  listingName: string;
 }
 
 export default function Review() {
@@ -54,7 +56,7 @@ export default function Review() {
 
         const { data: reviewsData } = await supabase
           .from("reviews")
-          .select("id, rating, comment, created_at, user_id")
+          .select("id, rating, comment, created_at, user_id, listing_id")
           .in("listing_id", targetListingIds)
           .order("created_at", { ascending: false });
 
@@ -86,7 +88,9 @@ export default function Review() {
               }
             }
 
-            return { ...r, userName, userAvatar };
+            const listingName = listings.find(l => l.id === r.listing_id)?.name ?? "Unknown Listing";
+
+            return { ...r, userName, userAvatar, listingName };
           })
         );
 
@@ -96,6 +100,8 @@ export default function Review() {
         if (enriched.length > 0) {
           const avg = enriched.reduce((sum, r) => sum + r.rating, 0) / enriched.length;
           setAverageRating(parseFloat(avg.toFixed(1)));
+        } else {
+          setAverageRating(0);
         }
 
         const counts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
@@ -158,7 +164,13 @@ export default function Review() {
       </div>
 
       {loading ? (
-        <p className="text-[#a0a0a0] text-sm">Loading reviews...</p>
+        <div className="flex items-center gap-3 text-[#a0a0a0] text-sm">
+          <svg className="animate-spin h-5 w-5 text-[#FFE2A0]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+          </svg>
+          Loading reviews...
+        </div>
       ) : (
         <>
           <div className="flex flex-col lg:flex-row gap-4">
@@ -174,16 +186,22 @@ export default function Review() {
             {/* Average Rating */}
             <div className="w-full flex-1 min-h-50 px-6 py-6 bg-[#3a3a3a] border border-[#4d4d4d] rounded-xl">
               <p className="text-white text-lg font-semibold tracking-wide mb-4">Average Rating</p>
-              <div className="flex flex-row items-center gap-3 mb-2">
-                <p className="text-5xl text-white">{averageRating || "—"}</p>
-                <div className="flex flex-row gap-1">
-                  {[...Array(5)].map((_, i) => (
-                    <svg key={i} viewBox="0 0 24 24" fill={i < Math.round(averageRating) ? "#FFB800" : "#4B4B4B"} className="size-7">
-                      <path d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.563.563 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.563.563 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z" />
-                    </svg>
-                  ))}
+              {totalReviews === 0 ? (
+                <div className="flex flex-row items-center gap-3 mb-2">
+                  <p className="text-5xl text-white">—</p>
                 </div>
-              </div>
+              ) : (
+                <div className="flex flex-row items-center gap-3 mb-2">
+                  <p className="text-5xl text-white">{averageRating}</p>
+                  <div className="flex flex-row gap-1">
+                    {[...Array(5)].map((_, i) => (
+                      <svg key={i} viewBox="0 0 24 24" fill={i < Math.round(averageRating) ? "#FFB800" : "#4B4B4B"} className="size-7">
+                        <path d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.563.563 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z" />
+                      </svg>
+                    ))}
+                  </div>
+                </div>
+              )}
               <p className="text-[#dbdbdb]">Average rating all time</p>
             </div>
 
@@ -226,21 +244,30 @@ export default function Review() {
             ) : (
               reviews.map((rev, index) => (
                 <div key={rev.id} className="flex flex-col sm:flex-row gap-6 sm:gap-10 mb-8 max-w-7xl">
-                  {/* Left: User */}
+                  {/* Left: User + listing badge */}
                   <div className="w-full sm:w-70 flex flex-row items-start gap-4 shrink-0">
                     {rev.userAvatar ? (
-                      <img src={rev.userAvatar} alt={rev.userName} className="size-16 rounded-xl object-cover" />
+                      <img src={rev.userAvatar} alt={rev.userName} className="size-16 rounded-xl object-cover shrink-0" />
                     ) : (
-                      <div className="size-16 rounded-xl bg-[#474133] border border-[#5a5241] flex items-center justify-center text-[#FFE2A0] text-xl font-bold">
+                      <div className="size-16 rounded-xl bg-[#474133] border border-[#5a5241] flex items-center justify-center text-[#FFE2A0] text-xl font-bold shrink-0">
                         {rev.userName.charAt(0)}
                       </div>
                     )}
-                    <div className="flex flex-col gap-1 mt-1">
+                    <div className="flex flex-col gap-1.5 mt-1">
                       <h2 className="text-white text-md font-semibold tracking-wide">{rev.userName}</h2>
+                      {/* Listing badge — only visible when All filter is active */}
+                      {activeFilter === "All" && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#FFE2A0] bg-[#FFE2A0]/10 border border-[#FFE2A0]/20 px-2 py-0.5 rounded-full w-fit">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-2.5">
+                            <path fillRule="evenodd" d="M4.5 2.25a.75.75 0 0 0 0 1.5v16.5h-.75a.75.75 0 0 0 0 1.5h16.5a.75.75 0 0 0 0-1.5h-.75V3.75a.75.75 0 0 0 0-1.5h-15Z" clipRule="evenodd" />
+                          </svg>
+                          {rev.listingName}
+                        </span>
+                      )}
                     </div>
                   </div>
 
-                  {/* Right: Review */}
+                  {/* Right: Review content */}
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-3 mt-1">
                       <div className="flex flex-row gap-0.5">

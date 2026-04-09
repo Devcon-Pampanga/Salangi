@@ -27,12 +27,39 @@ function Homepage() {
   const [filters, setFilters]                 = useState<FilterOptions>({ minRating: null, sortBy: 'default' });
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen]   = useState(false);
+  const [isRedirecting, setIsRedirecting]     = useState(false);
 
   const handleLogout = async () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     await supabase.auth.signOut();
     navigate(ROUTES.SIGN_IN);
+  };
+
+  // ── Smart redirect: go to dashboard if user already has a listing ──
+  const handleListBusinessClick = async () => {
+    setIsRedirecting(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        navigate(ROUTES.LIST_YOUR_BUSINESS);
+        return;
+      }
+
+      const { data: userListings } = await supabase
+        .from('listings')
+        .select('id')
+        .eq('user_id', user.id)
+        .limit(1);
+
+      if (userListings && userListings.length > 0) {
+        navigate(ROUTES.DASHBOARD_OVERVIEW);
+      } else {
+        navigate(ROUTES.LIST_YOUR_BUSINESS);
+      }
+    } catch {
+      setIsRedirecting(false);
+    }
   };
 
   useEffect(() => {
@@ -90,7 +117,6 @@ function Homepage() {
     return result;
   }, [listings, activeCategory, searchQuery, filters, averageRatings]);
 
-  // Card click: just highlight on map, do NOT navigate
   const handleCardSelect = (listing: Listing): void => {
     setSelectedListing((prev: Listing | null) =>
       prev?.id === listing.id ? null : listing
@@ -114,6 +140,37 @@ function Homepage() {
 
   return (
     <div className="relative w-full h-full bg-[#1A1A1A] text-[#FBFAF8] overflow-hidden">
+
+      {/* ── Redirect loading overlay ── */}
+      {isRedirecting && createPortal(
+        <div
+          className="fixed inset-0 z-[9999] flex flex-col items-center justify-center gap-6"
+          style={{ backgroundColor: '#1A1A1A' }}
+        >
+          {/* Glow blob */}
+          <div
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl opacity-30 pointer-events-none"
+            style={{
+              width: '400px',
+              height: '400px',
+              background: 'radial-gradient(circle, rgba(255,226,160,0.8) 0%, rgba(255,226,160,0.1) 60%, transparent 80%)',
+            }}
+          />
+
+          {/* Spinner ring */}
+          <div className="relative w-16 h-16">
+            <div className="absolute inset-0 rounded-full border-4 border-[#FFE2A0]/10" />
+            <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-[#FFE2A0] animate-spin" />
+          </div>
+
+          <div className="text-center space-y-1 relative z-10">
+            <p className="text-[#FFE2A0] font-semibold text-lg tracking-wide">Loading</p>
+            <p className="text-[#FBFAF8]/40 text-sm">Taking you there...</p>
+          </div>
+        </div>,
+        document.body
+      )}
+
       <div
         className="absolute top-0 left-0 rounded-full blur-3xl opacity-60 pointer-events-none hidden md:block"
         style={{
@@ -168,7 +225,7 @@ function Homepage() {
               <button
                 onClick={() => {
                   setIsMobileMenuOpen(false);
-                  navigate(ROUTES.LIST_YOUR_BUSINESS);
+                  handleListBusinessClick();
                 }}
                 className="flex items-center justify-center gap-2 px-4 py-3.5 bg-[#FFE2A0] text-[#1A1A1A] rounded-xl font-bold text-md w-full shadow-lg active:scale-95 transition-all cursor-pointer"
               >
@@ -215,8 +272,7 @@ function Homepage() {
           </div>
 
           <div
-            className="flex-none md:flex-1 md:overflow-y-auto flex flex-col gap-4 md:gap-6 pb-10 pr-1 md:pr-2 pl-1 pt-1"
-            style={{ scrollbarWidth: 'none' }}
+            className="flex-none md:flex-1 md:overflow-y-auto flex flex-col gap-4 md:gap-6 pb-10 pr-1 md:pr-2 pl-1 pt-1 no-scrollbar"
           >
             {isLoading ? (
               <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -257,7 +313,7 @@ function Homepage() {
               filters={filters}
             />
             <button
-              onClick={() => navigate(ROUTES.LIST_YOUR_BUSINESS)}
+              onClick={handleListBusinessClick}
               className="flex items-center justify-center gap-2 px-4 py-3 bg-[#FFE2A0] text-[#1A1A1A] rounded-lg font-semibold text-sm whitespace-nowrap cursor-pointer hover:bg-[#f5d880] transition-colors w-full md:w-auto"
             >
               List Your Business

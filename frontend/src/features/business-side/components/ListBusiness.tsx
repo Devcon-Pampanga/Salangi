@@ -334,7 +334,6 @@ function ListBusiness() {
 
   const step2Valid: boolean = form.businessPermit !== null && form.governmentId !== null;
 
-  // ── FIX: handleSubmit now saves user_id ───────────────────────────────────
   const handleSubmit = async (): Promise<void> => {
     setSubmitting(true);
     setSubmitError('');
@@ -363,27 +362,53 @@ function ListBusiness() {
       // Get the currently logged-in user
       const { data: { user } } = await supabase.auth.getUser();
 
-      const { error } = await supabase.from('listings').insert({
-        name: form.name,
-        category: form.category,
-        description: form.description,
-        hours,
-        location,
-        lat,
-        lng,
-        images: imageUrls,
-        verified: false,
-        phone: form.phone ? `+63${form.phone}` : null,
-        email: form.email.trim() || null,
-        facebook: form.facebook.trim() || null,
-        website: form.website.trim() || null,
-        business_permit: businessPermitUrl,
-        government_id: governmentIdUrl,
-        selfie_verification: selfieUrl,
-        user_id: user?.id ?? null,   // ← FIX: tag the owner so it shows in My Business
-      });
+      const { data: insertedListing, error } = await supabase
+        .from('listings')
+        .insert({
+          name: form.name,
+          category: form.category,
+          description: form.description,
+          hours,
+          location,
+          lat,
+          lng,
+          images: imageUrls,
+          verified: false,
+          phone: form.phone ? `+63${form.phone}` : null,
+          email: form.email.trim() || null,
+          facebook: form.facebook.trim() || null,
+          website: form.website.trim() || null,
+          business_permit: businessPermitUrl,
+          government_id: governmentIdUrl,
+          selfie_verification: selfieUrl,
+          user_id: user?.id ?? null,
+        })
+        .select('id, name')
+        .single();
 
       if (error) throw error;
+
+      // ── FIX: Also insert listing images into gallery_images table ──
+      // This ensures photos added during listing creation appear in the Gallery
+      if (imageUrls.length > 0 && insertedListing) {
+        const galleryRows = imageUrls.map((url) => ({
+          url,
+          alt: form.name,
+          listing_id: insertedListing.id,
+          listing_name: insertedListing.name,
+          storage_path: url, // using the public URL as storage path reference
+        }));
+
+        const { error: galleryError } = await supabase
+          .from('gallery_images')
+          .insert(galleryRows);
+
+        if (galleryError) {
+          // Non-fatal: listing was saved, just log the gallery sync error
+          console.error('Gallery sync error:', galleryError);
+        }
+      }
+
       setSubmitted(true);
     } catch (err: any) {
       setSubmitError('Failed to submit listing. Please try again.');

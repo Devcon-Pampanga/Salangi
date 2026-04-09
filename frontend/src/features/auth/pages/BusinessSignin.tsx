@@ -2,8 +2,6 @@ import { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
-import google from '@assets/icons/google-icon.svg';
-import facebook from '@assets/icons/facebook-icon.svg';
 import { ROUTES } from '../../../routes/paths';
 
 function BusinessSignin() {
@@ -44,24 +42,6 @@ function BusinessSignin() {
     }
   };
 
-  const handleGoogleSignIn = async () => {
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({ provider: 'google' });
-      if (error) throw error;
-    } catch (err: any) {
-      setError(err.message || 'An error occurred during Google sign in');
-    }
-  };
-
-  const handleFacebookSignIn = async () => {
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({ provider: 'facebook' });
-      if (error) throw error;
-    } catch (err: any) {
-      setError(err.message || 'An error occurred during Facebook sign in');
-    }
-  };
-
   return (
     <div className="relative bg-[#1a1a1a] flex items-center justify-center px-6 md:px-16 min-h-screen overflow-hidden">
       
@@ -85,7 +65,6 @@ function BusinessSignin() {
           }}
         />
 
-        {/* Header */}
         <h2 className="font-['Playfair_Display'] text-white text-4xl font-bold mb-2">
           Sign in.
         </h2>
@@ -93,7 +72,6 @@ function BusinessSignin() {
           Continue exploring local businesses and experiences.
         </p>
 
-        {/* Form Fields */}
         <div className="space-y-4">
           <div>
             <label className="text-gray-300 text-sm mb-1 block">Email</label>
@@ -150,29 +128,6 @@ function BusinessSignin() {
               Sign up.
             </Link>
           </p>
-
-          <div className="flex items-center gap-4 my-5">
-            <div className="flex-1 border-t border-gray-600"></div>
-            <span className="text-gray-400 text-sm">Or</span>
-            <div className="flex-1 border-t border-gray-600"></div>
-          </div>
-
-          <div className="flex gap-4">
-            <button
-              onClick={handleGoogleSignIn}
-              className="flex-1 flex items-center justify-center gap-2 bg-[#2E2E2E] hover:bg-[#3a3a3a] text-white py-3 rounded-lg transition-colors border border-gray-600 cursor-pointer"
-            >
-              <img src={google} className="w-5 h-5" alt="Google" />
-              Google
-            </button>
-            <button
-              onClick={handleFacebookSignIn}
-              className="flex-1 flex items-center justify-center gap-2 bg-[#2E2E2E] hover:bg-[#3a3a3a] text-white py-3 rounded-lg transition-colors border border-gray-600 cursor-pointer"
-            >
-              <img src={facebook} className="w-5 h-5" alt="Facebook" />
-              Facebook
-            </button>
-          </div>
         </div>
       </div>
     </div>

@@ -1,8 +1,6 @@
 import { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import google from '@assets/icons/google-icon.svg';
-import facebook from '@assets/icons/facebook-icon.svg';
 import { registerUser } from '@/services/api';
 import { ROUTES } from '../../../routes/paths';
 
@@ -157,25 +155,6 @@ function BusinessRegiter(){
                         Sign in.
                         </Link>
                     </p>
-
-                    {/* Divider */}
-                    <div className="flex items-center gap-4 my-5">
-                        <div className="flex-1 border-t border-gray-600"></div>
-                        <span className="text-gray-400 text-sm">Or</span>
-                        <div className="flex-1 border-t border-gray-600"></div>
-                    </div>
-
-                    {/* Social buttons */}
-                    <div className="flex gap-4">
-                        <button className="flex-1 flex items-center justify-center gap-2 bg-[#2E2E2E] hover:bg-[#3a3a3a] text-white py-3 rounded-lg transition-colors border border-gray-600">
-                        <img src={google} className="w-5 h-5" />
-                        Google
-                        </button>
-                        <button className="flex-1 flex items-center justify-center gap-2 bg-[#2E2E2E] hover:bg-[#3a3a3a] text-white py-3 rounded-lg transition-colors border border-gray-600">
-                        <img src={facebook} className="w-5 h-5" />
-                        Facebook
-                        </button>
-                    </div>
                 </div>
             </div>
         </div>

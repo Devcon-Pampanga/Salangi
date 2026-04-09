@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { Settings, LogOut } from 'lucide-react';
 import { createPortal } from 'react-dom';
+import { IoCalendarOutline } from "react-icons/io5";
 import SettingsPage from './settings/pages/SettingsPage';
 import { ROUTES } from '../routes/paths';
 import { supabase } from '@/lib/supabase';
@@ -44,6 +45,34 @@ const NavItem = ({ to, defaultIcon, activeIcon, alt, isEnd = false }: NavItemPro
               src={showActive ? activeIcon : defaultIcon}
               alt={alt}
               className="w-6 h-6 object-contain"
+            />
+          </div>
+        );
+      }}
+    </NavLink>
+  );
+};
+
+// Calendar nav item using react-icons (no image asset needed)
+const CalendarNavItem = () => {
+  const [isHovered, setIsHovered] = useState(false);
+
+  return (
+    <NavLink to={ROUTES.EVENTS_PAGE}>
+      {({ isActive }) => {
+        const showActive = isActive || isHovered;
+        return (
+          <div
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+            className={`flex items-center justify-center transition-all duration-200 border w-12 h-12 md:w-14 md:h-14 rounded-xl ${
+              showActive ? 'bg-[#222222]' : 'bg-transparent border-transparent'
+            } ${isHovered ? 'border-[#FFE2A0]' : 'border-transparent'}`}
+          >
+            <IoCalendarOutline
+              className={`w-6 h-6 transition-colors ${
+                showActive ? 'text-[#FFE2A0]' : 'text-[#FBFAF8]/60'
+              }`}
             />
           </div>
         );
@@ -105,7 +134,6 @@ export function Navigator() {
     navigate(ROUTES.SIGN_IN);
   };
 
-  // Reusable avatar: shows photo if available, else initials
   const AvatarButton = ({ onClick, className }: { onClick?: () => void; className?: string }) => (
     <button
       onClick={onClick}
@@ -153,6 +181,7 @@ export function Navigator() {
             activeIcon={saveBtnSelected}
             alt="Save"
           />
+          <CalendarNavItem />
         </div>
 
         <div className="relative pr-4 md:pr-0 hidden md:block">
@@ -162,7 +191,6 @@ export function Navigator() {
               className="absolute bottom-16 md:bottom-18 right-4 md:-right-4 md:translate-x-full w-64 bg-[#2D2D2D] rounded-2xl shadow-2xl border border-zinc-700/50 py-3 px-3 z-50 flex flex-col gap-1 transition-all"
             >
               <div className="flex items-center gap-3 p-2 py-3">
-                {/* Mini avatar in menu */}
                 <div className="h-8 w-8 rounded-full overflow-hidden bg-[#222222] flex items-center justify-center shrink-0">
                   {displayName.avatarUrl ? (
                     <img src={displayName.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
@@ -208,7 +236,7 @@ export function Navigator() {
         <SettingsPage
           onClose={() => {
             setIsSettingsOpen(false);
-            refreshUser(); // re-reads localStorage including new profile_pic
+            refreshUser();
           }}
         />,
         document.body
