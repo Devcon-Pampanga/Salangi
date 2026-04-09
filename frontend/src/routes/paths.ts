@@ -30,6 +30,7 @@ export const ROUTES = {
   HOME_PAGE: '/home-page',
   LOCATION: '/location-page',
   SAVE: '/save-page',
+  EVENTS_PAGE: '/events-page',
   MAP: '/map-page',
   SIGN_IN: '/sign-in',
   NOTIFICATIONS: '/notifications',

@@ -20,6 +20,7 @@ interface SupabaseEvent {
   lat: number | null;
   lng: number | null;
   created_at: string;
+  interest_count?: number;
 }
 
 export default function Events() {
@@ -50,7 +51,27 @@ export default function Events() {
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
-      if (eventsData) setEvents(eventsData as any);
+      if (!eventsData) { setLoading(false); return; }
+
+      // Fetch interest counts for all events in one go
+      const eventIds = eventsData.map((e: any) => e.id);
+      const { data: interestData } = await supabase
+        .from("event_interests")
+        .select("event_id")
+        .in("event_id", eventIds);
+
+      // Count interests per event
+      const interestMap: Record<number, number> = {};
+      (interestData ?? []).forEach((row: any) => {
+        interestMap[row.event_id] = (interestMap[row.event_id] ?? 0) + 1;
+      });
+
+      const eventsWithCounts = eventsData.map((e: any) => ({
+        ...e,
+        interest_count: interestMap[e.id] ?? 0,
+      }));
+
+      setEvents(eventsWithCounts as any);
     } catch (err) {
       console.error("Events fetch error:", err);
     } finally {
@@ -87,8 +108,11 @@ export default function Events() {
   };
 
   const handleAddEvent = (newEvent: any) => {
-    setEvents((prev) => [newEvent, ...prev]);
+    setEvents((prev) => [{ ...newEvent, interest_count: 0 }, ...prev]);
   };
+
+  // Total interests across all events
+  const totalInterests = events.reduce((sum, e) => sum + (e.interest_count ?? 0), 0);
 
   return (
     <div className="w-full h-full">
@@ -121,8 +145,8 @@ export default function Events() {
           </div>
         </div>
 
-        {/* Post Event button */}
-        <div className="flex flex-row gap-4 mt-6">
+        {/* Post Event button + total interests summary */}
+        <div className="flex flex-row flex-wrap gap-4 mt-6 items-center">
           <button
             onClick={() => { setEditingEvent(null); setIsModalOpen(true); }}
             className="p-3 w-54 h-18 rounded-xl flex flex-row items-center gap-3 bg-[#5a5241] hover:bg-[#857657] border border-[#FFE2A0] text-[#fdfdfd] text-md tracking-wide cursor-pointer text-left transition-all shadow-lg active:scale-95"
@@ -137,6 +161,19 @@ export default function Events() {
               <span className="text-xs text-[#FFE2A0] opacity-80">Create new event</span>
             </div>
           </button>
+
+          {/* Total interests pill */}
+          {totalInterests > 0 && (
+            <div className="flex items-center gap-2 bg-[#3a3a3a] border border-[#4d4d4d] rounded-xl px-4 py-3">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-4 text-[#FFE2A0]">
+                <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 0 1-.383-.218 25.18 25.18 0 0 1-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0 1 12 5.052 5.5 5.5 0 0 1 16.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 0 1-4.244 3.17 15.247 15.247 0 0 1-.383.219l-.022.012-.007.004-.003.001a.752.752 0 0 1-.704 0l-.003-.001Z" />
+              </svg>
+              <div className="flex flex-col leading-tight">
+                <span className="text-white text-sm font-bold">{totalInterests}</span>
+                <span className="text-[#a0a0a0] text-[10px]">Total interests</span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Your Events heading + summary counts + status filter */}
@@ -205,7 +242,9 @@ export default function Events() {
                   event={{
                     ...event,
                     image: event.image_url,
+                    date: event.date_range,
                     organizer: userListings.find(l => l.id === event.listing_id)?.name || "My Business",
+                    interest_count: event.interest_count ?? 0,
                   } as any}
                   isBusinessSide={true}
                   onEdit={() => handleEdit(event)}
