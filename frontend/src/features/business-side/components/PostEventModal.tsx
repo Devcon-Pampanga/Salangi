@@ -76,8 +76,18 @@ function DraggableMap({ lat, lng, onPinMove }: { lat: number; lng: number; onPin
   );
 }
 
-export default function PostEventModal({ isOpen, onClose, onAddEvent, editEvent }: EventPostModalProps) {
-  const [form, setForm] = useState({ title: "", dateFrom: "", dateTo: "", timeFrom: "", timeTo: "", city: "", barangay: "", description: "" });
+export default function PostEventModal({ isOpen, onClose, onAddEvent, editEvent, userListings = [] }: EventPostModalProps) {
+  const [form, setForm] = useState({
+    title: "",
+    dateFrom: "",
+    dateTo: "",
+    timeFrom: "",
+    timeTo: "",
+    city: "",
+    barangay: "",
+    description: "",
+    listingId: "" as string | number,
+  });
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -108,14 +118,35 @@ export default function PostEventModal({ isOpen, onClose, onAddEvent, editEvent 
   useEffect(() => {
     if (editEvent) {
       const parts = editEvent.location?.split(", ") || [];
-      setForm({ title: editEvent.title, dateFrom: "", dateTo: "", timeFrom: editEvent.time?.split(" - ")[0] || "", timeTo: editEvent.time?.split(" - ")[1] || "", city: parts[1] || parts[0] || "", barangay: parts[0] || "", description: editEvent.description });
-      setImagePreview(editEvent.image_url || null);
+      setForm({
+        title: editEvent.title,
+        dateFrom: "",
+        dateTo: "",
+        timeFrom: editEvent.time?.split(" - ")[0] || "",
+        timeTo: editEvent.time?.split(" - ")[1] || "",
+        city: parts[1] || parts[0] || "",
+        barangay: parts[0] || "",
+        description: editEvent.description,
+        listingId: (editEvent as any).listing_id ?? "",
+      });
+      setImagePreview((editEvent as any).image_url || null);
       setImageFile(null);
     } else {
-      setForm({ title: "", dateFrom: "", dateTo: "", timeFrom: "", timeTo: "", city: "", barangay: "", description: "" });
+      // Auto-select first listing if only one exists
+      setForm({
+        title: "",
+        dateFrom: "",
+        dateTo: "",
+        timeFrom: "",
+        timeTo: "",
+        city: "",
+        barangay: "",
+        description: "",
+        listingId: userListings.length === 1 ? userListings[0].id : "",
+      });
       setImageFile(null); setImagePreview(null); setLat(null); setLng(null);
     }
-  }, [editEvent, isOpen]);
+  }, [editEvent, isOpen, userListings]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -134,11 +165,13 @@ export default function PostEventModal({ isOpen, onClose, onAddEvent, editEvent 
     if (!form.title || (!editEvent && !form.dateFrom)) return;
     setSubmitting(true); setSubmitError("");
     try {
-      let uploadedImageUrl = editEvent?.image_url || "";
+      let uploadedImageUrl = (editEvent as any)?.image_url || "";
       if (imageFile) {
         const fileExt = imageFile.name.split(".").pop();
         const fileName = `${Date.now()}.${fileExt}`;
-        const { data: uploadData, error: uploadError } = await supabase.storage.from("events-image").upload(fileName, imageFile, { upsert: true });
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from("events-image")
+          .upload(fileName, imageFile, { upsert: true });
         if (!uploadError) {
           const { data: publicUrlData } = supabase.storage.from("events-image").getPublicUrl(uploadData.path);
           uploadedImageUrl = publicUrlData.publicUrl;
@@ -150,27 +183,55 @@ export default function PostEventModal({ isOpen, onClose, onAddEvent, editEvent 
       const month = dateObj.toLocaleString("en-US", { month: "short" });
       const day = dateObj.getDate().toString();
       const timeDisplay = `${form.timeFrom || ""}${form.timeFrom && form.timeTo ? " - " : ""}${form.timeTo || ""}`;
-      const dateRange = form.dateTo && form.dateTo !== form.dateFrom ? `${effectiveDateFrom} to ${form.dateTo}` : effectiveDateFrom;
+      const dateRange = form.dateTo && form.dateTo !== form.dateFrom
+        ? `${effectiveDateFrom} to ${form.dateTo}`
+        : effectiveDateFrom;
       const locationDisplay = [form.barangay, form.city].filter(Boolean).join(", ");
       const { data: { user } } = await supabase.auth.getUser();
 
-      if (editEvent?.id) {
+      const listingIdValue = form.listingId !== "" ? Number(form.listingId) : null;
+
+      if ((editEvent as any)?.id) {
         const { error } = await supabase.from("events").update({
-          title: form.title, description: form.description, location: locationDisplay,
-          time: timeDisplay, date_range: dateRange, month: effectiveDateFrom ? month : "",
-          day: effectiveDateFrom ? day : "", image_url: uploadedImageUrl,
-          lat: lat ?? undefined, lng: lng ?? undefined,
-          verified: false, // back to pending on edit
-        }).eq("id", editEvent.id);
+          title: form.title,
+          description: form.description,
+          location: locationDisplay,
+          time: timeDisplay,
+          date_range: dateRange,
+          month: effectiveDateFrom ? month : "",
+          day: effectiveDateFrom ? day : "",
+          image_url: uploadedImageUrl,
+          lat: lat ?? undefined,
+          lng: lng ?? undefined,
+          listing_id: listingIdValue,
+          verified: false,
+        }).eq("id", (editEvent as any).id);
         if (error) throw error;
-        onAddEvent({ id: editEvent.id, month, day, title: form.title, location: locationDisplay, time: timeDisplay, dateRange, description: form.description, image_url: uploadedImageUrl, pending: true });
+        onAddEvent({
+          id: (editEvent as any).id,
+          month, day,
+          title: form.title,
+          location: locationDisplay,
+          time: timeDisplay,
+          dateRange,
+          description: form.description,
+          image_url: uploadedImageUrl,
+          listing_id: listingIdValue,
+          pending: true,
+        });
       } else {
-        // ── Insert with verified: false — awaits admin approval ──
         const { data: inserted, error } = await supabase.from("events").insert({
-          title: form.title, description: form.description, location: locationDisplay,
-          time: timeDisplay, date_range: dateRange,
-          month: effectiveDateFrom ? month : "", day: effectiveDateFrom ? day : "",
-          image_url: uploadedImageUrl, lat: lat ?? null, lng: lng ?? null,
+          title: form.title,
+          description: form.description,
+          location: locationDisplay,
+          time: timeDisplay,
+          date_range: dateRange,
+          month: effectiveDateFrom ? month : "",
+          day: effectiveDateFrom ? day : "",
+          image_url: uploadedImageUrl,
+          lat: lat ?? null,
+          lng: lng ?? null,
+          listing_id: listingIdValue,
           verified: false,
           user_id: user?.id ?? null,
         }).select().single();
@@ -180,7 +241,7 @@ export default function PostEventModal({ isOpen, onClose, onAddEvent, editEvent 
       handleClose();
     } catch (err: any) {
       console.error("Submit error:", err);
-      setSubmitError("Failed to submit event. Please try again.");
+      setSubmitError(err?.message || "Failed to submit event. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -190,7 +251,7 @@ export default function PostEventModal({ isOpen, onClose, onAddEvent, editEvent 
     if (submitting) return;
     onClose();
     if (!editEvent) {
-      setForm({ title: "", dateFrom: "", dateTo: "", timeFrom: "", timeTo: "", city: "", barangay: "", description: "" });
+      setForm({ title: "", dateFrom: "", dateTo: "", timeFrom: "", timeTo: "", city: "", barangay: "", description: "", listingId: "" });
       setImageFile(null); setImagePreview(null); setLat(null); setLng(null);
     }
   };
@@ -199,20 +260,32 @@ export default function PostEventModal({ isOpen, onClose, onAddEvent, editEvent 
 
   const inputBase: React.CSSProperties = { backgroundColor: "#2a2a2a", border: "1px solid #444444", color: "#e8e8e8" };
   const handleFocus = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    e.currentTarget.style.borderColor = "#FFE2A0"; e.currentTarget.style.boxShadow = "0 0 0 2px rgba(255,226,160,0.1)"; e.currentTarget.style.outline = "none";
+    e.currentTarget.style.borderColor = "#FFE2A0";
+    e.currentTarget.style.boxShadow = "0 0 0 2px rgba(255,226,160,0.1)";
+    e.currentTarget.style.outline = "none";
   };
   const handleBlur = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    e.currentTarget.style.borderColor = "#444444"; e.currentTarget.style.boxShadow = "none";
+    e.currentTarget.style.borderColor = "#444444";
+    e.currentTarget.style.boxShadow = "none";
   };
+
+  const canSubmit = !!form.title && (!!(editEvent) || !!form.dateFrom);
 
   return (
     <>
-      <style>{`.event-modal-select option { background-color: #2a2a2a; color: #e8e8e8; } .event-modal-select option:checked { background-color: #3a3a3a; color: #FFE2A0; }`}</style>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      <style>{`
+        .event-modal-select option { background-color: #2a2a2a; color: #e8e8e8; }
+        .event-modal-select option:checked { background-color: #3a3a3a; color: #FFE2A0; }
+      `}</style>
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center p-4"
         style={{ backgroundColor: "rgba(0,0,0,0.65)", backdropFilter: "blur(4px)" }}
-        onClick={(e) => e.target === e.currentTarget && handleClose()}>
-        <div className="relative w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl text-left max-h-[90vh] flex flex-col"
-          style={{ backgroundColor: "#222222", border: "1px solid #333333" }}>
+        onClick={(e) => e.target === e.currentTarget && handleClose()}
+      >
+        <div
+          className="relative w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl text-left max-h-[90vh] flex flex-col"
+          style={{ backgroundColor: "#222222", border: "1px solid #333333" }}
+        >
           <div className="h-1 w-full flex-shrink-0" style={{ backgroundColor: "#FFE2A0" }} />
 
           {/* Header */}
@@ -225,12 +298,17 @@ export default function PostEventModal({ isOpen, onClose, onAddEvent, editEvent 
                 {editEvent ? "Changes will be re-reviewed before going live" : "Your event will be reviewed before it appears publicly"}
               </p>
             </div>
-            <button onClick={handleClose} disabled={submitting}
+            <button
+              onClick={handleClose}
+              disabled={submitting}
               className="flex items-center justify-center w-8 h-8 rounded-full transition-all duration-200 cursor-pointer"
               style={{ backgroundColor: "#2e2e2e", color: "#888888" }}
               onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#3a3a3a"; e.currentTarget.style.color = "#FFE2A0"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#2e2e2e"; e.currentTarget.style.color = "#888888"; }}>
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#2e2e2e"; e.currentTarget.style.color = "#888888"; }}
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
             </button>
           </div>
 
@@ -249,24 +327,64 @@ export default function PostEventModal({ isOpen, onClose, onAddEvent, editEvent 
           {/* Body */}
           <div className="px-6 py-5 space-y-4 overflow-y-auto flex-1">
 
+            {/* Listing selector — only show if user has multiple listings */}
+            {userListings.length > 1 && (
+              <div>
+                <label className="block font-normal mb-1.5 text-md tracking-wide" style={{ color: "#FFE2A0" }}>
+                  Link to Listing <span style={{ color: "#f97316" }}>*</span>
+                </label>
+                <select
+                  value={form.listingId}
+                  onChange={(e) => setForm((prev) => ({ ...prev, listingId: e.target.value }))}
+                  onFocus={handleFocus}
+                  onBlur={handleBlur}
+                  className="event-modal-select w-full rounded-lg px-4 py-2.5 text-sm transition-all duration-200 appearance-none"
+                  style={{ ...inputBase, color: form.listingId ? "#e8e8e8" : "#666666" }}
+                >
+                  <option value="" disabled style={{ color: "#666666" }}>Select which business this event is for</option>
+                  {userListings.map((l) => (
+                    <option key={l.id} value={l.id}>{l.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* If only one listing, show it as a read-only info pill */}
+            {userListings.length === 1 && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ backgroundColor: "#FFE2A0]/10", border: "1px solid rgba(255,226,160,0.2)" }}>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5 shrink-0" style={{ color: "#FFE2A0" }}>
+                  <path fillRule="evenodd" d="M4.5 2.25a.75.75 0 0 0 0 1.5v16.5h-.75a.75.75 0 0 0 0 1.5h16.5a.75.75 0 0 0 0-1.5h-.75V3.75a.75.75 0 0 0 0-1.5h-15Z" clipRule="evenodd" />
+                </svg>
+                <span className="text-xs font-medium" style={{ color: "#FFE2A0" }}>
+                  This event will be linked to: <span className="font-bold">{userListings[0].name}</span>
+                </span>
+              </div>
+            )}
+
             {/* Image */}
             <div>
               <label className="block font-normal mb-1.5 text-md tracking-wide" style={{ color: "#FFE2A0" }}>Event Image</label>
               {imagePreview ? (
                 <div className="relative w-full rounded-lg overflow-hidden" style={{ height: "160px" }}>
                   <img src={imagePreview} alt="Event preview" className="w-full h-full object-cover" />
-                  <button onClick={() => { setImageFile(null); setImagePreview(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+                  <button
+                    onClick={() => { setImageFile(null); setImagePreview(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
                     className="absolute top-2 right-2 flex items-center justify-center w-7 h-7 rounded-full cursor-pointer"
-                    style={{ backgroundColor: "rgba(0,0,0,0.7)", color: "#e0e0e0", border: "1px solid #555" }}>
-                    <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
+                    style={{ backgroundColor: "rgba(0,0,0,0.7)", color: "#e0e0e0", border: "1px solid #555" }}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
+                      <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                    </svg>
                   </button>
                 </div>
               ) : (
-                <button onClick={() => fileInputRef.current?.click()}
+                <button
+                  onClick={() => fileInputRef.current?.click()}
                   className="w-full rounded-lg flex flex-col items-center justify-center gap-2 py-6 transition-all duration-200 cursor-pointer"
                   style={{ backgroundColor: "#2a2a2a", border: "1px dashed #444444", color: "#888888" }}
                   onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#FFE2A0"; e.currentTarget.style.color = "#FFE2A0"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#444444"; e.currentTarget.style.color = "#888888"; }}>
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#444444"; e.currentTarget.style.color = "#888888"; }}
+                >
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-7 h-7">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
                   </svg>
@@ -280,9 +398,12 @@ export default function PostEventModal({ isOpen, onClose, onAddEvent, editEvent 
             {/* Title */}
             <div>
               <label className="block font-normal mb-1.5 text-md tracking-wide" style={{ color: "#FFE2A0" }}>Event Title</label>
-              <input name="title" value={form.title} onChange={handleChange} onFocus={handleFocus} onBlur={handleBlur}
+              <input
+                name="title" value={form.title} onChange={handleChange} onFocus={handleFocus} onBlur={handleBlur}
                 placeholder="e.g. Sisig Festival Promo Night"
-                className="w-full rounded-lg px-4 py-2.5 text-sm transition-all duration-200" style={inputBase} />
+                className="w-full rounded-lg px-4 py-2.5 text-sm transition-all duration-200"
+                style={inputBase}
+              />
             </div>
 
             {/* Dates */}
@@ -317,21 +438,27 @@ export default function PostEventModal({ isOpen, onClose, onAddEvent, editEvent 
               </div>
             </div>
 
-            {/* Location + map */}
+            {/* Location */}
             <div>
               <label className="block font-normal mb-1.5 text-md tracking-wide" style={{ color: "#FFE2A0" }}>Location</label>
-              <select value={form.city} onChange={(e) => setForm((prev) => ({ ...prev, city: e.target.value, barangay: "" }))}
+              <select
+                value={form.city}
+                onChange={(e) => setForm((prev) => ({ ...prev, city: e.target.value, barangay: "" }))}
                 onFocus={handleFocus} onBlur={handleBlur}
                 className="event-modal-select w-full rounded-lg px-4 py-2.5 text-sm transition-all duration-200 appearance-none mb-3"
-                style={{ ...inputBase, color: form.city ? "#e8e8e8" : "#666666" }}>
+                style={{ ...inputBase, color: form.city ? "#e8e8e8" : "#666666" }}
+              >
                 <option value="" disabled style={{ color: "#666666" }}>Select city / municipality</option>
                 {Object.keys(LOCATIONS).map((city) => <option key={city} value={city}>{city}</option>)}
               </select>
               {form.city && (
-                <select value={form.barangay} onChange={(e) => setForm((prev) => ({ ...prev, barangay: e.target.value }))}
+                <select
+                  value={form.barangay}
+                  onChange={(e) => setForm((prev) => ({ ...prev, barangay: e.target.value }))}
                   onFocus={handleFocus} onBlur={handleBlur}
                   className="event-modal-select w-full rounded-lg px-4 py-2.5 text-sm transition-all duration-200 appearance-none mb-3"
-                  style={{ ...inputBase, color: form.barangay ? "#e8e8e8" : "#666666" }}>
+                  style={{ ...inputBase, color: form.barangay ? "#e8e8e8" : "#666666" }}
+                >
                   <option value="" style={{ color: "#666666" }}>Select barangay (optional)</option>
                   {LOCATIONS[form.city]?.map((brgy: string) => <option key={brgy} value={brgy}>{brgy}</option>)}
                 </select>
@@ -347,9 +474,12 @@ export default function PostEventModal({ isOpen, onClose, onAddEvent, editEvent 
             {/* Description */}
             <div>
               <label className="block font-normal mb-1.5 text-md tracking-wide" style={{ color: "#FFE2A0" }}>Description</label>
-              <textarea name="description" value={form.description} onChange={handleChange} onFocus={handleFocus} onBlur={handleBlur}
+              <textarea
+                name="description" value={form.description} onChange={handleChange} onFocus={handleFocus} onBlur={handleBlur}
                 rows={3} placeholder="Describe your event..."
-                className="w-full rounded-lg px-4 py-2.5 text-sm resize-none transition-all duration-200" style={inputBase} />
+                className="w-full rounded-lg px-4 py-2.5 text-sm resize-none transition-all duration-200"
+                style={inputBase}
+              />
             </div>
 
             {submitError && <p className="text-red-400 text-sm text-center">{submitError}</p>}
@@ -357,19 +487,26 @@ export default function PostEventModal({ isOpen, onClose, onAddEvent, editEvent 
 
           {/* Footer */}
           <div className="flex items-center justify-end gap-3 px-6 py-4 flex-shrink-0" style={{ borderTop: "1px solid #2e2e2e" }}>
-            <button onClick={handleClose} disabled={submitting}
+            <button
+              onClick={handleClose} disabled={submitting}
               className="px-5 py-2 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer"
               style={{ backgroundColor: "#2a2a2a", color: "#999999", border: "1px solid #444444" }}
               onMouseEnter={(e) => { e.currentTarget.style.color = "#e0e0e0"; e.currentTarget.style.borderColor = "#666666"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.color = "#999999"; e.currentTarget.style.borderColor = "#444444"; }}>
+              onMouseLeave={(e) => { e.currentTarget.style.color = "#999999"; e.currentTarget.style.borderColor = "#444444"; }}
+            >
               Cancel
             </button>
-            <button onClick={handleSubmit} disabled={submitting || !form.title || (!editEvent && !form.dateFrom)}
+            <button
+              onClick={handleSubmit}
+              disabled={submitting || !canSubmit}
               className="px-6 py-2 rounded-lg text-sm font-semibold transition-all duration-200 cursor-pointer disabled:opacity-50"
               style={{ backgroundColor: "#FFE2A0", color: "#1a1a1a" }}
               onMouseEnter={(e) => { if (!submitting) { e.currentTarget.style.backgroundColor = "#f5d47a"; e.currentTarget.style.boxShadow = "0 4px 16px rgba(255,226,160,0.25)"; } }}
-              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#FFE2A0"; e.currentTarget.style.boxShadow = "none"; }}>
-              {submitting ? (editEvent ? "Saving..." : "Submitting...") : (editEvent ? "Save Changes" : "Submit for Review")}
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#FFE2A0"; e.currentTarget.style.boxShadow = "none"; }}
+            >
+              {submitting
+                ? (editEvent ? "Saving..." : "Submitting...")
+                : (editEvent ? "Save Changes" : "Submit for Review")}
             </button>
           </div>
         </div>
