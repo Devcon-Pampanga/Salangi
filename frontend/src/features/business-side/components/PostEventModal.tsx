@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "../../../lib/supabase";
 import type { Event } from "../../Data/Events";
 import { LOCATIONS, CITY_COORDS } from "../../../constant/location";
+import { X, Plus, ChevronLeft, ChevronRight } from "lucide-react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -88,8 +89,9 @@ export default function PostEventModal({ isOpen, onClose, onAddEvent, editEvent,
     description: "",
     listingId: "" as string | number,
   });
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+  // Multiple images: array of { file?: File, preview: string, existing?: string }
+  const [images, setImages] = useState<{ file?: File; preview: string; existing?: string }[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [lat, setLat] = useState<number | null>(null);
@@ -129,10 +131,18 @@ export default function PostEventModal({ isOpen, onClose, onAddEvent, editEvent,
         description: editEvent.description,
         listingId: (editEvent as any).listing_id ?? "",
       });
-      setImagePreview((editEvent as any).image_url || null);
-      setImageFile(null);
+
+      // Load existing images
+      const existingImages: { preview: string; existing: string }[] = [];
+      // Support both old single image_url and new images array
+      const existingArr: string[] = (editEvent as any).images ?? [];
+      if (existingArr.length > 0) {
+        existingArr.forEach((url: string) => existingImages.push({ preview: url, existing: url }));
+      } else if ((editEvent as any).image_url) {
+        existingImages.push({ preview: (editEvent as any).image_url, existing: (editEvent as any).image_url });
+      }
+      setImages(existingImages);
     } else {
-      // Auto-select first listing if only one exists
       setForm({
         title: "",
         dateFrom: "",
@@ -144,41 +154,59 @@ export default function PostEventModal({ isOpen, onClose, onAddEvent, editEvent,
         description: "",
         listingId: userListings.length === 1 ? userListings[0].id : "",
       });
-      setImageFile(null); setImagePreview(null); setLat(null); setLng(null);
+      setImages([]);
+      setLat(null);
+      setLng(null);
     }
   }, [editEvent, isOpen, userListings]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setImageFile(file);
-    const reader = new FileReader();
-    reader.onloadend = () => setImagePreview(reader.result as string);
-    reader.readAsDataURL(file);
+  const handleImageAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+    const newImages = files.map((file) => ({
+      file,
+      preview: URL.createObjectURL(file),
+    }));
+    setImages((prev) => [...prev, ...newImages].slice(0, 5)); // max 5 images
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleImageRemove = (index: number) => {
+    setImages((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e: React.MouseEvent) => {
     e.preventDefault();
     if (!form.title || (!editEvent && !form.dateFrom)) return;
-    setSubmitting(true); setSubmitError("");
+    setSubmitting(true);
+    setSubmitError("");
+
     try {
-      let uploadedImageUrl = (editEvent as any)?.image_url || "";
-      if (imageFile) {
-        const fileExt = imageFile.name.split(".").pop();
-        const fileName = `${Date.now()}.${fileExt}`;
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from("events-image")
-          .upload(fileName, imageFile, { upsert: true });
-        if (!uploadError) {
-          const { data: publicUrlData } = supabase.storage.from("events-image").getPublicUrl(uploadData.path);
-          uploadedImageUrl = publicUrlData.publicUrl;
+      // Upload new files, keep existing URLs
+      const uploadedUrls: string[] = [];
+      for (const img of images) {
+        if (img.file) {
+          const fileExt = img.file.name.split(".").pop();
+          const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from("events-image")
+            .upload(fileName, img.file, { upsert: true });
+          if (!uploadError) {
+            const { data: publicUrlData } = supabase.storage.from("events-image").getPublicUrl(uploadData.path);
+            uploadedUrls.push(publicUrlData.publicUrl);
+          }
+        } else if (img.existing) {
+          uploadedUrls.push(img.existing);
         }
       }
 
-      const effectiveDateFrom = form.dateFrom || (editEvent ? "2026-05-02" : "");
+      // Keep backward compat: image_url = first image
+      const primaryImageUrl = uploadedUrls[0] ?? "";
+
+      const effectiveDateFrom = form.dateFrom || (editEvent ? (editEvent as any).date_range?.split(" to ")[0] || "2026-05-02" : "");
       const dateObj = new Date(effectiveDateFrom);
       const month = dateObj.toLocaleString("en-US", { month: "short" });
       const day = dateObj.getDate().toString();
@@ -188,53 +216,34 @@ export default function PostEventModal({ isOpen, onClose, onAddEvent, editEvent,
         : effectiveDateFrom;
       const locationDisplay = [form.barangay, form.city].filter(Boolean).join(", ");
       const { data: { user } } = await supabase.auth.getUser();
-
       const listingIdValue = form.listingId !== "" ? Number(form.listingId) : null;
 
+      const payload = {
+        title: form.title,
+        description: form.description,
+        location: locationDisplay,
+        time: timeDisplay,
+        date_range: dateRange,
+        month: effectiveDateFrom ? month : "",
+        day: effectiveDateFrom ? day : "",
+        image_url: primaryImageUrl,
+        images: uploadedUrls,
+        lat: lat ?? undefined,
+        lng: lng ?? undefined,
+        listing_id: listingIdValue,
+        verified: false,
+      };
+
       if ((editEvent as any)?.id) {
-        const { error } = await supabase.from("events").update({
-          title: form.title,
-          description: form.description,
-          location: locationDisplay,
-          time: timeDisplay,
-          date_range: dateRange,
-          month: effectiveDateFrom ? month : "",
-          day: effectiveDateFrom ? day : "",
-          image_url: uploadedImageUrl,
-          lat: lat ?? undefined,
-          lng: lng ?? undefined,
-          listing_id: listingIdValue,
-          verified: false,
-        }).eq("id", (editEvent as any).id);
+        const { error } = await supabase.from("events").update(payload).eq("id", (editEvent as any).id);
         if (error) throw error;
-        onAddEvent({
-          id: (editEvent as any).id,
-          month, day,
-          title: form.title,
-          location: locationDisplay,
-          time: timeDisplay,
-          dateRange,
-          description: form.description,
-          image_url: uploadedImageUrl,
-          listing_id: listingIdValue,
-          pending: true,
-        });
+        onAddEvent({ id: (editEvent as any).id, ...payload, pending: true });
       } else {
-        const { data: inserted, error } = await supabase.from("events").insert({
-          title: form.title,
-          description: form.description,
-          location: locationDisplay,
-          time: timeDisplay,
-          date_range: dateRange,
-          month: effectiveDateFrom ? month : "",
-          day: effectiveDateFrom ? day : "",
-          image_url: uploadedImageUrl,
-          lat: lat ?? null,
-          lng: lng ?? null,
-          listing_id: listingIdValue,
-          verified: false,
-          user_id: user?.id ?? null,
-        }).select().single();
+        const { data: inserted, error } = await supabase
+          .from("events")
+          .insert({ ...payload, user_id: user?.id ?? null })
+          .select()
+          .single();
         if (error) throw error;
         onAddEvent({ ...inserted, pending: true });
       }
@@ -252,7 +261,9 @@ export default function PostEventModal({ isOpen, onClose, onAddEvent, editEvent,
     onClose();
     if (!editEvent) {
       setForm({ title: "", dateFrom: "", dateTo: "", timeFrom: "", timeTo: "", city: "", barangay: "", description: "", listingId: "" });
-      setImageFile(null); setImagePreview(null); setLat(null); setLng(null);
+      setImages([]);
+      setLat(null);
+      setLng(null);
     }
   };
 
@@ -327,7 +338,7 @@ export default function PostEventModal({ isOpen, onClose, onAddEvent, editEvent,
           {/* Body */}
           <div className="px-6 py-5 space-y-4 overflow-y-auto flex-1">
 
-            {/* Listing selector — only show if user has multiple listings */}
+            {/* Listing selector */}
             {userListings.length > 1 && (
               <div>
                 <label className="block font-normal mb-1.5 text-md tracking-wide" style={{ color: "#FFE2A0" }}>
@@ -336,8 +347,7 @@ export default function PostEventModal({ isOpen, onClose, onAddEvent, editEvent,
                 <select
                   value={form.listingId}
                   onChange={(e) => setForm((prev) => ({ ...prev, listingId: e.target.value }))}
-                  onFocus={handleFocus}
-                  onBlur={handleBlur}
+                  onFocus={handleFocus} onBlur={handleBlur}
                   className="event-modal-select w-full rounded-lg px-4 py-2.5 text-sm transition-all duration-200 appearance-none"
                   style={{ ...inputBase, color: form.listingId ? "#e8e8e8" : "#666666" }}
                 >
@@ -349,7 +359,6 @@ export default function PostEventModal({ isOpen, onClose, onAddEvent, editEvent,
               </div>
             )}
 
-            {/* If only one listing, show it as a read-only info pill */}
             {userListings.length === 1 && (
               <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ backgroundColor: "#FFE2A0]/10", border: "1px solid rgba(255,226,160,0.2)" }}>
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5 shrink-0" style={{ color: "#FFE2A0" }}>
@@ -361,38 +370,54 @@ export default function PostEventModal({ isOpen, onClose, onAddEvent, editEvent,
               </div>
             )}
 
-            {/* Image */}
+            {/* ── Multi-image upload ── */}
             <div>
-              <label className="block font-normal mb-1.5 text-md tracking-wide" style={{ color: "#FFE2A0" }}>Event Image</label>
-              {imagePreview ? (
-                <div className="relative w-full rounded-lg overflow-hidden" style={{ height: "160px" }}>
-                  <img src={imagePreview} alt="Event preview" className="w-full h-full object-cover" />
+              <label className="block font-normal mb-1.5 text-md tracking-wide" style={{ color: "#FFE2A0" }}>
+                Event Images <span className="text-xs font-normal" style={{ color: "#666" }}>(up to 5)</span>
+              </label>
+
+              <div className="flex flex-wrap gap-2">
+                {images.map((img, idx) => (
+                  <div key={idx} className="relative w-20 h-20 rounded-lg overflow-hidden border border-[#444]">
+                    <img src={img.preview} alt="" className="w-full h-full object-cover" />
+                    <button
+                      onClick={() => handleImageRemove(idx)}
+                      className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center rounded-full"
+                      style={{ backgroundColor: "rgba(0,0,0,0.75)", color: "#fff" }}
+                    >
+                      <X size={10} />
+                    </button>
+                    {idx === 0 && (
+                      <div className="absolute bottom-0 left-0 right-0 text-center text-[9px] font-bold py-0.5" style={{ backgroundColor: "rgba(255,226,160,0.85)", color: "#222" }}>
+                        COVER
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                {images.length < 5 && (
                   <button
-                    onClick={() => { setImageFile(null); setImagePreview(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
-                    className="absolute top-2 right-2 flex items-center justify-center w-7 h-7 rounded-full cursor-pointer"
-                    style={{ backgroundColor: "rgba(0,0,0,0.7)", color: "#e0e0e0", border: "1px solid #555" }}
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-20 h-20 rounded-lg flex flex-col items-center justify-center gap-1 transition-all duration-200 cursor-pointer border"
+                    style={{ backgroundColor: "#2a2a2a", borderColor: "#444444", borderStyle: "dashed", color: "#888888" }}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#FFE2A0"; e.currentTarget.style.color = "#FFE2A0"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#444444"; e.currentTarget.style.color = "#888888"; }}
                   >
-                    <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
-                      <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                    </svg>
+                    <Plus size={20} />
+                    <span className="text-[10px]">Add photo</span>
                   </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-full rounded-lg flex flex-col items-center justify-center gap-2 py-6 transition-all duration-200 cursor-pointer"
-                  style={{ backgroundColor: "#2a2a2a", border: "1px dashed #444444", color: "#888888" }}
-                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#FFE2A0"; e.currentTarget.style.color = "#FFE2A0"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#444444"; e.currentTarget.style.color = "#888888"; }}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-7 h-7">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
-                  </svg>
-                  <span className="text-sm">Click to upload event image</span>
-                  <span className="text-xs" style={{ color: "#555" }}>PNG, JPG, WEBP up to 5MB</span>
-                </button>
-              )}
-              <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={handleImageChange} />
+                )}
+              </div>
+
+              <p className="text-xs mt-1.5" style={{ color: "#555" }}>First image is used as the cover. PNG, JPG, WEBP up to 5MB each.</p>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                multiple
+                className="hidden"
+                onChange={handleImageAdd}
+              />
             </div>
 
             {/* Title */}
