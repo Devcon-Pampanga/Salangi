@@ -14,6 +14,7 @@ export async function registerUser(data: {
       data: {
         first_name: data.first_name,
         last_name: data.last_name,
+        role: 'business', 
       },
     },
   });
