@@ -106,7 +106,7 @@ function App() {
             </ProtectedRoute>
           }
         >
-          <Route index element={<Navigate to={ROUTES.DASHBOARD_REL.OVERVIEW} replace />} />
+          <Route index element={<Navigate to={ROUTES.DASHBOARD_OVERVIEW} replace />} />
           <Route path={ROUTES.DASHBOARD_REL.OVERVIEW} element={<Overview />} />
           <Route path={ROUTES.DASHBOARD_REL.MY_BUSINESS} element={<MyBusiness />} />
           <Route path={ROUTES.DASHBOARD_REL.EVENTS} element={<Events />} />
