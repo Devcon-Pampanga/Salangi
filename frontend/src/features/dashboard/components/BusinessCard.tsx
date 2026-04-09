@@ -24,6 +24,48 @@ interface BusinessCardProps {
   onViewAnalytics?: () => void;
 }
 
+// ── Hours formatter ───────────────────────────────────────────────────────────
+
+const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+function formatHours(hours: string): string {
+  if (!hours) return '';
+
+  // Extract time part (e.g. "11:11 AM – 2:22 PM") from the end of the string
+  const timeMatch = hours.match(/,?\s*(\d{1,2}:\d{2}\s*(?:AM|PM)\s*[–—-]\s*\d{1,2}:\d{2}\s*(?:AM|PM))\s*$/i);
+  const timePart = timeMatch ? timeMatch[1].trim() : '';
+  const daysPart = timeMatch ? hours.slice(0, timeMatch.index) : hours;
+
+  // Find which days from our ordered list are present in the string
+  const activeDays = DAYS.filter(d => daysPart.includes(d));
+
+  if (activeDays.length === 0) return hours;
+
+  // Collapse consecutive days into ranges e.g. Mon–Wed
+  const ranges: string[] = [];
+  let rangeStart = activeDays[0];
+  let rangePrev = activeDays[0];
+
+  for (let i = 1; i <= activeDays.length; i++) {
+    const curr = activeDays[i];
+    const prevIdx = DAYS.indexOf(rangePrev);
+    const currIdx = curr ? DAYS.indexOf(curr) : -1;
+
+    if (curr && currIdx === prevIdx + 1) {
+      rangePrev = curr;
+    } else {
+      ranges.push(rangeStart === rangePrev ? rangeStart : `${rangeStart} – ${rangePrev}`);
+      rangeStart = curr!;
+      rangePrev = curr!;
+    }
+  }
+
+  const dayString = ranges.join(', ');
+  return timePart ? `${dayString}, ${timePart}` : dayString;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 function NoImagePlaceholder({ name }: { name: string }) {
   return (
     <div className="w-full h-full flex flex-col items-center justify-center bg-[#2D2D2D] gap-3">
@@ -87,7 +129,6 @@ function BusinessCard({
     setCurrentIndex((prev) => (prev === 0 ? galleryImages.length - 1 : prev - 1));
   };
 
-  // ✅ Track a view when the card is clicked/selected (consumer side only)
   const handleCardClick = () => {
     onSelect(listing);
     if (!isBusinessSide) {
@@ -98,7 +139,6 @@ function BusinessCard({
     }
   };
 
-  // ✅ Track directions when "Show in maps" is clicked
   const handleShowInMaps = async (e: React.MouseEvent) => {
     e.stopPropagation();
     await supabase.from('listing_interactions').insert({
@@ -119,7 +159,6 @@ function BusinessCard({
       }`}
     >
       <div className="relative group">
-        {/* Save Button - Only for Consumer Side */}
         {!isBusinessSide && (
           <button
             onClick={(e) => {
@@ -132,7 +171,6 @@ function BusinessCard({
           </button>
         )}
 
-        {/* Image area */}
         <div className="relative w-full h-72 overflow-hidden bg-zinc-800">
           {hasImages && !imgError ? (
             <img
@@ -185,7 +223,6 @@ function BusinessCard({
       </div>
 
       <div className="p-6">
-        {/* Name and Category Row */}
         <div className="flex items-center justify-between gap-4 mb-4">
           <div className="flex items-center gap-2">
             <h3 className="text-[#FBFAF8] font-['Playfair_Display'] font-bold text-2xl tracking-tight leading-tight">
@@ -202,12 +239,10 @@ function BusinessCard({
           </div>
         </div>
 
-        {/* Description */}
         <p className="text-sm text-[#FBFAF8]/70 leading-relaxed line-clamp-2 mb-6 h-10">
           {listing.description}
         </p>
 
-        {/* Info Row */}
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mb-6">
           <div className="flex items-center gap-2">
             <img src={locBtnSelected} width="14" alt="location" className="opacity-70" />
@@ -215,11 +250,11 @@ function BusinessCard({
           </div>
           <div className="flex items-center gap-2">
             <img src={time} width="14" alt="hours" className="opacity-70" />
-            <span className="text-[#FBFAF8]/50 text-xs font-medium">{listing.hours}</span>
+            {/* ✅ formatHours applied here */}
+            <span className="text-[#FBFAF8]/50 text-xs font-medium">{formatHours(listing.hours)}</span>
           </div>
         </div>
 
-        {/* Action Buttons */}
         <div className="flex gap-3">
           {isBusinessSide ? (
             <div className="flex gap-3 w-full">
@@ -244,7 +279,6 @@ function BusinessCard({
             </div>
           ) : (
             <div className="w-full flex justify-end">
-              {/* ✅ Now uses handleShowInMaps instead of inline navigate */}
               <button
                 onClick={handleShowInMaps}
                 className="flex items-center justify-center gap-2 px-6 py-3.5 bg-[#FFE2A0] text-[#222222] text-xs font-bold rounded-xl hover:bg-[#ffe8b5] transition-all active:scale-95 cursor-pointer shadow-lg"
