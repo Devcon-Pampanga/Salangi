@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, User, Check, AlertCircle, Loader2, Camera, Eye, EyeOff, Trash2, ShieldAlert } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { updateProfile, changePassword, deleteAccount } from '@/services/api';
@@ -9,13 +10,14 @@ interface SettingsPageProps {
 }
 
 function Toast({ message, type }: { message: string; type: 'success' | 'error' }) {
-  return (
-    <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-200 flex items-center gap-2.5 px-5 py-3 rounded-xl shadow-2xl text-sm font-medium animate-in fade-in slide-in-from-bottom-4 duration-300 whitespace-nowrap ${
+  return createPortal(
+    <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-[99999] flex items-center gap-2.5 px-5 py-3 rounded-xl shadow-2xl text-sm font-medium animate-in fade-in slide-in-from-bottom-4 duration-300 whitespace-nowrap ${
       type === 'success' ? 'bg-[#FFE2A0] text-[#1A1A1A]' : 'bg-red-500 text-white'
     }`}>
       {type === 'success' ? <Check size={15} /> : <AlertCircle size={15} />}
       {message}
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -53,12 +55,6 @@ function InputField({
 const SettingsPage = ({ onClose }: SettingsPageProps) => {
   const navigate = useNavigate();
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (!data.session) navigate('/sign-in', { replace: true });
-    });
-  }, []);
-
   const getStoredUser = () => JSON.parse(localStorage.getItem('user') ?? '{}');
   const storedUser = getStoredUser();
 
@@ -81,6 +77,43 @@ const SettingsPage = ({ onClose }: SettingsPageProps) => {
 
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  // ── Fetch fresh profile from Supabase on mount ───────────────────────────
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userId = sessionData.session?.user?.id;
+      if (!userId) {
+        navigate('/sign-in', { replace: true });
+        return;
+      }
+
+      const { data: userData } = await supabase
+        .from('users')
+        .select('first_name, last_name, email, profile_pic')
+        .eq('user_id', userId)
+        .single();
+
+      if (userData) {
+        setFirstName(userData.first_name ?? '');
+        setLastName(userData.last_name ?? '');
+        setEmail(userData.email ?? '');
+        setAvatarUrl(userData.profile_pic ?? null);
+
+        // Keep localStorage in sync
+        const current = getStoredUser();
+        localStorage.setItem('user', JSON.stringify({
+          ...current,
+          first_name:  userData.first_name,
+          last_name:   userData.last_name,
+          email:       userData.email,
+          profile_pic: userData.profile_pic,
+          avatar_url:  userData.profile_pic,
+        }));
+      }
+    };
+    fetchProfile();
+  }, []);
 
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ message, type });
@@ -109,13 +142,12 @@ const SettingsPage = ({ onClose }: SettingsPageProps) => {
         last_name: lastName.trim(),
         email: email.trim(),
       });
-      // Update localStorage with response from server
       const current = getStoredUser();
       localStorage.setItem('user', JSON.stringify({
         ...current,
         first_name: result.first_name,
-        last_name: result.last_name,
-        email: result.email,
+        last_name:  result.last_name,
+        email:      result.email,
       }));
       showToast('Account info saved!', 'success');
     } catch (err: any) {
@@ -127,53 +159,49 @@ const SettingsPage = ({ onClose }: SettingsPageProps) => {
 
   // ── Upload avatar ────────────────────────────────────────────────────────
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-  const file = e.target.files?.[0];
-  if (!file) return;
-  if (file.size > 5 * 1024 * 1024) { showToast('Image must be under 5MB.', 'error'); return; }
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { showToast('Image must be under 5MB.', 'error'); return; }
 
-  setUploadingAvatar(true);
-  try {
-    const { data: sessionData } = await supabase.auth.getSession();
-    const userId = sessionData.session?.user?.id;
-    if (!userId) throw new Error('Not authenticated');
+    setUploadingAvatar(true);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userId = sessionData.session?.user?.id;
+      if (!userId) throw new Error('Not authenticated');
 
-    const ext  = file.name.split('.').pop();
-    const path = `avatars/${userId}-${Date.now()}.${ext}`;
+      const ext  = file.name.split('.').pop();
+      const path = `avatars/${userId}-${Date.now()}.${ext}`;
 
-    // 1. Upload to Supabase Storage (bucket: "avatars")
-    const { error: uploadError } = await supabase.storage
-      .from('avatars')
-      .upload(path, file, { upsert: true });
-    if (uploadError) throw uploadError;
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(path, file, { upsert: true });
+      if (uploadError) throw uploadError;
 
-    // 2. Get public URL
-    const { data: { publicUrl } } = supabase.storage
-      .from('avatars')
-      .getPublicUrl(path);
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(path);
 
-    // 3. Save URL to users table
-    const { error: dbError } = await supabase
-      .from('users')
-      .update({ profile_pic: publicUrl })
-      .eq('user_id', userId);
-    if (dbError) throw dbError;
+      const { error: dbError } = await supabase
+        .from('users')
+        .update({ profile_pic: publicUrl })
+        .eq('user_id', userId);
+      if (dbError) throw dbError;
 
-    // 4. Update local state + localStorage
-    setAvatarUrl(publicUrl);
-    const current = getStoredUser();
-    localStorage.setItem('user', JSON.stringify({
-      ...current,
-      profile_pic: publicUrl,
-      avatar_url:  publicUrl,
-    }));
-    showToast('Profile photo updated!', 'success');
-  } catch (err: any) {
-    handleError(err, 'Failed to upload photo.');
-  } finally {
-    setUploadingAvatar(false);
-    if (avatarInputRef.current) avatarInputRef.current.value = '';
-  }
-};
+      setAvatarUrl(publicUrl);
+      const current = getStoredUser();
+      localStorage.setItem('user', JSON.stringify({
+        ...current,
+        profile_pic: publicUrl,
+        avatar_url:  publicUrl,
+      }));
+      showToast('Profile photo updated!', 'success');
+    } catch (err: any) {
+      handleError(err, 'Failed to upload photo.');
+    } finally {
+      setUploadingAvatar(false);
+      if (avatarInputRef.current) avatarInputRef.current.value = '';
+    }
+  };
 
   // ── Change password ──────────────────────────────────────────────────────
   const handleChangePassword = async () => {
@@ -217,14 +245,13 @@ const SettingsPage = ({ onClose }: SettingsPageProps) => {
 
   return (
     <>
-      <div className="fixed inset-0 z-9999 flex items-center justify-center p-4 md:p-10 bg-black/70 backdrop-blur-sm cursor-default animate-in fade-in duration-200">
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 md:p-10 bg-black/70 backdrop-blur-sm cursor-default animate-in fade-in duration-200">
         <div className="flex flex-col w-full max-w-2xl h-[90vh] md:h-[85vh] md:max-h-[700px] bg-[#222222] rounded-2xl md:rounded-3xl overflow-hidden shadow-2xl border border-zinc-800 animate-in zoom-in-95 duration-200 relative">
           
           <button onClick={onClose} className="absolute top-4 right-4 md:top-5 md:right-5 w-9 h-9 flex items-center justify-center bg-zinc-800/50 hover:bg-zinc-700 rounded-full transition-colors cursor-pointer z-50" aria-label="Close settings">
             <X size={16} className="text-zinc-300" />
           </button>
 
-          {/* Main Content */}
           <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
             <div className="p-8 md:p-10 w-full pt-12 md:pt-10">
               
@@ -242,7 +269,10 @@ const SettingsPage = ({ onClose }: SettingsPageProps) => {
                 >
                   <div className="relative shrink-0">
                     <div className="w-16 h-16 rounded-full overflow-hidden bg-[#FFE2A0] flex items-center justify-center ring-2 ring-zinc-700 group-hover:ring-[#FFE2A0]/40 transition-all">
-                      {avatarUrl ? <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" /> : <User size={26} className="text-[#1A1A1A]" />}
+                      {avatarUrl
+                        ? <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                        : <User size={26} className="text-[#1A1A1A]" />
+                      }
                     </div>
                     <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-[#FFE2A0] rounded-full flex items-center justify-center shadow">
                       <Camera size={11} className="text-[#1A1A1A]" />
@@ -256,7 +286,9 @@ const SettingsPage = ({ onClose }: SettingsPageProps) => {
                       </div>
                     ) : (
                       <>
-                        <p className="text-sm font-semibold text-zinc-200 group-hover:text-[#FFE2A0] transition-colors">{avatarUrl ? 'Change photo' : 'Upload a photo'}</p>
+                        <p className="text-sm font-semibold text-zinc-200 group-hover:text-[#FFE2A0] transition-colors">
+                          {avatarUrl ? 'Change photo' : 'Upload a photo'}
+                        </p>
                         <p className="text-xs text-zinc-500 mt-0.5">JPG, PNG · Max 5MB</p>
                       </>
                     )}
