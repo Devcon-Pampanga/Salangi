@@ -17,138 +17,177 @@ function Register() {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  setFormData({ ...formData, [e.target.name]: e.target.value });
+};
 
   const handleSubmit = async () => {
     setError('');
     setSuccess('');
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signUp({
+      const { error: supabaseError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
           data: {
             first_name: formData.first_name,
             last_name: formData.last_name,
-          }
-        }
+          },
+        },
       });
-      if (error) throw error;
+      if (supabaseError) throw supabaseError;
       setSuccess('Account created! Please check your email to verify your account before signing in.');
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+    setError((err as Error).message);
     } finally {
-      setLoading(false);
+    setLoading(false);
     }
   };
 
   return (
-    <div className="flex min-h-screen">
-      {/* Left side */}
-      <div
-        className="w-1/2 relative flex items-end p-12"
-        style={{
-          backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.3), rgba(0,0,0,0.7)), url(${bg})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-        }}
-      >
-        <h1 className="font-['Playfair_Display'] text-white text-6xl font-bold leading-tight">
-          Discover <br />
-          Local <span className="text-[#FFE2A0]">Gems</span> <br />
-          in Pampanga
+    <div
+      className="min-h-screen overflow-hidden"
+      style={{
+        backgroundImage: `linear-gradient(to right, transparent -11%, rgba(34, 34, 34, 0.9), #222222 50%), url(${bg})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
+    >
+      {/* Dashed curve decoration */}
+      <svg className="absolute inset-0 w-full h-full pointer-events-none" preserveAspectRatio="none">
+        <path
+          d="M 400 0 C 200 200, 600 400, 400 800"
+          transform="translate(200, 0)"
+          fill="none"
+          stroke="white"
+          strokeWidth="1"
+          strokeDasharray="8 8"
+          className="opacity-30"
+        />
+      </svg>
+
+      {/* Radial spotlight */}
+      <div className="absolute w-190 h-170 translate-x-113 -mt-110 bg-radial from-[#FFE2A0]/80 via-[#FFE2A0]/20 to-transparent rounded-full blur-3xl opacity-60" />
+
+      {/* Left — headline */}
+      <div className="motion-preset-slide-right motion-duration-800">
+        <h1 className="font-['Playfair_Display'] translate-x-30 mt-95 text-[80px] absolute font-bold text-[#FBFAF8] max-w-120 leading-tight">
+          Discover Local <span className="text-[#FFE2A0]">Gems</span> in Pampanga
         </h1>
       </div>
 
-      {/* Right side */}
-      <div className="w-1/2 bg-[#1a1a1a] flex items-center justify-center px-16">
-        <div className="w-full max-w-md">
-          <h2 className="font-['Playfair_Display'] text-white text-4xl font-bold mb-2">
-            Register now.
-          </h2>
-          <p className="text-gray-400 text-sm mb-8">
-            Create your account to get started.
-          </p>
+      {/* Right — form */}
+      <div className="motion-preset-slide-left motion-duration-800">
 
-          <div className="flex gap-4 mb-4">
-            <div className="flex-1">
-              <label className="text-gray-300 text-sm mb-1 block">First Name</label>
-              <input
-                type="text"
-                name="first_name"
-                value={formData.first_name}
-                onChange={handleChange}
-                placeholder="eg. Juan"
-                className="w-full bg-[#2E2E2E] text-white placeholder-gray-500 px-4 py-3 rounded-lg outline-none focus:ring-1 focus:ring-[#FFE2A0]"
-              />
-            </div>
-            <div className="flex-1">
-              <label className="text-gray-300 text-sm mb-1 block">Last Name</label>
-              <input
-                type="text"
-                name="last_name"
-                value={formData.last_name}
-                onChange={handleChange}
-                placeholder="eg. Dela Cruz"
-                className="w-full bg-[#2E2E2E] text-white placeholder-gray-500 px-4 py-3 rounded-lg outline-none focus:ring-1 focus:ring-[#FFE2A0]"
-              />
-            </div>
+        {/* Heading */}
+        <div className="ml-180 mt-15 absolute">
+          <h1 className="font-['Playfair_Display'] text-[#FBFAF8] text-5xl font-bold mb-2.5">
+            Register Now<span className="text-[#FFE2A0]">.</span>
+          </h1>
+          <p className="text-[#FBFAF8] text-s">Create your account to get started.</p>
+        </div>
+
+        {/* First Name & Last Name */}
+        <div className="translate-x-180 mt-45 absolute flex gap-4">
+          <div className="flex flex-col gap-2 w-73">
+            <label className="text-[#FBFAF8] text-md">First Name</label>
+            <input
+              type="text"
+              name="first_name"
+              value={formData.first_name}
+              onChange={handleChange}
+              placeholder="eg. Juan"
+              className="bg-[#2E2E2E] text-white placeholder-gray-500 px-4 py-3 rounded-lg border-none focus:ring-1 focus:ring-white outline-none transition-all"
+            />
           </div>
+          <div className="flex flex-col gap-2 w-73">
+            <label className="text-[#FBFAF8] text-md">Last Name</label>
+            <input
+              type="text"
+              name="last_name"
+              value={formData.last_name}
+              onChange={handleChange}
+              placeholder="eg. Dela Cruz"
+              className="bg-[#2E2E2E] text-white placeholder-gray-500 px-4 py-3 rounded-lg border-none focus:ring-1 focus:ring-white outline-none transition-all"
+            />
+          </div>
+        </div>
 
-          <div className="mb-4">
-            <label className="text-gray-300 text-sm mb-1 block">Email</label>
+        {/* Email */}
+        <div className="translate-x-180 mt-70 absolute">
+          <div className="flex flex-col gap-2 w-150">
+            <label className="text-[#FBFAF8] text-md">Email</label>
             <input
               type="text"
               name="email"
               value={formData.email}
               onChange={handleChange}
+              onKeyDown={e => e.key === 'Enter' && handleSubmit()}
               placeholder="eg. juan.dc@gmail.com"
-              className="w-full bg-[#2E2E2E] text-white placeholder-gray-500 px-4 py-3 rounded-lg outline-none focus:ring-1 focus:ring-[#FFE2A0]"
+              className="bg-[#2E2E2E] text-white placeholder-gray-500 px-4 py-3 rounded-lg border-none focus:ring-1 focus:ring-white outline-none transition-all"
             />
           </div>
+        </div>
 
-          <div className="mb-6">
-            <label className="text-gray-300 text-sm mb-1 block">Password</label>
+        {/* Password */}
+        <div className="translate-x-180 mt-95 absolute">
+          <div className="flex flex-col gap-2 w-150">
+            <label className="text-[#FBFAF8] text-md">Password</label>
             <div className="relative">
               <input
                 type={showPassword ? 'text' : 'password'}
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
-                placeholder="*************"
-                className="w-full bg-[#2E2E2E] text-white placeholder-gray-500 px-4 py-3 rounded-lg outline-none focus:ring-1 focus:ring-[#FFE2A0]"
+                onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+                placeholder="**********"
+                className="w-full bg-[#2E2E2E] text-white placeholder-gray-500 px-4 py-3 rounded-lg border-none focus:ring-1 focus:ring-white outline-none transition-all"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors cursor-pointer"
               >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
             </div>
           </div>
+        </div>
 
+        {/* Error / Success */}
+        {error && (
+          <div className="translate-x-180 mt-113 z-50 absolute w-150 rounded-lg p-2">
+            <p className="text-red-400 text-sm text-center">{error}</p>
+          </div>
+        )}
+        {success && (
+          <div className="translate-x-180 mt-118 absolute w-150">
+            <p className="text-green-400 text-sm text-center">{success}</p>
+          </div>
+        )}
+
+        {/* Sign Up Button */}
+        <div className="translate-x-180 mt-125 absolute">
           <button
             onClick={handleSubmit}
             disabled={loading}
-            className="w-full bg-[#FFE2A0] hover:bg-[#fcd789] text-[#222222] font-semibold py-3 rounded-lg transition-colors cursor-pointer"
+            className="px-4 py-3 bg-[#FFE2A0] hover:bg-[#fcd789] active:bg-[#f5cc70] w-150 rounded-lg cursor-pointer font-semibold text-[#222222] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            {loading ? 'Signing up...' : 'SIGN UP'}
+            {loading ? 'Signing up...' : 'Sign up'}
           </button>
+        </div>
 
-          {error && <p className="text-red-400 text-sm text-center mt-3">{error}</p>}
-          {success && <p className="text-green-400 text-sm text-center mt-3">{success}</p>}
-
-          <p className="text-gray-400 text-sm text-center mt-4">
+        {/* Already have an account */}
+        <div className="translate-x-180 mt-142 absolute">
+          <p className="text-[#FBFAF8]">
             Already have an account?{' '}
-            <Link to="/sign-in" className="text-[#FFE2A0] hover:underline">
-              Sign in.
+            <Link to="/Signin">
+              <span className="text-[#FFE2A0] cursor-pointer hover:underline"> Sign in</span>.
             </Link>
           </p>
         </div>
+
       </div>
     </div>
   );
