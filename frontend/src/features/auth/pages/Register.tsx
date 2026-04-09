@@ -18,8 +18,8 @@ function Register() {
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-  setFormData({ ...formData, [e.target.name]: e.target.value });
-};
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
 
   const handleSubmit = async () => {
     setError('');
@@ -39,9 +39,9 @@ function Register() {
       if (supabaseError) throw supabaseError;
       setSuccess('Account created! Please check your email to verify your account before signing in.');
     } catch (err) {
-    setError((err as Error).message);
+      setError((err as Error).message);
     } finally {
-    setLoading(false);
+      setLoading(false);
     }
   };
 
@@ -152,23 +152,29 @@ function Register() {
                 {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
             </div>
+
+            {/* Error — inline, no overlap */}
+            {error && (
+              <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">
+                <span className="text-red-400 text-sm">⚠</span>
+                <p className="text-red-400 text-xs leading-snug">
+                  Password must include uppercase, lowercase, number & special character.
+                </p>
+              </div>
+            )}
+
+            {/* Success — inline */}
+            {success && (
+              <div className="flex items-center gap-2 bg-green-500/10 border border-green-500/30 rounded-lg px-3 py-2">
+                <span className="text-green-400 text-sm">✓</span>
+                <p className="text-green-400 text-xs">{success}</p>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Error / Success */}
-        {error && (
-          <div className="translate-x-180 mt-113 z-50 absolute w-150 rounded-lg p-2">
-            <p className="text-red-400 text-sm text-center">{error}</p>
-          </div>
-        )}
-        {success && (
-          <div className="translate-x-180 mt-118 absolute w-150">
-            <p className="text-green-400 text-sm text-center">{success}</p>
-          </div>
-        )}
-
         {/* Sign Up Button */}
-        <div className="translate-x-180 mt-125 absolute">
+        <div className="translate-x-180 absolute" style={{ marginTop: error || success ? '34rem' : '31.25rem' }}>
           <button
             onClick={handleSubmit}
             disabled={loading}
@@ -179,7 +185,7 @@ function Register() {
         </div>
 
         {/* Already have an account */}
-        <div className="translate-x-180 mt-142 absolute">
+        <div className="translate-x-180 absolute" style={{ marginTop: error || success ? '38rem' : '35.25rem' }}>
           <p className="text-[#FBFAF8]">
             Already have an account?{' '}
             <Link to="/Signin">
@@ -187,7 +193,6 @@ function Register() {
             </Link>
           </p>
         </div>
-
       </div>
     </div>
   );
