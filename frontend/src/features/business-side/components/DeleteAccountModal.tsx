@@ -2,6 +2,7 @@ import { useState } from "react";
 import { HiOutlineExclamation, HiX } from "react-icons/hi";
 import { supabase } from "../../../lib/supabase";
 import { useAuth } from "../../../hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 
 interface DeleteAccountModalProps {
     isOpen: boolean;
@@ -11,6 +12,7 @@ interface DeleteAccountModalProps {
 
 const DeleteAccountModal = ({ isOpen, onClose, businessName }: DeleteAccountModalProps) => {
     const { user } = useAuth();
+    const navigate = useNavigate();
     const [confirmName, setConfirmName] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
@@ -24,20 +26,39 @@ const DeleteAccountModal = ({ isOpen, onClose, businessName }: DeleteAccountModa
         setLoading(true);
         setError("");
 
-        // Delete listings (cascades to gallery_images, reviews, events via FK)
-        const { error: deleteListingsError } = await supabase
-            .from("listings")
-            .delete()
-            .eq("user_id", user.id);
+        try {
+            // Step 1: Delete all listings for this user
+            // With CASCADE set, this will automatically delete:
+            // events, gallery_images, listing_interactions, saves, reviews
+            const { error: listingsError } = await supabase
+                .from("listings")
+                .delete()
+                .eq("user_id", user.id);
 
-        if (deleteListingsError) {
-            setError("Failed to delete business data. Please try again.");
+            if (listingsError) throw new Error("Failed to delete business listings.");
+
+            // Step 2: Delete the user row from your public users table
+            const { error: userRowError } = await supabase
+                .from("users")
+                .delete()
+                .eq("user_id", user.id);
+
+            if (userRowError) throw new Error("Failed to delete user record.");
+
+            // Step 3: Delete the auth.users record
+            await supabase.rpc('delete_own_auth_user');
+
+            // Step 4: Sign out the session
+            await supabase.auth.signOut();
+
+            // Step 5: Clear local storage and redirect
+            localStorage.removeItem("user");
+            navigate("/business-signin", { replace: true });
+
+        } catch (err: any) {
+            setError(err.message ?? "Something went wrong. Please try again.");
             setLoading(false);
-            return;
         }
-
-        // Sign out — actual user deletion requires a backend/admin call
-        await supabase.auth.signOut();
     };
 
     return (
@@ -80,13 +101,16 @@ const DeleteAccountModal = ({ isOpen, onClose, businessName }: DeleteAccountModa
                     </div>
 
                     {error && (
-                        <div className="bg-red-500/10 border border-red-500/20 text-red-500 text-xs px-4 py-2 rounded-lg">{error}</div>
+                        <div className="bg-red-500/10 border border-red-500/20 text-red-500 text-xs px-4 py-2 rounded-lg">
+                            {error}
+                        </div>
                     )}
 
                     <div className="pt-2 flex gap-3">
                         <button
                             onClick={onClose}
-                            className="flex-1 py-3 bg-[#2a2a2a] text-[#a0a0a0] border border-[#3a3a3a] rounded-xl hover:text-white hover:bg-[#333333] transition-all text-sm font-semibold"
+                            disabled={loading}
+                            className="flex-1 py-3 bg-[#2a2a2a] text-[#a0a0a0] border border-[#3a3a3a] rounded-xl hover:text-white hover:bg-[#333333] transition-all text-sm font-semibold disabled:opacity-50"
                         >
                             Cancel
                         </button>
@@ -99,7 +123,15 @@ const DeleteAccountModal = ({ isOpen, onClose, businessName }: DeleteAccountModa
                                     : 'bg-[#2a2a2a] text-red-500/30 border border-red-500/10 cursor-not-allowed opacity-50'
                             }`}
                         >
-                            {loading ? "Deleting..." : "Delete Account"}
+                            {loading ? (
+                                <span className="flex items-center justify-center gap-2">
+                                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                                    </svg>
+                                    Deleting...
+                                </span>
+                            ) : "Delete Account"}
                         </button>
                     </div>
                 </div>
