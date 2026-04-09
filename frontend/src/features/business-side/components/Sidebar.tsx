@@ -1,17 +1,19 @@
 import { useState } from 'react';
-import { NavLink, NavLinkRenderProps, useNavigate } from 'react-router-dom'; // add useNavigate
+import { NavLink, NavLinkRenderProps, useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { ROUTES } from '../../../routes/paths';
-import { X } from 'lucide-react';
+import { X, LogOut } from 'lucide-react';
 import { IoCalendarOutline } from "react-icons/io5";
+import { supabase } from '../../../lib/supabase';
 
 interface SidebarProps {
   onClose?: () => void;
 }
 
 function Sidebar({ onClose }: SidebarProps) {
-    const navigate = useNavigate(); // ← add this
+    const navigate = useNavigate();
     const [isRedirecting, setIsRedirecting] = useState(false);
+    const [signingOut, setSigningOut] = useState(false);
 
     const navClass = ({ isActive }: NavLinkRenderProps): string => 
         `flex items-center gap-2 transition-colors ${
@@ -23,13 +25,19 @@ function Sidebar({ onClose }: SidebarProps) {
     const handleBackToHomepage = () => {
         setIsRedirecting(true);
         setTimeout(() => {
-            navigate(ROUTES.HOME); // ← was window.location.href, now uses React Router
+            navigate(ROUTES.HOME);
             setIsRedirecting(false);
         }, 400);
     };
 
+    const handleSignOut = async () => {
+        setSigningOut(true);
+        await supabase.auth.signOut();
+        navigate(ROUTES.SIGN_IN);
+    };
+
     return (
-        <div className="bg-[#373737] w-64 lg:w-55 min-h-screen z-10 relative">
+        <div className="bg-[#373737] w-64 lg:w-55 min-h-screen z-10 relative flex flex-col">
 
             {/* ── Loading overlay ── */}
             {isRedirecting && createPortal(
@@ -57,7 +65,7 @@ function Sidebar({ onClose }: SidebarProps) {
                 document.body
             )}
 
-            <div className="px-4 py-6">
+            <div className="px-4 py-6 flex flex-col flex-1">
                 <div className="flex items-center justify-between mb-4 lg:mb-6">
                     <button
                         onClick={handleBackToHomepage}
@@ -79,13 +87,11 @@ function Sidebar({ onClose }: SidebarProps) {
                 </div>
 
                 <div className="space-y-4">
-                    <NavLink to={ROUTES.DASHBOARD_OVERVIEW} 
-                        onClick={onClose}
-                        className={navClass}>
+                    <NavLink to={ROUTES.DASHBOARD_OVERVIEW} onClick={onClose} className={navClass}>
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-5">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 0 1-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0 1 15 18.257V17.25m6-12V15a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 15V5.25m18 0A2.25 2.25 0 0 0 18.75 3H5.25A2.25 2.25 0 0 0 3 5.25m18 0V12a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 12V5.25" />
                         </svg>
-                        <span className=''>Overview</span>
+                        <span>Overview</span>
                     </NavLink>
 
                     <NavLink to={ROUTES.DASHBOARD_MY_BUSINESS} onClick={onClose} className={navClass}>
@@ -131,6 +137,18 @@ function Sidebar({ onClose }: SidebarProps) {
                         </svg>
                         Settings
                     </NavLink>
+                </div>
+
+                {/* ── Sign Out — pinned to bottom ── */}
+                <div className="mt-auto pt-6 border-t border-[#444444]">
+                    <button
+                        onClick={handleSignOut}
+                        disabled={signingOut}
+                        className="flex items-center gap-2 w-full py-1 px-2 rounded-md text-sm font-medium transition-all cursor-pointer bg-[#373737] border border-[#373737] text-[#a0a0a0] hover:bg-red-900/30 hover:border-red-700/50 hover:text-red-400 disabled:opacity-50"
+                    >
+                        <LogOut size={16} />
+                        <span>{signingOut ? 'Signing out...' : 'Sign Out'}</span>
+                    </button>
                 </div>
             </div>
         </div>
