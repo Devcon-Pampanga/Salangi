@@ -1,13 +1,14 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import EventCard from '../components/EventCard';
-import { Search } from 'lucide-react';
+import { Search, Calendar, X } from 'lucide-react';
 
 interface PublicEvent {
   id: number;
   title: string;
   description: string;
   date: string;
+  date_raw: string;
   date_range: string;
   time: string;
   location: string;
@@ -19,19 +20,19 @@ interface PublicEvent {
   interest_count?: number;
 }
 
-const FILTERS = ['All', 'Today', 'This Week', 'This Month'];
+const FILTERS = ['All', 'Today', 'This Week', 'This Month', 'Pick a Date'];
 
 function Eventspage() {
   const [events, setEvents] = useState<PublicEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('All');
+  const [pickedDate, setPickedDate] = useState('');
 
   useEffect(() => {
     const fetchEvents = async () => {
       setLoading(true);
       try {
-        // ✅ FIX: Fetch events that are either verified=true OR status='approved'
         const { data: eventsData, error } = await supabase
           .from('events')
           .select('*, listings(name)')
@@ -41,14 +42,12 @@ function Eventspage() {
         if (error) console.error('Supabase error:', error);
 
         if (eventsData) {
-          // Fetch interest counts for all events
           const eventIds = eventsData.map((e: any) => e.id);
           const { data: interestData } = await supabase
             .from('event_interests')
             .select('event_id')
             .in('event_id', eventIds);
 
-          // Build a count map
           const interestMap: Record<number, number> = {};
           (interestData ?? []).forEach((row: any) => {
             interestMap[row.event_id] = (interestMap[row.event_id] ?? 0) + 1;
@@ -57,6 +56,8 @@ function Eventspage() {
           const formatted = eventsData.map((e: any) => ({
             ...e,
             image: e.image_url,
+            // ✅ FIX: capture raw ISO date BEFORE overwriting with display string
+            date_raw: (e.date ?? '').split('T')[0],
             date: e.date_range || e.date,
             organizer: e.listings?.name ?? 'Local Organizer',
             interest_count: interestMap[e.id] ?? 0,
@@ -76,9 +77,13 @@ function Eventspage() {
   const filteredEvents = useMemo(() => {
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0];
+
     const endOfWeek = new Date(now);
     endOfWeek.setDate(now.getDate() + (6 - now.getDay()));
+    const endOfWeekStr = endOfWeek.toISOString().split('T')[0];
+
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const endOfMonthStr = endOfMonth.toISOString().split('T')[0];
 
     return events.filter((e) => {
       const matchesSearch =
@@ -87,15 +92,18 @@ function Eventspage() {
         (e.organizer ?? '').toLowerCase().includes(searchQuery.toLowerCase());
 
       if (!matchesSearch) return false;
-      if (activeFilter === 'All') return true;
 
-      const rawDate = (e as any).date_raw ?? todayStr;
+      const rawDate = e.date_raw ?? '';
+
+      if (activeFilter === 'All') return true;
       if (activeFilter === 'Today') return rawDate === todayStr;
-      if (activeFilter === 'This Week') return rawDate <= endOfWeek.toISOString().split('T')[0];
-      if (activeFilter === 'This Month') return rawDate <= endOfMonth.toISOString().split('T')[0];
+      if (activeFilter === 'This Week') return rawDate >= todayStr && rawDate <= endOfWeekStr;
+      if (activeFilter === 'This Month') return rawDate >= todayStr && rawDate <= endOfMonthStr;
+      if (activeFilter === 'Pick a Date') return pickedDate ? rawDate === pickedDate : true;
+
       return true;
     });
-  }, [events, searchQuery, activeFilter]);
+  }, [events, searchQuery, activeFilter, pickedDate]);
 
   return (
     <div className="relative w-full h-full bg-[#1A1A1A] text-[#FBFAF8] overflow-hidden">
@@ -138,18 +146,56 @@ function Eventspage() {
             {FILTERS.map((f) => (
               <button
                 key={f}
-                onClick={() => setActiveFilter(f)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
+                onClick={() => {
+                  setActiveFilter(f);
+                  if (f !== 'Pick a Date') setPickedDate('');
+                }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap flex items-center gap-1.5 ${
                   activeFilter === f
                     ? 'bg-[#FFE2A0] text-[#1a1a1a] font-semibold shadow-sm'
                     : 'text-[#FBFAF8]/60 hover:text-[#FBFAF8] hover:bg-white/5'
                 }`}
               >
+                {f === 'Pick a Date' && <Calendar size={12} />}
                 {f}
               </button>
             ))}
           </div>
         </div>
+
+        {/* ✅ NEW: Styled date picker — hidden native input behind custom label */}
+        {activeFilter === 'Pick a Date' && (
+          <div className="shrink-0 flex items-center gap-3 mb-5">
+            <label className="relative flex items-center gap-2 bg-[#2E2E2E] border border-[#3a3a3a] focus-within:border-[#FFE2A0]/50 rounded-xl px-4 py-2.5 cursor-pointer transition-all group">
+              <Calendar size={14} className="text-[#FFE2A0]/70 shrink-0" />
+              <span className="text-sm text-[#FBFAF8]/60 group-focus-within:text-[#FBFAF8] transition-colors min-w-[110px] select-none">
+                {pickedDate
+                  ? new Date(pickedDate + 'T12:00:00').toLocaleDateString('default', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })
+                  : 'Choose a date'}
+              </span>
+              <input
+                type="date"
+                value={pickedDate}
+                onChange={(e) => setPickedDate(e.target.value)}
+                className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+              />
+            </label>
+
+            {pickedDate && (
+              <button
+                onClick={() => setPickedDate('')}
+                className="flex items-center gap-1.5 text-[#FBFAF8]/40 hover:text-[#FFE2A0] text-xs transition-colors"
+              >
+                <X size={12} />
+                Clear
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Content */}
         {loading ? (
@@ -191,15 +237,17 @@ function Eventspage() {
               <p className="text-[#FBFAF8]/40 text-sm mt-1 max-w-xs mx-auto leading-relaxed">
                 {searchQuery
                   ? `No events matching "${searchQuery}".`
+                  : activeFilter === 'Pick a Date' && pickedDate
+                  ? `No events on ${new Date(pickedDate + 'T12:00:00').toLocaleDateString('default', { month: 'long', day: 'numeric', year: 'numeric' })}.`
                   : 'No upcoming events right now. Check back soon!'}
               </p>
             </div>
-            {searchQuery && (
+            {(searchQuery || pickedDate) && (
               <button
-                onClick={() => setSearchQuery('')}
+                onClick={() => { setSearchQuery(''); setPickedDate(''); }}
                 className="text-[#FFE2A0] text-xs hover:underline"
               >
-                Clear search
+                Clear filters
               </button>
             )}
           </div>
