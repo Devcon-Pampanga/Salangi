@@ -26,6 +26,7 @@ export default function Events() {
   const [events, setEvents] = useState<SupabaseEvent[]>([]);
   const [userListings, setUserListings] = useState<{id: number, name: string, location: string}[]>([]);
   const [activeFilter, setActiveFilter] = useState("All");
+  const [statusFilter, setStatusFilter] = useState("All");
   const [editingEvent, setEditingEvent] = useState<SupabaseEvent | null>(null);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -62,9 +63,12 @@ export default function Events() {
   }, []);
 
   const filteredEvents = events.filter(e => {
-    if (activeFilter === "All") return true;
-    const listing = userListings.find(l => l.id === e.listing_id);
-    return listing?.name === activeFilter;
+    const matchesListing = activeFilter === "All" || userListings.find(l => l.id === e.listing_id)?.name === activeFilter;
+    const matchesStatus =
+      statusFilter === "All" ||
+      (statusFilter === "Approved" && e.verified) ||
+      (statusFilter === "Pending" && !e.verified);
+    return matchesListing && matchesStatus;
   });
 
   const handleEdit = (event: SupabaseEvent) => {
@@ -89,6 +93,8 @@ export default function Events() {
   return (
     <div className="w-full h-full">
       <div className="px-4 md:px-6 py-4">
+
+        {/* Header */}
         <div className="flex flex-col lg:flex-row justify-between items-start gap-4 lg:gap-0">
           <div className="mb-4">
             <h1 className="font-['Playfair_Display'] text-white text-3xl font-semibold tracking-wide cursor-default">
@@ -97,6 +103,7 @@ export default function Events() {
             <p className="text-white text-sm">Create and manage your upcoming promotional events</p>
           </div>
 
+          {/* Listing filter */}
           <div className="flex flex-row items-center overflow-x-auto lg:overflow-visible gap-2 bg-[#3a3a3a] p-2 rounded-xl border border-[#4d4d4d] w-full lg:w-fit scrollbar-hide">
             {["All", ...userListings.map(l => l.name)].map((name) => (
               <button
@@ -114,6 +121,7 @@ export default function Events() {
           </div>
         </div>
 
+        {/* Post Event button */}
         <div className="flex flex-row gap-4 mt-6">
           <button
             onClick={() => { setEditingEvent(null); setIsModalOpen(true); }}
@@ -131,33 +139,68 @@ export default function Events() {
           </button>
         </div>
 
-        <div className="mt-12 mb-6">
-          <h2 className="text-[#FFE2A0] text-xl font-['Playfair_Display'] font-semibold">Your Events</h2>
+        {/* Your Events heading + summary counts + status filter */}
+        <div className="mt-12 mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="flex items-center gap-3">
+            <h2 className="text-[#FFE2A0] text-xl font-['Playfair_Display'] font-semibold">Your Events</h2>
+            <div className="flex items-center gap-2">
+              <span className="text-xs bg-green-600/20 text-green-400 border border-green-600/30 px-2 py-0.5 rounded-full font-medium">
+                {events.filter(e => e.verified).length} Approved
+              </span>
+              <span className="text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-medium">
+                {events.filter(e => !e.verified).length} Pending
+              </span>
+            </div>
+          </div>
+
+          {/* Status filter */}
+          <div className="flex flex-row items-center gap-2 bg-[#3a3a3a] p-1.5 rounded-xl border border-[#4d4d4d] w-full sm:w-fit overflow-x-auto scrollbar-hide">
+            {["All", "Approved", "Pending"].map((status) => (
+              <button
+                key={status}
+                onClick={() => setStatusFilter(status)}
+                className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
+                  statusFilter === status
+                    ? 'bg-[#FFE2A0] text-[#1a1a1a] shadow-md font-semibold'
+                    : 'text-white hover:bg-white/5'
+                }`}
+              >
+                {status}
+              </button>
+            ))}
+          </div>
         </div>
 
+        {/* Event list */}
         {loading ? (
-          <p className="text-[#a0a0a0] text-sm mt-6">Loading events...</p>
+          <div className="flex items-center justify-center h-48 text-[#a0a0a0]">
+            <svg className="animate-spin h-6 w-6 mr-3 text-[#FFE2A0]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+            </svg>
+            Loading events...
+          </div>
         ) : filteredEvents.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-6 mb-8">
             {filteredEvents.map((event) => (
               <div key={event.id} className="relative">
-                {/* Pending badge */}
-                {!event.verified && (
-                  <div className="absolute top-3 left-3 z-20 flex items-center gap-1.5 bg-amber-500 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-lg">
+                {/* Status badge */}
+                {event.verified ? (
+                  <div className="absolute top-3 left-3 z-20 flex items-center gap-1.5 bg-green-600 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-lg pointer-events-none">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    Approved
+                  </div>
+                ) : (
+                  <div className="absolute top-3 left-3 z-20 flex items-center gap-1.5 bg-amber-500 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-lg pointer-events-none">
                     <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2m6-2a10 10 0 11-20 0 10 10 0 0120 0z" />
                     </svg>
                     Pending Review
                   </div>
                 )}
-                {event.verified && (
-                  <div className="absolute top-3 left-3 z-20 flex items-center gap-1.5 bg-green-600 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-lg">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                    Approved
-                  </div>
-                )}
+
                 <EventCard
                   event={{
                     ...event,
@@ -179,9 +222,13 @@ export default function Events() {
               </svg>
             </div>
             <div className="space-y-1">
-              <h3 className="text-white text-xl font-semibold tracking-wide font-['Playfair_Display']">No Events Found</h3>
+              <h3 className="text-white text-xl font-semibold tracking-wide font-['Playfair_Display']">
+                {statusFilter !== "All" ? `No ${statusFilter} Events` : "No Events Found"}
+              </h3>
               <p className="text-[#a0a0a0] text-sm font-light max-w-xs mx-auto leading-relaxed">
-                Host your first event to reach more customers and grow your community.
+                {statusFilter !== "All"
+                  ? `You have no ${statusFilter.toLowerCase()} events yet.`
+                  : "Host your first event to reach more customers and grow your community."}
               </p>
             </div>
           </div>
