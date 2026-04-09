@@ -1,11 +1,21 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import {
   CheckCircle, XCircle, LogOut, MapPin, Clock,
   ChevronLeft, ChevronRight, X, ZoomIn, CalendarDays,
+  Phone, Globe, Facebook, Mail, FileText, Eye,
 } from 'lucide-react';
 import { ROUTES } from '../../../routes/paths';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({ iconRetinaUrl: markerIcon2x, iconUrl: markerIcon, shadowUrl: markerShadow });
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -25,6 +35,8 @@ interface Listing {
   email?: string;
   facebook?: string;
   website?: string;
+  lat?: number | null;
+  lng?: number | null;
 }
 
 interface PendingEvent {
@@ -37,8 +49,31 @@ interface PendingEvent {
   month: string;
   day: string;
   image_url: string | null;
+  images?: string[];
   verified: boolean;
   created_at: string;
+  lat?: number | null;
+  lng?: number | null;
+}
+
+// ── Mini Map ──────────────────────────────────────────────────────────────────
+
+function MiniMap({ lat, lng }: { lat: number; lng: number }) {
+  const mapRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<L.Map | null>(null);
+
+  useEffect(() => {
+    if (!mapRef.current || mapInstanceRef.current) return;
+    const map = L.map(mapRef.current, { zoomControl: false, dragging: false, scrollWheelZoom: false }).setView([lat, lng], 16);
+    mapInstanceRef.current = map;
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors', maxZoom: 19,
+    }).addTo(map);
+    L.marker([lat, lng]).addTo(map);
+    return () => { map.remove(); mapInstanceRef.current = null; };
+  }, [lat, lng]);
+
+  return <div ref={mapRef} style={{ height: '180px', width: '100%', borderRadius: '12px', overflow: 'hidden' }} />;
 }
 
 // ── Lightbox ──────────────────────────────────────────────────────────────────
@@ -48,10 +83,10 @@ function Lightbox({ src, onClose }: { src: string; onClose: () => void }) {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, []);
+  }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-[999] bg-black/90 flex items-center justify-center p-6" onClick={onClose}>
+    <div className="fixed inset-0 z-[9999] bg-black/90 flex items-center justify-center p-6" onClick={onClose}>
       <button className="absolute top-4 right-4 text-white hover:text-[#FFE2A0] transition-colors">
         <X size={28} />
       </button>
@@ -105,7 +140,7 @@ function ImageCarousel({ images, onImageClick }: { images: string[]; onImageClic
   );
 }
 
-// ── Document Thumbnail ────────────────────────────────────────────────────────
+// ── Doc Thumbnail ─────────────────────────────────────────────────────────────
 
 function DocThumb({ src, label, onImageClick }: { src: string; label: string; onImageClick: (src: string) => void }) {
   const isPdf = src.toLowerCase().includes('.pdf');
@@ -134,7 +169,567 @@ function DocThumb({ src, label, onImageClick }: { src: string; label: string; on
   );
 }
 
-// ── Pending Event Card ────────────────────────────────────────────────────────
+// ── Listing Detail Modal ──────────────────────────────────────────────────────
+
+function ListingDetailModal({
+  listing,
+  onClose,
+  onApprove,
+  onReject,
+  actionLoading,
+}: {
+  listing: Listing;
+  onClose: () => void;
+  onApprove: (id: number) => void;
+  onReject: (id: number) => void;
+  actionLoading: number | null;
+}) {
+  const [imgIndex, setImgIndex] = useState(0);
+  const [lightbox, setLightbox] = useState<string | null>(null);
+  const hasMap = typeof listing.lat === 'number' && typeof listing.lng === 'number';
+
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handler);
+    return () => { document.body.style.overflow = ''; window.removeEventListener('keydown', handler); };
+  }, [onClose]);
+
+  return createPortal(
+    <>
+      {lightbox && <Lightbox src={lightbox} onClose={() => setLightbox(null)} />}
+      <div
+        className="fixed inset-0 z-[999] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4"
+        onClick={onClose}
+      >
+        <div
+          className="relative w-full max-w-2xl bg-[#2a2a2a] rounded-2xl border border-zinc-700/50 shadow-2xl flex flex-col max-h-[90vh] overflow-hidden"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Image hero */}
+          <div className="relative h-56 shrink-0">
+            {listing.images?.length > 0 ? (
+              <>
+                <img
+                  src={listing.images[imgIndex]}
+                  alt={listing.name}
+                  className="w-full h-full object-cover cursor-zoom-in"
+                  onClick={() => setLightbox(listing.images[imgIndex])}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#2a2a2a] via-transparent to-transparent pointer-events-none" />
+                {listing.images.length > 1 && (
+                  <>
+                    <button
+                      onClick={() => setImgIndex(i => (i - 1 + listing.images.length) % listing.images.length)}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-black/50 hover:bg-black/80 rounded-full border border-white/10 transition-all"
+                    >
+                      <ChevronLeft size={16} className="text-white" />
+                    </button>
+                    <button
+                      onClick={() => setImgIndex(i => (i + 1) % listing.images.length)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-black/50 hover:bg-black/80 rounded-full border border-white/10 transition-all"
+                    >
+                      <ChevronRight size={16} className="text-white" />
+                    </button>
+                    <div className="absolute bottom-14 left-0 right-0 flex justify-center gap-1.5">
+                      {listing.images.map((_, i) => (
+                        <button key={i} onClick={() => setImgIndex(i)}
+                          className={`h-1.5 rounded-full transition-all ${i === imgIndex ? 'bg-[#FFE2A0] w-4' : 'bg-white/40 w-1.5'}`}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
+              </>
+            ) : (
+              <div className="w-full h-full bg-[#333] flex items-center justify-center text-[#FBFAF8]/20">No Photos</div>
+            )}
+
+            {/* Close */}
+            <button
+              onClick={onClose}
+              className="absolute top-3 right-3 w-9 h-9 flex items-center justify-center bg-black/50 hover:bg-black/80 rounded-full border border-white/10 transition-all z-10"
+            >
+              <X size={16} className="text-white" />
+            </button>
+
+            {/* Category badge */}
+            <div className="absolute bottom-4 left-4">
+              <span className="text-[9px] font-bold uppercase tracking-widest text-[#FFE2A0] border border-[#FFE2A0]/30 bg-black/60 backdrop-blur-sm px-3 py-1 rounded-full">
+                {listing.category}
+              </span>
+            </div>
+          </div>
+
+          {/* Scrollable body */}
+          <div className="overflow-y-auto flex-1 p-6 space-y-5">
+            {/* Title */}
+            <div>
+              <h2 className="text-[#FBFAF8] font-['Playfair_Display'] font-bold text-2xl leading-tight">{listing.name}</h2>
+            </div>
+
+            <div className="border-t border-white/10" />
+
+            {/* Info grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {listing.location && (
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-[#3a3a3a] flex items-center justify-center shrink-0 mt-0.5">
+                    <MapPin size={14} className="text-[#FFE2A0]" />
+                  </div>
+                  <div>
+                    <p className="text-[#FBFAF8]/40 text-[10px] uppercase tracking-wider font-semibold">Location</p>
+                    <p className="text-[#FBFAF8] text-sm">{listing.location}</p>
+                  </div>
+                </div>
+              )}
+              {listing.hours && (
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-[#3a3a3a] flex items-center justify-center shrink-0 mt-0.5">
+                    <Clock size={14} className="text-[#FFE2A0]" />
+                  </div>
+                  <div>
+                    <p className="text-[#FBFAF8]/40 text-[10px] uppercase tracking-wider font-semibold">Hours</p>
+                    <p className="text-[#FBFAF8] text-sm">{listing.hours}</p>
+                  </div>
+                </div>
+              )}
+              {listing.phone && (
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-[#3a3a3a] flex items-center justify-center shrink-0 mt-0.5">
+                    <Phone size={14} className="text-[#FFE2A0]" />
+                  </div>
+                  <div>
+                    <p className="text-[#FBFAF8]/40 text-[10px] uppercase tracking-wider font-semibold">Phone</p>
+                    <p className="text-[#FBFAF8] text-sm">{listing.phone}</p>
+                  </div>
+                </div>
+              )}
+              {listing.email && (
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-[#3a3a3a] flex items-center justify-center shrink-0 mt-0.5">
+                    <Mail size={14} className="text-[#FFE2A0]" />
+                  </div>
+                  <div>
+                    <p className="text-[#FBFAF8]/40 text-[10px] uppercase tracking-wider font-semibold">Email</p>
+                    <p className="text-[#FBFAF8] text-sm">{listing.email}</p>
+                  </div>
+                </div>
+              )}
+              {listing.facebook && (
+                <div className="flex items-start gap-3 sm:col-span-2">
+                  <div className="w-8 h-8 rounded-lg bg-[#3a3a3a] flex items-center justify-center shrink-0 mt-0.5">
+                    <Facebook size={14} className="text-[#FFE2A0]" />
+                  </div>
+                  <div>
+                    <p className="text-[#FBFAF8]/40 text-[10px] uppercase tracking-wider font-semibold">Facebook</p>
+                    <a href={listing.facebook} target="_blank" rel="noopener noreferrer" className="text-[#FFE2A0] text-sm hover:underline truncate block max-w-xs">{listing.facebook}</a>
+                  </div>
+                </div>
+              )}
+              {listing.website && (
+                <div className="flex items-start gap-3 sm:col-span-2">
+                  <div className="w-8 h-8 rounded-lg bg-[#3a3a3a] flex items-center justify-center shrink-0 mt-0.5">
+                    <Globe size={14} className="text-[#FFE2A0]" />
+                  </div>
+                  <div>
+                    <p className="text-[#FBFAF8]/40 text-[10px] uppercase tracking-wider font-semibold">Website</p>
+                    <a href={listing.website} target="_blank" rel="noopener noreferrer" className="text-[#FFE2A0] text-sm hover:underline">{listing.website}</a>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {listing.description && (
+              <>
+                <div className="border-t border-white/10" />
+                <div>
+                  <p className="text-[#FBFAF8]/40 text-[10px] uppercase tracking-wider font-semibold mb-2">Description</p>
+                  <p className="text-[#FBFAF8]/70 text-sm leading-relaxed">{listing.description}</p>
+                </div>
+              </>
+            )}
+
+            {/* Map */}
+            {hasMap && (
+              <>
+                <div className="border-t border-white/10" />
+                <div>
+                  <p className="text-[#FBFAF8]/40 text-[10px] uppercase tracking-wider font-semibold mb-3">Location Map</p>
+                  <MiniMap lat={listing.lat as number} lng={listing.lng as number} />
+                  <a
+                    href={`https://www.openstreetmap.org/?mlat=${listing.lat}&mlon=${listing.lng}&zoom=17`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 mt-2 text-[#FFE2A0] text-xs hover:underline"
+                  >
+                    <MapPin size={11} /> Open in Maps
+                  </a>
+                </div>
+              </>
+            )}
+
+            {/* Verification Docs */}
+            {(listing.business_permit || listing.government_id || listing.selfie_verification) && (
+              <>
+                <div className="border-t border-white/10" />
+                <div>
+                  <p className="text-[#FBFAF8]/40 text-[10px] uppercase tracking-wider font-semibold mb-3">Verification Documents</p>
+                  <div className="flex gap-4 flex-wrap">
+                    {listing.business_permit && <DocThumb src={listing.business_permit} label="Business Permit" onImageClick={setLightbox} />}
+                    {listing.government_id && <DocThumb src={listing.government_id} label="Government ID" onImageClick={setLightbox} />}
+                    {listing.selfie_verification && <DocThumb src={listing.selfie_verification} label="Selfie" onImageClick={setLightbox} />}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Action buttons */}
+            <div className="border-t border-white/10 pt-2 flex gap-3">
+              <button
+                onClick={() => onApprove(listing.id)}
+                disabled={actionLoading === listing.id}
+                className="flex-1 flex items-center justify-center gap-2 bg-green-600/80 hover:bg-green-500 disabled:opacity-40 text-white text-sm font-bold px-4 py-3 rounded-xl transition-all active:scale-95 border border-green-500/30 shadow-lg"
+              >
+                <CheckCircle size={16} /> Approve Listing
+              </button>
+              <button
+                onClick={() => onReject(listing.id)}
+                disabled={actionLoading === listing.id}
+                className="flex-1 flex items-center justify-center gap-2 bg-red-700/80 hover:bg-red-600 disabled:opacity-40 text-white text-sm font-bold px-4 py-3 rounded-xl transition-all active:scale-95 border border-red-600/30 shadow-lg"
+              >
+                <XCircle size={16} /> Reject
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>,
+    document.body
+  );
+}
+
+// ── Event Detail Modal ────────────────────────────────────────────────────────
+
+function EventDetailModal({
+  event,
+  onClose,
+  onApprove,
+  onReject,
+  actionLoading,
+}: {
+  event: PendingEvent;
+  onClose: () => void;
+  onApprove: (id: number) => void;
+  onReject: (id: number) => void;
+  actionLoading: number | null;
+}) {
+  const allImages: string[] = (event as any).images?.length
+    ? (event as any).images
+    : (event.image_url ? [event.image_url] : []);
+  const [imgIndex, setImgIndex] = useState(0);
+  const [lightbox, setLightbox] = useState<string | null>(null);
+  const hasMap = typeof event.lat === 'number' && typeof event.lng === 'number';
+
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handler);
+    return () => { document.body.style.overflow = ''; window.removeEventListener('keydown', handler); };
+  }, [onClose]);
+
+  return createPortal(
+    <>
+      {lightbox && <Lightbox src={lightbox} onClose={() => setLightbox(null)} />}
+      <div
+        className="fixed inset-0 z-[999] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4"
+        onClick={onClose}
+      >
+        <div
+          className="relative w-full max-w-2xl bg-[#2a2a2a] rounded-2xl border border-zinc-700/50 shadow-2xl flex flex-col max-h-[90vh] overflow-hidden"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Image hero */}
+          <div className="relative h-56 shrink-0">
+            {allImages.length > 0 ? (
+              <>
+                <img
+                  src={allImages[imgIndex]}
+                  alt={event.title}
+                  className="w-full h-full object-cover cursor-zoom-in"
+                  onClick={() => setLightbox(allImages[imgIndex])}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#2a2a2a] via-transparent to-transparent pointer-events-none" />
+                {allImages.length > 1 && (
+                  <>
+                    <button
+                      onClick={() => setImgIndex(i => (i - 1 + allImages.length) % allImages.length)}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-black/50 hover:bg-black/80 rounded-full border border-white/10 transition-all"
+                    >
+                      <ChevronLeft size={16} className="text-white" />
+                    </button>
+                    <button
+                      onClick={() => setImgIndex(i => (i + 1) % allImages.length)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-black/50 hover:bg-black/80 rounded-full border border-white/10 transition-all"
+                    >
+                      <ChevronRight size={16} className="text-white" />
+                    </button>
+                    <div className="absolute bottom-14 left-0 right-0 flex justify-center gap-1.5">
+                      {allImages.map((_, i) => (
+                        <button key={i} onClick={() => setImgIndex(i)}
+                          className={`h-1.5 rounded-full transition-all ${i === imgIndex ? 'bg-[#FFE2A0] w-4' : 'bg-white/40 w-1.5'}`}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
+              </>
+            ) : (
+              <div className="w-full h-full bg-[#333] flex items-center justify-center text-[#FBFAF8]/20">
+                <CalendarDays size={40} />
+              </div>
+            )}
+
+            {/* Close */}
+            <button
+              onClick={onClose}
+              className="absolute top-3 right-3 w-9 h-9 flex items-center justify-center bg-black/50 hover:bg-black/80 rounded-full border border-white/10 transition-all z-10"
+            >
+              <X size={16} className="text-white" />
+            </button>
+
+            {/* Date badge */}
+            {event.date_range && (
+              <div className="absolute bottom-4 left-4 px-3 py-1.5 bg-[#FFE2A0]/90 backdrop-blur-md rounded-full shadow-lg">
+                <span className="text-[#222222] text-[10px] font-black tracking-wider uppercase">{event.date_range}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Scrollable body */}
+          <div className="overflow-y-auto flex-1 p-6 space-y-5">
+            <div>
+              <h2 className="text-[#FBFAF8] font-['Playfair_Display'] font-bold text-2xl leading-tight mb-1">{event.title}</h2>
+              <span className="inline-flex items-center gap-1.5 text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-medium">
+                Pending Review
+              </span>
+            </div>
+
+            <div className="border-t border-white/10" />
+
+            {/* Info */}
+            <div className="flex flex-col gap-3">
+              {event.location && (
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-[#3a3a3a] flex items-center justify-center shrink-0">
+                    <MapPin size={14} className="text-[#FFE2A0]" />
+                  </div>
+                  <div>
+                    <p className="text-[#FBFAF8]/40 text-[10px] uppercase tracking-wider font-semibold">Location</p>
+                    <p className="text-[#FBFAF8] text-sm">{event.location}</p>
+                  </div>
+                </div>
+              )}
+              {event.time && (
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-[#3a3a3a] flex items-center justify-center shrink-0">
+                    <Clock size={14} className="text-[#FFE2A0]" />
+                  </div>
+                  <div>
+                    <p className="text-[#FBFAF8]/40 text-[10px] uppercase tracking-wider font-semibold">Time</p>
+                    <p className="text-[#FBFAF8] text-sm">{event.time}</p>
+                  </div>
+                </div>
+              )}
+              {event.date_range && (
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-[#3a3a3a] flex items-center justify-center shrink-0">
+                    <CalendarDays size={14} className="text-[#FFE2A0]" />
+                  </div>
+                  <div>
+                    <p className="text-[#FBFAF8]/40 text-[10px] uppercase tracking-wider font-semibold">Date</p>
+                    <p className="text-[#FBFAF8] text-sm">{event.date_range}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {event.description && (
+              <>
+                <div className="border-t border-white/10" />
+                <div>
+                  <p className="text-[#FBFAF8]/40 text-[10px] uppercase tracking-wider font-semibold mb-2">Description</p>
+                  <p className="text-[#FBFAF8]/70 text-sm leading-relaxed">{event.description}</p>
+                </div>
+              </>
+            )}
+
+            {/* Map */}
+            {hasMap && (
+              <>
+                <div className="border-t border-white/10" />
+                <div>
+                  <p className="text-[#FBFAF8]/40 text-[10px] uppercase tracking-wider font-semibold mb-3">Location Map</p>
+                  <MiniMap lat={event.lat as number} lng={event.lng as number} />
+                  <a
+                    href={`https://www.openstreetmap.org/?mlat=${event.lat}&mlon=${event.lng}&zoom=17`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 mt-2 text-[#FFE2A0] text-xs hover:underline"
+                  >
+                    <MapPin size={11} /> Open in Maps
+                  </a>
+                </div>
+              </>
+            )}
+
+            {/* Photo strip */}
+            {allImages.length > 1 && (
+              <>
+                <div className="border-t border-white/10" />
+                <div>
+                  <p className="text-[#FBFAF8]/40 text-[10px] uppercase tracking-wider font-semibold mb-2">Photos</p>
+                  <div className="flex gap-2 overflow-x-auto pb-1">
+                    {allImages.map((src, i) => (
+                      <button key={i} onClick={() => setImgIndex(i)}
+                        className={`shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${i === imgIndex ? 'border-[#FFE2A0]' : 'border-transparent opacity-60 hover:opacity-100'}`}
+                      >
+                        <img src={src} alt="" className="w-full h-full object-cover" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Action buttons */}
+            <div className="border-t border-white/10 pt-2 flex gap-3">
+              <button
+                onClick={() => onApprove(event.id)}
+                disabled={actionLoading === event.id}
+                className="flex-1 flex items-center justify-center gap-2 bg-green-600/80 hover:bg-green-500 disabled:opacity-40 text-white text-sm font-bold px-4 py-3 rounded-xl transition-all active:scale-95 border border-green-500/30 shadow-lg"
+              >
+                <CheckCircle size={16} /> Approve Event
+              </button>
+              <button
+                onClick={() => onReject(event.id)}
+                disabled={actionLoading === event.id}
+                className="flex-1 flex items-center justify-center gap-2 bg-red-700/80 hover:bg-red-600 disabled:opacity-40 text-white text-sm font-bold px-4 py-3 rounded-xl transition-all active:scale-95 border border-red-600/30 shadow-lg"
+              >
+                <XCircle size={16} /> Reject
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>,
+    document.body
+  );
+}
+
+// ── Listing Card (clickable) ──────────────────────────────────────────────────
+
+function ListingCard({
+  listing,
+  onApprove,
+  onReject,
+  actionLoading,
+  onImageClick,
+}: {
+  listing: Listing;
+  onApprove: (id: number) => void;
+  onReject: (id: number) => void;
+  actionLoading: number | null;
+  onImageClick: (src: string) => void;
+}) {
+  const [showModal, setShowModal] = useState(false);
+
+  const handleApprove = (id: number) => { onApprove(id); setShowModal(false); };
+  const handleReject = (id: number) => { onReject(id); setShowModal(false); };
+
+  return (
+    <>
+      <div
+        className="bg-[#333333] border border-zinc-800/50 rounded-xl p-6 flex flex-col gap-5 hover:border-[#FFE2A0]/20 transition-colors cursor-pointer group"
+        onClick={() => setShowModal(true)}
+      >
+        <div className="flex items-start gap-6">
+          <div className="relative shrink-0">
+            <ImageCarousel images={listing.images} onImageClick={(src) => { onImageClick(src); }} />
+            <div className="absolute inset-0 rounded-xl bg-black/0 group-hover:bg-black/10 transition-all flex items-center justify-center pointer-events-none">
+              <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 rounded-full px-3 py-1.5 flex items-center gap-1.5">
+                <Eye size={13} className="text-[#FFE2A0]" />
+                <span className="text-[#FFE2A0] text-xs font-semibold">View Details</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-3 mb-2">
+              <h3 className="text-lg font-semibold text-[#FBFAF8] font-['Playfair_Display'] truncate">{listing.name}</h3>
+              <span className="text-[9px] font-bold uppercase tracking-widest text-[#FFE2A0] border border-[#FFE2A0]/20 bg-[#FFE2A0]/5 px-2 py-0.5 rounded shrink-0">
+                {listing.category}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 text-[#FBFAF8]/50 text-xs mb-1">
+              <MapPin size={12} /> {listing.location}
+            </div>
+            {listing.hours && (
+              <div className="flex items-center gap-1.5 text-[#FBFAF8]/50 text-xs mb-2">
+                <Clock size={12} /> {listing.hours}
+              </div>
+            )}
+            {listing.phone && <p className="text-[#FBFAF8]/30 text-xs mb-1">📞 {listing.phone}</p>}
+            {listing.facebook && <p className="text-[#FBFAF8]/30 text-xs mb-1 truncate">🌐 {listing.facebook}</p>}
+            <p className="text-[#FBFAF8]/50 text-sm line-clamp-2 mt-2 leading-relaxed">{listing.description}</p>
+          </div>
+
+          <div className="flex flex-col gap-2 min-w-[130px]" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => onApprove(listing.id)}
+              disabled={actionLoading === listing.id}
+              className="flex items-center justify-center gap-2 bg-green-600/80 hover:bg-green-500 disabled:opacity-40 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all active:scale-95 border border-green-500/30 shadow-lg"
+            >
+              <CheckCircle size={14} /> Approve
+            </button>
+            <button
+              onClick={() => onReject(listing.id)}
+              disabled={actionLoading === listing.id}
+              className="flex items-center justify-center gap-2 bg-red-700/80 hover:bg-red-600 disabled:opacity-40 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all active:scale-95 border border-red-600/30 shadow-lg"
+            >
+              <XCircle size={14} /> Reject
+            </button>
+          </div>
+        </div>
+
+        {(listing.business_permit || listing.government_id || listing.selfie_verification) && (
+          <div className="border-t border-zinc-800 pt-5" onClick={(e) => e.stopPropagation()}>
+            <p className="text-[9px] font-bold uppercase tracking-widest text-[#FBFAF8]/30 mb-3">
+              Verification Documents
+            </p>
+            <div className="flex gap-4">
+              {listing.business_permit && <DocThumb src={listing.business_permit} label="Business Permit" onImageClick={onImageClick} />}
+              {listing.government_id && <DocThumb src={listing.government_id} label="Government ID" onImageClick={onImageClick} />}
+              {listing.selfie_verification && <DocThumb src={listing.selfie_verification} label="Selfie" onImageClick={onImageClick} />}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {showModal && (
+        <ListingDetailModal
+          listing={listing}
+          onClose={() => setShowModal(false)}
+          onApprove={handleApprove}
+          onReject={handleReject}
+          actionLoading={actionLoading}
+        />
+      )}
+    </>
+  );
+}
+
+// ── Pending Event Card (clickable) ────────────────────────────────────────────
 
 function PendingEventCard({
   event,
@@ -149,65 +744,91 @@ function PendingEventCard({
   actionLoading: number | null;
   onImageClick: (src: string) => void;
 }) {
+  const [showModal, setShowModal] = useState(false);
+
+  const handleApprove = (id: number) => { onApprove(id); setShowModal(false); };
+  const handleReject = (id: number) => { onReject(id); setShowModal(false); };
+
   return (
-    <div className="bg-[#333333] border border-zinc-800/50 rounded-xl p-6 flex items-start gap-6 hover:border-[#FFE2A0]/20 transition-colors">
-      {event.image_url ? (
-        <div className="relative w-40 h-28 rounded-xl overflow-hidden shrink-0 group cursor-zoom-in border border-zinc-800" onClick={() => onImageClick(event.image_url!)}>
-          <img src={event.image_url} alt={event.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center">
-            <ZoomIn size={18} className="text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+    <>
+      <div
+        className="bg-[#333333] border border-zinc-800/50 rounded-xl p-6 flex items-start gap-6 hover:border-[#FFE2A0]/20 transition-colors cursor-pointer group"
+        onClick={() => setShowModal(true)}
+      >
+        {/* Image */}
+        <div className="relative shrink-0">
+          {event.image_url ? (
+            <div className="relative w-40 h-28 rounded-xl overflow-hidden border border-zinc-800">
+              <img src={event.image_url} alt={event.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center">
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 rounded-full px-3 py-1.5 flex items-center gap-1.5">
+                  <Eye size={13} className="text-[#FFE2A0]" />
+                  <span className="text-[#FFE2A0] text-xs font-semibold">View</span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="w-40 h-28 rounded-xl bg-[#2D2D2D] border border-zinc-800 flex items-center justify-center text-[#FBFAF8]/20">
+              <CalendarDays size={28} />
+            </div>
+          )}
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-3 mb-2">
+            <h3 className="text-base font-semibold text-[#FBFAF8] font-['Playfair_Display'] truncate">{event.title}</h3>
+            <span className="text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full shrink-0 font-medium">
+              Pending Review
+            </span>
           </div>
+          {event.location && (
+            <div className="flex items-center gap-1.5 text-[#FBFAF8]/50 text-xs mb-1">
+              <MapPin size={12} /> {event.location}
+            </div>
+          )}
+          {event.time && (
+            <div className="flex items-center gap-1.5 text-[#FBFAF8]/50 text-xs mb-1">
+              <Clock size={12} /> {event.time}
+            </div>
+          )}
+          {event.date_range && (
+            <div className="flex items-center gap-1.5 text-[#FBFAF8]/50 text-xs mb-2">
+              <CalendarDays size={12} /> {event.date_range}
+            </div>
+          )}
+          {event.description && (
+            <p className="text-[#FBFAF8]/40 text-sm line-clamp-2 leading-relaxed">{event.description}</p>
+          )}
         </div>
-      ) : (
-        <div className="w-40 h-28 rounded-xl bg-[#2D2D2D] border border-zinc-800 flex items-center justify-center text-[#FBFAF8]/20 shrink-0">
-          <CalendarDays size={28} />
+
+        <div className="flex flex-col gap-2 min-w-[130px]" onClick={(e) => e.stopPropagation()}>
+          <button
+            onClick={() => onApprove(event.id)}
+            disabled={actionLoading === event.id}
+            className="flex items-center justify-center gap-2 bg-green-600/80 hover:bg-green-500 disabled:opacity-40 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all active:scale-95 border border-green-500/30"
+          >
+            <CheckCircle size={14} /> Approve
+          </button>
+          <button
+            onClick={() => onReject(event.id)}
+            disabled={actionLoading === event.id}
+            className="flex items-center justify-center gap-2 bg-red-700/80 hover:bg-red-600 disabled:opacity-40 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all active:scale-95 border border-red-600/30"
+          >
+            <XCircle size={14} /> Reject
+          </button>
         </div>
+      </div>
+
+      {showModal && (
+        <EventDetailModal
+          event={event}
+          onClose={() => setShowModal(false)}
+          onApprove={handleApprove}
+          onReject={handleReject}
+          actionLoading={actionLoading}
+        />
       )}
-
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-3 mb-2">
-          <h3 className="text-base font-semibold text-[#FBFAF8] font-['Playfair_Display'] truncate">{event.title}</h3>
-          <span className="text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full shrink-0 font-medium">
-            Pending Review
-          </span>
-        </div>
-        {event.location && (
-          <div className="flex items-center gap-1.5 text-[#FBFAF8]/50 text-xs mb-1">
-            <MapPin size={12} /> {event.location}
-          </div>
-        )}
-        {event.time && (
-          <div className="flex items-center gap-1.5 text-[#FBFAF8]/50 text-xs mb-1">
-            <Clock size={12} /> {event.time}
-          </div>
-        )}
-        {event.date_range && (
-          <div className="flex items-center gap-1.5 text-[#FBFAF8]/50 text-xs mb-2">
-            <CalendarDays size={12} /> {event.date_range}
-          </div>
-        )}
-        {event.description && (
-          <p className="text-[#FBFAF8]/40 text-sm line-clamp-2 leading-relaxed">{event.description}</p>
-        )}
-      </div>
-
-      <div className="flex flex-col gap-2 min-w-[130px]">
-        <button
-          onClick={() => onApprove(event.id)}
-          disabled={actionLoading === event.id}
-          className="flex items-center justify-center gap-2 bg-green-600/80 hover:bg-green-500 disabled:opacity-40 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all active:scale-95 border border-green-500/30"
-        >
-          <CheckCircle size={14} /> Approve
-        </button>
-        <button
-          onClick={() => onReject(event.id)}
-          disabled={actionLoading === event.id}
-          className="flex items-center justify-center gap-2 bg-red-700/80 hover:bg-red-600 disabled:opacity-40 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all active:scale-95 border border-red-600/30"
-        >
-          <XCircle size={14} /> Reject
-        </button>
-      </div>
-    </div>
+    </>
   );
 }
 
@@ -350,7 +971,7 @@ function AdminDashboard() {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <h2 className="font-['Playfair_Display'] text-white text-xl font-semibold">
-              {activeTab === 'listings' ? 'Pending' : 'Pending'}{' '}
+              Pending{' '}
               <span className="text-[#FFE2A0]">{activeTab === 'listings' ? 'Listings' : 'Events'}</span>
             </h2>
             <span className="text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-medium">
@@ -388,61 +1009,14 @@ function AdminDashboard() {
           ) : (
             <div className="grid gap-5">
               {listings.map(listing => (
-                <div key={listing.id} className="bg-[#333333] border border-zinc-800/50 rounded-xl p-6 flex flex-col gap-5 hover:border-[#FFE2A0]/20 transition-colors">
-                  <div className="flex items-start gap-6">
-                    <ImageCarousel images={listing.images} onImageClick={setLightbox} />
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-lg font-semibold text-[#FBFAF8] font-['Playfair_Display'] truncate">{listing.name}</h3>
-                        <span className="text-[9px] font-bold uppercase tracking-widest text-[#FFE2A0] border border-[#FFE2A0]/20 bg-[#FFE2A0]/5 px-2 py-0.5 rounded shrink-0">
-                          {listing.category}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1.5 text-[#FBFAF8]/50 text-xs mb-1">
-                        <MapPin size={12} /> {listing.location}
-                      </div>
-                      {listing.hours && (
-                        <div className="flex items-center gap-1.5 text-[#FBFAF8]/50 text-xs mb-2">
-                          <Clock size={12} /> {listing.hours}
-                        </div>
-                      )}
-                      {listing.phone && <p className="text-[#FBFAF8]/30 text-xs mb-1">📞 {listing.phone}</p>}
-                      {listing.facebook && <p className="text-[#FBFAF8]/30 text-xs mb-1">🌐 {listing.facebook}</p>}
-                      <p className="text-[#FBFAF8]/50 text-sm line-clamp-2 mt-2 leading-relaxed">{listing.description}</p>
-                    </div>
-
-                    <div className="flex flex-col gap-2 min-w-[130px]">
-                      <button
-                        onClick={() => handleApproveListing(listing.id)}
-                        disabled={actionLoading === listing.id}
-                        className="flex items-center justify-center gap-2 bg-green-600/80 hover:bg-green-500 disabled:opacity-40 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all active:scale-95 border border-green-500/30 shadow-lg"
-                      >
-                        <CheckCircle size={14} /> Approve
-                      </button>
-                      <button
-                        onClick={() => handleRejectListing(listing.id)}
-                        disabled={actionLoading === listing.id}
-                        className="flex items-center justify-center gap-2 bg-red-700/80 hover:bg-red-600 disabled:opacity-40 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all active:scale-95 border border-red-600/30 shadow-lg"
-                      >
-                        <XCircle size={14} /> Reject
-                      </button>
-                    </div>
-                  </div>
-
-                  {(listing.business_permit || listing.government_id || listing.selfie_verification) && (
-                    <div className="border-t border-zinc-800 pt-5">
-                      <p className="text-[9px] font-bold uppercase tracking-widest text-[#FBFAF8]/30 mb-3">
-                        Verification Documents
-                      </p>
-                      <div className="flex gap-4">
-                        {listing.business_permit && <DocThumb src={listing.business_permit} label="Business Permit" onImageClick={setLightbox} />}
-                        {listing.government_id && <DocThumb src={listing.government_id} label="Government ID" onImageClick={setLightbox} />}
-                        {listing.selfie_verification && <DocThumb src={listing.selfie_verification} label="Selfie" onImageClick={setLightbox} />}
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <ListingCard
+                  key={listing.id}
+                  listing={listing}
+                  onApprove={handleApproveListing}
+                  onReject={handleRejectListing}
+                  actionLoading={actionLoading}
+                  onImageClick={setLightbox}
+                />
               ))}
             </div>
           )
@@ -476,7 +1050,7 @@ function AdminDashboard() {
 
       {/* Toast */}
       {toast && (
-        <div className={`fixed bottom-6 right-6 flex items-center gap-3 px-5 py-3.5 rounded-xl text-sm font-semibold shadow-2xl border transition-all ${
+        <div className={`fixed bottom-6 right-6 flex items-center gap-3 px-5 py-3.5 rounded-xl text-sm font-semibold shadow-2xl border transition-all z-50 ${
           toast.type === 'success'
             ? 'bg-[#333333] border-green-500/30 text-green-400'
             : 'bg-[#333333] border-red-500/30 text-red-400'
