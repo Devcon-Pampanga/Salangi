@@ -15,6 +15,7 @@ interface PublicEvent {
   verified: boolean;
   listing_id: number | null;
   organizer?: string;
+  interest_count?: number;
 }
 
 const FILTERS = ['All', 'Today', 'This Week', 'This Month'];
@@ -38,11 +39,25 @@ function Eventspage() {
         if (error) console.error('Supabase error:', error);
 
         if (eventsData) {
+          // Fetch interest counts for all events
+          const eventIds = eventsData.map((e: any) => e.id);
+          const { data: interestData } = await supabase
+            .from('event_interests')
+            .select('event_id')
+            .in('event_id', eventIds);
+
+          // Build a count map
+          const interestMap: Record<number, number> = {};
+          (interestData ?? []).forEach((row: any) => {
+            interestMap[row.event_id] = (interestMap[row.event_id] ?? 0) + 1;
+          });
+
           const formatted = eventsData.map((e: any) => ({
             ...e,
             image: e.image_url,
             date: e.date_range || e.date,
             organizer: e.listings?.name ?? 'Local Organizer',
+            interest_count: interestMap[e.id] ?? 0,
           }));
           setEvents(formatted);
         }
@@ -155,6 +170,7 @@ function Eventspage() {
                   event={{
                     ...event,
                     image: event.image_url,
+                    interest_count: event.interest_count ?? 0,
                   } as any}
                   isBusinessSide={false}
                 />

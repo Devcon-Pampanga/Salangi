@@ -51,26 +51,44 @@ function EventCard({ event, isBusinessSide, onEdit, onDelete }: EventCardProps) 
     if (loading) return;
     setLoading(true);
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setLoading(false); return; }
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.warn('User not logged in');
+        setLoading(false);
+        return;
+      }
 
-    if (isInterested) {
-      await supabase
-        .from('event_interests')
-        .delete()
-        .eq('event_id', event.id)
-        .eq('user_id', user.id);
-      setIsInterested(false);
-      setInterestCount(prev => Math.max(0, prev - 1));
-    } else {
-      await supabase
-        .from('event_interests')
-        .insert({ event_id: event.id, user_id: user.id });
-      setIsInterested(true);
-      setInterestCount(prev => prev + 1);
+      if (isInterested) {
+        const { error } = await supabase
+          .from('event_interests')
+          .delete()
+          .eq('event_id', event.id)
+          .eq('user_id', user.id);
+
+        if (error) {
+          console.error('Delete interest error:', error);
+        } else {
+          setIsInterested(false);
+          setInterestCount(prev => Math.max(0, prev - 1));
+        }
+      } else {
+        const { error } = await supabase
+          .from('event_interests')
+          .insert({ event_id: event.id, user_id: user.id });
+
+        if (error) {
+          console.error('Insert interest error:', error);
+        } else {
+          setIsInterested(true);
+          setInterestCount(prev => prev + 1);
+        }
+      }
+    } catch (err) {
+      console.error('Unexpected error in handleInterested:', err);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   return (
@@ -83,8 +101,8 @@ function EventCard({ event, isBusinessSide, onEdit, onDelete }: EventCardProps) 
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
         />
 
-        {/* Date Tag */}
-        <div className="absolute top-4 left-4 px-2.5 py-1 bg-[#FFE2A0]/90 backdrop-blur-md rounded-full z-20 flex items-center justify-center shadow-lg">
+        {/* Date Tag — bottom-left to avoid overlap with status badge (top-left) */}
+        <div className="absolute bottom-4 left-4 px-2.5 py-1 bg-[#FFE2A0]/90 backdrop-blur-md rounded-full z-20 flex items-center justify-center shadow-lg">
           <span className="text-[#222222] text-[9px] font-black tracking-wider uppercase">{event.date}</span>
         </div>
 
@@ -98,7 +116,7 @@ function EventCard({ event, isBusinessSide, onEdit, onDelete }: EventCardProps) 
           </button>
         )}
 
-        {/* Interest count pill — business side only, shown on image */}
+        {/* Interest count pill — business side only */}
         {isBusinessSide && (
           <div className="absolute bottom-4 right-4 z-20 flex items-center gap-1.5 bg-black/60 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-lg">
             <Heart size={12} className="text-[#FFE2A0] fill-[#FFE2A0]" />
