@@ -159,17 +159,12 @@ function EventCard({ event, isBusinessSide, onEdit, onDelete }: EventCardProps) 
         {/* Action Buttons */}
         <div className="flex gap-3">
           {isBusinessSide ? (
-            <div className="flex gap-3 w-full">
+            <div className="flex w-full">
               <button
                 onClick={() => onEdit?.(event)}
-                className="flex-1 py-3.5 bg-[#454545] text-white text-xs font-bold rounded-xl hover:bg-[#525252] transition-all active:scale-95 cursor-pointer shadow-lg border border-white/5"
+                className="w-full py-3.5 bg-[#454545] text-white text-xs font-bold rounded-xl hover:bg-[#525252] transition-all active:scale-95 cursor-pointer shadow-lg border border-white/5"
               >
                 Edit Event
-              </button>
-              <button
-                className="flex-1 py-3.5 bg-[#FFE2A0] text-[#222222] text-xs font-bold rounded-xl hover:bg-[#ffe8b5] transition-all active:scale-95 cursor-pointer shadow-lg"
-              >
-                View Analytics
               </button>
             </div>
           ) : (
