@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { NavLink, NavLinkRenderProps } from 'react-router-dom';
+import { NavLink, NavLinkRenderProps, useNavigate } from 'react-router-dom'; // add useNavigate
 import { createPortal } from 'react-dom';
 import { ROUTES } from '../../../routes/paths';
 import { X } from 'lucide-react';
@@ -10,17 +10,21 @@ interface SidebarProps {
 }
 
 function Sidebar({ onClose }: SidebarProps) {
+    const navigate = useNavigate(); // ← add this
     const [isRedirecting, setIsRedirecting] = useState(false);
 
     const navClass = ({ isActive }: NavLinkRenderProps): string => 
         `flex items-center gap-2 transition-colors ${
-            isActive ? 'bg-[#222222] border border-[#222222] text-[#FFE2A0] py-1 px-2 rounded-md' : 'bg-[#373737] border border-[#373737] hover:bg-[#222222] hover:border-[#FFE2A0] py-1 px-2 rounded-md text-white hover:text-[#FFE2A0]'
+            isActive 
+              ? 'bg-[#222222] border border-[#222222] text-[#FFE2A0] py-1 px-2 rounded-md' 
+              : 'bg-[#373737] border border-[#373737] hover:bg-[#222222] hover:border-[#FFE2A0] py-1 px-2 rounded-md text-white hover:text-[#FFE2A0]'
         }`;
 
     const handleBackToHomepage = () => {
         setIsRedirecting(true);
         setTimeout(() => {
-            window.location.href = ROUTES.HOME_PAGE;
+            navigate(ROUTES.HOME); // ← was window.location.href, now uses React Router
+            setIsRedirecting(false);
         }, 400);
     };
 

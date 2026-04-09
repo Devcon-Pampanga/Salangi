@@ -19,16 +19,15 @@ const Dashboard = () => {
       {/* Backdrop for mobile */}
       {isSidebarOpen && (
         <div 
-          className="lg:hidden fixed inset-0 bg-black/50 z-30 backdrop-blur-sm transition-opacity"
+          className="lg:hidden fixed inset-0 bg-black/50 z-30 backdrop-blur-sm"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
 
-      {/* Sidebar - Controlled by state on mobile */}
+      {/* Sidebar — hidden off-screen on mobile, always visible on desktop */}
       <div className={`
-        fixed lg:static inset-y-0 left-0 z-40 transition-transform duration-300 transform
-        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-        lg:translate-x-0
+        fixed lg:static inset-y-0 left-0 z-40 transition-transform duration-300
+        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
         <Sidebar onClose={() => setIsSidebarOpen(false)} />
       </div>
