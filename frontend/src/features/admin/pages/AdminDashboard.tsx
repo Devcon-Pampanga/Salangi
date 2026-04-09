@@ -8,6 +8,7 @@ import {
   Phone, Globe, Facebook, Mail, FileText, Eye,
 } from 'lucide-react';
 import { ROUTES } from '../../../routes/paths';
+import { useAdminGuard } from '../../../hooks/useAdminGuard';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
@@ -835,6 +836,7 @@ function PendingEventCard({
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 function AdminDashboard() {
+  useAdminGuard()
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'listings' | 'events'>('listings');
   const [listings, setListings] = useState<Listing[]>([]);
@@ -845,10 +847,8 @@ function AdminDashboard() {
   const [lightbox, setLightbox] = useState<string | null>(null);
 
   useEffect(() => {
-    const auth = sessionStorage.getItem('admin_auth');
-    if (!auth) { navigate(ROUTES.ADMIN); return; }
     fetchAll();
-  }, [navigate]);
+  }, []);
 
   const fetchAll = async () => {
     setLoading(true);
@@ -898,7 +898,12 @@ function AdminDashboard() {
     setActionLoading(null);
   };
 
-  const handleLogout = () => { sessionStorage.removeItem('admin_auth'); navigate(ROUTES.ADMIN); };
+  // ✅ FIXED: properly signs out from Supabase before navigating
+  const handleLogout = async () => {
+    sessionStorage.removeItem('admin_auth');
+    await supabase.auth.signOut();
+    navigate(ROUTES.SIGN_IN);
+  };
 
   const activeCount = activeTab === 'listings' ? listings.length : events.length;
 

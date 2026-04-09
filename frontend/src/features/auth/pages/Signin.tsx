@@ -33,6 +33,18 @@ function Signin() {
         return;
       }
 
+      // Check if user is admin
+      const { data: userData } = await supabase
+        .from('users')
+        .select('is_admin')
+        .eq('user_id', data.user.id)
+        .single();
+
+      if (userData?.is_admin) {
+        navigate(ROUTES.ADMIN_DASHBOARD);
+        return;
+      }
+
       const meta = data.user.user_metadata;
       localStorage.setItem('user', JSON.stringify({
         user_id:     data.user.id,
