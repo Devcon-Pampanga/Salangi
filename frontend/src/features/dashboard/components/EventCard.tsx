@@ -295,7 +295,7 @@ function EventCard({ event, isBusinessSide, onEdit, onDelete }: EventCardProps) 
                 className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center bg-black/50 rounded-full border border-white/10 opacity-0 group-hover:opacity-100 transition-all z-20">
                 <ChevronRight size={14} className="text-white" />
               </button>
-              <div className="absolute top-3 right-3 z-20 bg-black/50 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 bg-black/50 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
                 {carouselIndex + 1}/{allImages.length}
               </div>
             </>
