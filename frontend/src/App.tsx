@@ -36,7 +36,6 @@ import ListBusiness from './features/business-side/components/ListBusiness'
 import EmailConfirmed from './features/auth/pages/EmailConfirmed'
 
 // Feature Components - Admin Side
-import AdminLogin from './features/admin/pages/AdminLogin'
 import AdminDashboard from './features/admin/pages/AdminDashboard'
 
 function AuthCallback() {
@@ -48,6 +47,24 @@ function AuthCallback() {
     })
   }, [navigate]);
   return <div className="min-h-screen bg-[#111111] flex items-center justify-center text-white">Loading...</div>
+}
+
+function AdminRedirectOrHome({ session }: { session: Session }) {
+  const [target, setTarget] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase
+      .from('users')
+      .select('is_admin')
+      .eq('user_id', session.user.id)
+      .single()
+      .then(({ data }) => {
+        setTarget(data?.is_admin ? ROUTES.ADMIN_DASHBOARD : ROUTES.HOME);
+      });
+  }, [session]);
+
+  if (!target) return null;
+  return <Navigate to={target} replace />;
 }
 
 function App() {
@@ -80,16 +97,17 @@ function App() {
       <Routes>
         <Route path="/auth/callback" element={<AuthCallback />} />
 
-        {/* ✅ Email confirmation — must be public and BEFORE the wildcard */}
+        {/* Email confirmation — must be public and BEFORE the wildcard */}
         <Route path="/email-confirmed" element={<EmailConfirmed />} />
 
-        <Route path="/sign-up" element={session ? <Navigate to="/home-page" replace /> : <Register />} />
-        <Route path={ROUTES.SIGN_IN} element={session ? <Navigate to="/home-page" replace /> : <Signin />} />
+        {/* If already logged in, redirect based on admin status; otherwise show page */}
+        <Route path="/sign-up" element={session ? <AdminRedirectOrHome session={session} /> : <Register />} />
+        <Route path={ROUTES.SIGN_IN} element={session ? <AdminRedirectOrHome session={session} /> : <Signin />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
 
-        {/* Admin routes */}
-        <Route path={ROUTES.ADMIN} element={<AdminLogin />} />
+        {/* Admin routes — /admin redirects to sign-in; Signin handles admin redirect */}
+        <Route path={ROUTES.ADMIN} element={<Navigate to={ROUTES.SIGN_IN} replace />} />
         <Route path={ROUTES.ADMIN_DASHBOARD} element={<AdminDashboard />} />
 
         {/* Business Side Public Routes */}
