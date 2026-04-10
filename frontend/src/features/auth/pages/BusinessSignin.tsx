@@ -21,22 +21,22 @@ function BusinessSignin() {
 
       if (!data.user?.email_confirmed_at) {
         await supabase.auth.signOut();
-        setError('Please verify your email before signing in. Check your inbox.');
+        setError('Please verify your email before signing in. Check your inbox for a confirmation link.');
         return;
       }
 
       const meta = data.user.user_metadata;
       localStorage.setItem('user', JSON.stringify({
-        user_id:    data.user.id,
-        first_name: meta?.first_name ?? meta?.full_name?.split(' ')[0] ?? '',
-        last_name:  meta?.last_name  ?? meta?.full_name?.split(' ')[1] ?? '',
-        email:      data.user.email,
+        user_id:     data.user.id,
+        first_name:  meta?.first_name ?? meta?.full_name?.split(' ')[0] ?? '',
+        last_name:   meta?.last_name  ?? meta?.full_name?.split(' ')[1] ?? '',
+        email:       data.user.email,
         profile_pic: meta?.avatar_url ?? null,
       }));
 
       navigate('/dashboard/overview');
     } catch (err: any) {
-      setError(err.message || 'An error occurred during sign in');
+      setError(err.message?.charAt(0).toUpperCase() + err.message?.slice(1) || 'An error occurred during sign-in. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -44,7 +44,7 @@ function BusinessSignin() {
 
   return (
     <div className="relative bg-[#1a1a1a] flex items-center justify-center px-6 md:px-16 min-h-screen overflow-hidden">
-      
+
       <div className="absolute top-0 left-0 p-6 md:p-10 z-50">
         <button
           onClick={() => navigate(ROUTES.LIST_YOUR_BUSINESS)}
@@ -120,7 +120,14 @@ function BusinessSignin() {
             {loading ? 'Signing in...' : 'SIGN IN'}
           </button>
 
-          {error && <p className="text-red-400 text-sm text-center mt-3">{error}</p>}
+          {error && (
+            <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2 mt-3">
+              <span className="text-red-400 text-sm">⚠</span>
+              <p className="text-red-400 text-xs leading-snug">
+                {error.charAt(0).toUpperCase() + error.slice(1)}
+              </p>
+            </div>
+          )}
 
           <p className="text-gray-400 text-sm text-center mt-4">
             Don't have an account yet?{' '}

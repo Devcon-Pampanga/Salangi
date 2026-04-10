@@ -29,7 +29,7 @@ function ResetPassword() {
       return;
     }
     if (password !== confirmPassword) {
-      setError('Passwords do not match.');
+      setError('Passwords do not match. Please try again.');
       return;
     }
     setLoading(true);
@@ -39,7 +39,7 @@ function ResetPassword() {
       setSuccess(true);
       setTimeout(() => navigate('/sign-in'), 3000);
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message?.charAt(0).toUpperCase() + err.message?.slice(1) || 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -85,7 +85,7 @@ function ResetPassword() {
             <div className="text-center motion-preset-fade">
               <div className="text-5xl mb-4">✅</div>
               <h2 className="font-['Playfair_Display'] text-white text-3xl font-bold mb-2">
-                Password updated!
+                Password Updated!
               </h2>
               <p className="text-gray-400 text-sm">
                 Redirecting you to sign in...
@@ -149,7 +149,14 @@ function ResetPassword() {
                 {loading ? 'Updating...' : 'UPDATE PASSWORD'}
               </button>
 
-              {error && <p className="text-red-400 text-sm text-center mt-3">{error}</p>}
+              {error && (
+                <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2 mt-3">
+                  <span className="text-red-400 text-sm">⚠</span>
+                  <p className="text-red-400 text-xs leading-snug">
+                    {error.charAt(0).toUpperCase() + error.slice(1)}
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>

@@ -120,7 +120,7 @@ function App() {
         <Route
           path={ROUTES.DASHBOARD}
           element={
-            <ProtectedRoute session={session} redirectPath={ROUTES.BUSINESS_SIGNIN}>
+            <ProtectedRoute session={session} redirectPath={ROUTES.BUSINESS_SIGNIN} requireBusiness>
               <Dashboard />
             </ProtectedRoute>
           }

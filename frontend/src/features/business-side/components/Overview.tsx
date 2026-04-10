@@ -46,7 +46,11 @@ export default function Overview() {
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        setLoading(false);
+        navigate('/business-signin');
+        return;
+      }     
 
       const { data: userData } = await supabase
         .from("users")
