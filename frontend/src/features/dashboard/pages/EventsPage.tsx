@@ -1,7 +1,9 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import EventCard from '../components/EventCard';
-import { Search, Calendar, X } from 'lucide-react';
+import { Calendar, X, Check } from 'lucide-react';
+import searchIconDefault from '@assets/icons/search-btn-default.svg';
+import searchIconHover from '@assets/icons/search-btn-hover.svg';
 
 interface PublicEvent {
   id: number;
@@ -22,12 +24,146 @@ interface PublicEvent {
 
 const FILTERS = ['All', 'Today', 'This Week', 'This Month', 'Pick a Date'];
 
+// ─── Date Picker Modal ────────────────────────────────────────────────────────
+function DatePickerModal({
+  isOpen,
+  currentDate,
+  onConfirm,
+  onClose,
+}: {
+  isOpen: boolean;
+  currentDate: string;
+  onConfirm: (date: string) => void;
+  onClose: () => void;
+}) {
+  const [tempDate, setTempDate] = useState(currentDate);
+  const overlayRef = useRef<HTMLDivElement>(null);
+
+  // Sync tempDate when modal opens
+  useEffect(() => {
+    if (isOpen) setTempDate(currentDate);
+  }, [isOpen, currentDate]);
+
+  // ESC to close
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
+
+  const formattedDisplay = tempDate
+    ? new Date(tempDate + 'T12:00:00').toLocaleDateString('default', {
+        weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+      })
+    : null;
+
+  return (
+    <div
+      ref={overlayRef}
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+      style={{ animation: 'fadeIn 0.15s ease' }}
+      onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}
+    >
+      <style>{`
+        @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes scaleIn { from { opacity: 0; transform: scale(0.94) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+        input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1) opacity(0.4); cursor: pointer; }
+      `}</style>
+
+      <div
+        className="relative w-full max-w-sm bg-[#242424] rounded-2xl border border-zinc-700/60 shadow-2xl overflow-hidden"
+        style={{ animation: 'scaleIn 0.18s ease' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Top accent bar */}
+        <div className="h-1 w-full bg-[#FFE2A0]" />
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 pt-5 pb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-[#FFE2A0]/10 flex items-center justify-center">
+              <Calendar size={15} className="text-[#FFE2A0]" />
+            </div>
+            <div>
+              <h2 className="text-[#FBFAF8] text-sm font-semibold">Select a Date</h2>
+              <p className="text-[#FBFAF8]/40 text-[11px] mt-0.5">Filter events by a specific day</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-7 h-7 flex items-center justify-center rounded-full bg-[#333] hover:bg-[#444] text-[#FBFAF8]/50 hover:text-[#FBFAF8] transition-all"
+          >
+            <X size={13} />
+          </button>
+        </div>
+
+        <div className="mx-6 h-px bg-white/5" />
+
+        {/* Body */}
+        <div className="px-6 py-5 space-y-4">
+          {/* Native date input — styled */}
+          <div className="relative">
+            <input
+              type="date"
+              value={tempDate}
+              onChange={(e) => setTempDate(e.target.value)}
+              className="w-full bg-[#2a2a2a] border border-[#444] hover:border-[#FFE2A0]/50 focus:border-[#FFE2A0] text-[#e8e8e8] rounded-xl px-4 py-3 text-sm outline-none transition-all cursor-pointer"
+              style={{ colorScheme: 'dark' }}
+            />
+          </div>
+
+          {/* Formatted preview */}
+          <div
+            className={`rounded-xl px-4 py-3 border transition-all duration-200 ${
+              tempDate
+                ? 'bg-[#FFE2A0]/8 border-[#FFE2A0]/20'
+                : 'bg-[#2a2a2a] border-[#333]'
+            }`}
+          >
+            <p className="text-[10px] uppercase tracking-widest font-semibold text-[#FBFAF8]/30 mb-1">
+              Selected
+            </p>
+            <p className={`text-sm font-medium transition-colors ${tempDate ? 'text-[#FFE2A0]' : 'text-[#FBFAF8]/20'}`}>
+              {formattedDisplay ?? 'No date chosen yet'}
+            </p>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex gap-2.5 px-6 pb-5">
+          <button
+            onClick={onClose}
+            className="flex-1 py-2.5 rounded-xl text-xs font-medium bg-[#333] hover:bg-[#3a3a3a] text-[#FBFAF8]/60 hover:text-[#FBFAF8] border border-white/5 transition-all active:scale-95"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => { onConfirm(tempDate); }}
+            disabled={!tempDate}
+            className="flex-1 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed bg-[#FFE2A0] hover:bg-[#f5d47a] text-[#1a1a1a] shadow-lg"
+          >
+            <Check size={13} />
+            Confirm
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 function Eventspage() {
   const [events, setEvents] = useState<PublicEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('All');
   const [pickedDate, setPickedDate] = useState('');
+  const [isSearchHovered, setIsSearchHovered] = useState(false);
+  // ── NEW ──
+  const [isDateModalOpen, setIsDateModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -53,15 +189,21 @@ function Eventspage() {
             interestMap[row.event_id] = (interestMap[row.event_id] ?? 0) + 1;
           });
 
-          const formatted = eventsData.map((e: any) => ({
-            ...e,
-            image: e.image_url,
-            // ✅ FIX: capture raw ISO date BEFORE overwriting with display string
-            date_raw: (e.date ?? '').split('T')[0],
-            date: e.date_range || e.date,
-            organizer: e.listings?.name ?? 'Local Organizer',
-            interest_count: interestMap[e.id] ?? 0,
-          }));
+          const formatted = eventsData.map((e: any) => {
+            const rawDate = e.date
+              ? (e.date + '').split('T')[0]
+              : e.date_range
+              ? e.date_range.split(' to ')[0].trim()
+              : '';
+            return {
+              ...e,
+              image: e.image_url,
+              date_raw: rawDate,
+              date: e.date_range || e.date,
+              organizer: e.listings?.name ?? 'Local Organizer',
+              interest_count: interestMap[e.id] ?? 0,
+            };
+          });
           setEvents(formatted);
         }
       } catch (err) {
@@ -108,6 +250,17 @@ function Eventspage() {
   return (
     <div className="relative w-full h-full bg-[#1A1A1A] text-[#FBFAF8] overflow-hidden">
 
+      {/* ── Date Picker Modal ── */}
+      <DatePickerModal
+        isOpen={isDateModalOpen}
+        currentDate={pickedDate}
+        onConfirm={(date) => {
+          setPickedDate(date);
+          setIsDateModalOpen(false);
+        }}
+        onClose={() => setIsDateModalOpen(false)}
+      />
+
       {/* Radial glow */}
       <div
         className="absolute top-0 left-0 rounded-full blur-3xl opacity-60 pointer-events-none hidden md:block"
@@ -121,79 +274,98 @@ function Eventspage() {
 
       <div className="relative z-10 h-full flex flex-col px-4 py-4 md:px-6 md:py-6 overflow-y-auto no-scrollbar">
 
-        {/* Header */}
-        <div className="shrink-0 mb-6">
-          <h1 className="font-['Playfair_Display'] text-2xl md:text-3xl leading-tight mb-1">
-            Upcoming <span className="text-[#FFE2A0]">Events</span>
-          </h1>
-          <p className="text-[#FBFAF8]/50 text-sm">Discover what's happening around Pampanga.</p>
-        </div>
-
-        {/* Search + Filters */}
-        <div className="shrink-0 flex flex-col sm:flex-row gap-3 mb-6">
-          <div className="relative flex-1 max-w-sm">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#FBFAF8]/40" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search events, venues..."
-              className="w-full bg-[#2E2E2E] text-[#FBFAF8] placeholder-[#FBFAF8]/30 pl-9 pr-4 py-2.5 rounded-xl text-sm outline-none focus:ring-1 focus:ring-[#FFE2A0]/50 transition-all border border-transparent focus:border-[#FFE2A0]/20"
-            />
+        {/* Header Section */}
+        <div className="shrink-0 flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8">
+          <div>
+            <h1 className="font-['Playfair_Display'] text-2xl md:text-3xl leading-tight mb-1">
+              Upcoming <span className="text-[#FFE2A0]">Events</span>
+            </h1>
+            <p className="text-[#FBFAF8]/50 text-sm">Discover what's happening around Pampanga.</p>
           </div>
 
-          <div className="flex items-center gap-2 bg-[#2E2E2E] p-1.5 rounded-xl border border-[#3a3a3a] overflow-x-auto scrollbar-hide">
-            {FILTERS.map((f) => (
-              <button
-                key={f}
-                onClick={() => {
-                  setActiveFilter(f);
-                  if (f !== 'Pick a Date') setPickedDate('');
-                }}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap flex items-center gap-1.5 ${
-                  activeFilter === f
-                    ? 'bg-[#FFE2A0] text-[#1a1a1a] font-semibold shadow-sm'
-                    : 'text-[#FBFAF8]/60 hover:text-[#FBFAF8] hover:bg-white/5'
-                }`}
-              >
-                {f === 'Pick a Date' && <Calendar size={12} />}
-                {f}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* ✅ NEW: Styled date picker — hidden native input behind custom label */}
-        {activeFilter === 'Pick a Date' && (
-          <div className="shrink-0 flex items-center gap-3 mb-5">
-            <label className="relative flex items-center gap-2 bg-[#2E2E2E] border border-[#3a3a3a] focus-within:border-[#FFE2A0]/50 rounded-xl px-4 py-2.5 cursor-pointer transition-all group">
-              <Calendar size={14} className="text-[#FFE2A0]/70 shrink-0" />
-              <span className="text-sm text-[#FBFAF8]/60 group-focus-within:text-[#FBFAF8] transition-colors min-w-[110px] select-none">
-                {pickedDate
-                  ? new Date(pickedDate + 'T12:00:00').toLocaleDateString('default', {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric',
-                    })
-                  : 'Choose a date'}
-              </span>
-              <input
-                type="date"
-                value={pickedDate}
-                onChange={(e) => setPickedDate(e.target.value)}
-                className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+          <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center">
+            <div
+              onMouseEnter={() => setIsSearchHovered(true)}
+              onMouseLeave={() => setIsSearchHovered(false)}
+              className="relative w-full sm:w-64 lg:w-72 group"
+            >
+              <img
+                src={isSearchHovered ? searchIconHover : searchIconDefault}
+                className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 transition-all"
+                alt="search"
               />
-            </label>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search events, venues..."
+                className="w-full bg-[#2D2D2D] text-gray-200 placeholder-gray-500 pl-10 pr-4 py-2.5 rounded-xl text-sm outline-none transition-all border border-zinc-700/50 group-hover:border-[#FFE2A0] focus:border-[#FFE2A0] focus:ring-0 shadow-sm"
+              />
+            </div>
 
-            {pickedDate && (
-              <button
-                onClick={() => setPickedDate('')}
-                className="flex items-center gap-1.5 text-[#FBFAF8]/40 hover:text-[#FFE2A0] text-xs transition-colors"
-              >
-                <X size={12} />
-                Clear
-              </button>
-            )}
+            {/* ── Filter pills ── */}
+            <div className="flex flex-nowrap items-center gap-1.5 bg-[#2E2E2E] p-1.5 rounded-2xl sm:rounded-xl border border-[#3a3a3a] overflow-x-auto scrollbar-hide no-scrollbar">
+              {FILTERS.map((f) => (
+                <button
+                  key={f}
+                  onClick={() => {
+                    setActiveFilter(f);
+                    // ── UPDATED CLICK HANDLER ──
+                    if (f === 'Pick a Date') {
+                      setIsDateModalOpen(true);
+                    } else {
+                      setPickedDate('');
+                    }
+                  }}
+                  className={`flex-none px-4 sm:px-3 py-2 sm:py-1.5 rounded-xl sm:rounded-lg text-xs font-medium transition-all whitespace-nowrap flex items-center justify-center gap-2 ${
+                    activeFilter === f
+                      ? 'bg-[#FFE2A0] text-[#1a1a1a] font-bold shadow-md'
+                      : 'text-[#FBFAF8]/60 hover:text-[#FBFAF8] hover:bg-white/5'
+                  }`}
+                >
+                  {f === 'Pick a Date' && <Calendar size={14} />}
+                  {f}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* ── Active date badge (replaces the old inline date picker row) ── */}
+        {activeFilter === 'Pick a Date' && pickedDate && (
+          <div className="shrink-0 flex items-center justify-center sm:justify-end gap-3 mb-6">
+            <button
+              onClick={() => setIsDateModalOpen(true)}
+              className="flex items-center gap-2 bg-[#2E2E2E] border border-[#FFE2A0]/30 hover:border-[#FFE2A0]/60 rounded-xl px-4 py-2.5 cursor-pointer transition-all group"
+            >
+              <Calendar size={14} className="text-[#FFE2A0]/70 shrink-0" />
+              <span className="text-sm text-[#FFE2A0] font-medium select-none">
+                {new Date(pickedDate + 'T12:00:00').toLocaleDateString('default', {
+                  month: 'short', day: 'numeric', year: 'numeric',
+                })}
+              </span>
+              <span className="text-[10px] text-[#FBFAF8]/30 group-hover:text-[#FBFAF8]/50 transition-colors">change</span>
+            </button>
+            <button
+              onClick={() => { setPickedDate(''); }}
+              className="flex items-center gap-1.5 text-[#FBFAF8]/40 hover:text-[#FFE2A0] text-xs transition-colors"
+            >
+              <X size={12} />
+              Clear
+            </button>
+          </div>
+        )}
+
+        {/* ── Prompt to pick when no date chosen yet ── */}
+        {activeFilter === 'Pick a Date' && !pickedDate && (
+          <div className="shrink-0 flex items-center justify-center sm:justify-end mb-6">
+            <button
+              onClick={() => setIsDateModalOpen(true)}
+              className="flex items-center gap-2 bg-[#2E2E2E] border border-dashed border-[#444] hover:border-[#FFE2A0]/50 rounded-xl px-4 py-2.5 cursor-pointer transition-all text-[#FBFAF8]/40 hover:text-[#FFE2A0] text-sm"
+            >
+              <Calendar size={14} />
+              Choose a date
+            </button>
           </div>
         )}
 
