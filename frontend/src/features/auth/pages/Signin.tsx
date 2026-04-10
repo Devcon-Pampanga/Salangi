@@ -109,18 +109,18 @@ function Signin() {
       {/* Brighter concentrated top glow for all screen sizes */}
       <div className="absolute top-0 left-0 right-0 h-80 lg:h-[500px] bg-radial from-[#FFE2A0]/60 via-transparent to-transparent blur-3xl opacity-100 lg:opacity-70 pointer-events-none -translate-y-1/2" />
 
-      <div className="w-full relative z-10 py-24 lg:py-0">
-        <div className="container mx-auto px-4 lg:px-20 grid grid-cols-1 lg:grid-cols-2 items-center gap-12 lg:gap-20">
+      <div className="w-full relative z-10">
+        <div className="max-w-[1600px] mx-auto px-4 lg:px-16 grid grid-cols-1 lg:grid-cols-2 min-h-screen gap-12 lg:gap-20">
           
           {/* Left Side — Headline (Desktop Only) */}
-          <div className="hidden lg:flex flex-col motion-preset-slide-right motion-duration-800">
+          <div className="hidden lg:flex flex-col justify-end pb-24 xl:pb-32 motion-preset-slide-right motion-duration-800">
             <h1 className="font-['Playfair_Display'] text-[60px] xl:text-[80px] font-bold text-[#FBFAF8] leading-tight max-w-xl">
               Continue your Pampanga <span className="text-[#FFE2A0]">Journey</span>
             </h1>
           </div>
 
           {/* Right Side — Form */}
-          <div className="w-full max-w-md mx-auto lg:ml-auto motion-preset-slide-left motion-duration-800">
+          <div className="w-full max-w-md mx-auto lg:ml-auto flex flex-col justify-center py-24 lg:py-0 motion-preset-slide-left motion-duration-800">
             
             {/* Heading */}
             <div className="mb-6 lg:mb-10 text-left pt-6 lg:pt-0">
