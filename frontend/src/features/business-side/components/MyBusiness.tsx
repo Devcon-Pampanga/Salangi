@@ -308,7 +308,7 @@ const MyBusiness = () => {
 
             {/* ── Global Delete Confirmation Modal ── */}
             {confirmDeleteId !== null && createPortal(
-              <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className="fixed inset-0 z-9999 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
                 <div className="bg-[#1A1A1A] border border-zinc-700/50 rounded-2xl p-8 max-w-sm w-full shadow-2xl text-center flex flex-col items-center gap-6">
                    <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center text-red-500 mb-2">
                        <svg xmlns="http://www.w3.org/2000/svg" className="size-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

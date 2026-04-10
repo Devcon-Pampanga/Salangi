@@ -223,6 +223,7 @@ export default function PostEventModal({ isOpen, onClose, onAddEvent, editEvent,
         description: form.description,
         location: locationDisplay,
         time: timeDisplay,
+        date: effectiveDateFrom,
         date_range: dateRange,
         month: effectiveDateFrom ? month : "",
         day: effectiveDateFrom ? day : "",
@@ -297,10 +298,10 @@ export default function PostEventModal({ isOpen, onClose, onAddEvent, editEvent,
           className="relative w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl text-left max-h-[90vh] flex flex-col"
           style={{ backgroundColor: "#222222", border: "1px solid #333333" }}
         >
-          <div className="h-1 w-full flex-shrink-0" style={{ backgroundColor: "#FFE2A0" }} />
+          <div className="h-1 w-full shrink-0" style={{ backgroundColor: "#FFE2A0" }} />
 
           {/* Header */}
-          <div className="flex items-center justify-between px-6 pt-5 pb-4 flex-shrink-0">
+          <div className="flex items-center justify-between px-6 pt-5 pb-4 shrink-0">
             <div>
               <h2 className="text-lg font-semibold tracking-wide" style={{ color: "#FFE2A0" }}>
                 {editEvent ? "Edit Event" : "Post New Event"}
@@ -323,10 +324,10 @@ export default function PostEventModal({ isOpen, onClose, onAddEvent, editEvent,
             </button>
           </div>
 
-          <div className="mx-6 h-px flex-shrink-0" style={{ backgroundColor: "#2e2e2e" }} />
+          <div className="mx-6 h-px shrink-0" style={{ backgroundColor: "#2e2e2e" }} />
 
           {/* Approval notice */}
-          <div className="mx-6 mt-4 flex-shrink-0 rounded-lg px-4 py-3 flex items-start gap-3"
+          <div className="mx-6 mt-4 shrink-0 rounded-lg px-4 py-3 flex items-start gap-3"
             style={{ backgroundColor: "#2a2a2a", border: "1px solid #444" }}>
             <span className="text-base mt-0.5">⏳</span>
             <p className="text-xs leading-relaxed" style={{ color: "#aaaaaa" }}>
@@ -511,7 +512,7 @@ export default function PostEventModal({ isOpen, onClose, onAddEvent, editEvent,
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-end gap-3 px-6 py-4 flex-shrink-0" style={{ borderTop: "1px solid #2e2e2e" }}>
+          <div className="flex items-center justify-end gap-3 px-6 py-4 shrink-0" style={{ borderTop: "1px solid #2e2e2e" }}>
             <button
               onClick={handleClose} disabled={submitting}
               className="px-5 py-2 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer"

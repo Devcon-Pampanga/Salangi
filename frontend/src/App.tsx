@@ -20,7 +20,7 @@ import Settings from './features/business-side/components/Settings'
 // Feature Components - Main Side
 import Navigator from './features/Navigator'
 import Homepage from './features/dashboard/pages/Homepage'
-import Eventspage from './features/dashboard/pages/Eventspage'
+import EventsPage from './features/dashboard/pages/EventsPage'
 import Locationpage from './features/dashboard/pages/Locationpage'
 import Savepage from './features/dashboard/pages/Savepage'
 import MapView from './map/MapView'
@@ -146,7 +146,7 @@ function App() {
         >
           <Route index element={<Navigate to={ROUTES.HOME} replace />} />
           <Route path={ROUTES.HOME} element={<Homepage />} />
-          <Route path={ROUTES.EVENTS_PAGE} element={<Eventspage />} />
+          <Route path={ROUTES.EVENTS_PAGE} element={<EventsPage />} />
           <Route path={ROUTES.LOCATION} element={<Locationpage />} />
           <Route path={ROUTES.SAVE} element={<Savepage />} />
           <Route path={ROUTES.MAP} element={<MapView />} />
