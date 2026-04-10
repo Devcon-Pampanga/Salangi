@@ -1,6 +1,31 @@
 import { useState, useEffect } from "react";
 import type { Listing } from "../../Data/Listings";
 import { X } from "lucide-react";
+import phoneIcon from '@assets/icons/phone-icon.svg';
+import emailIcon from '@assets/icons/emain-icon.svg';
+import fbIcon from '@assets/icons/fb-icon.svg';
+import webIcon from '@assets/icons/web-icon.svg';
+
+const OPERATING_DAYS = ['Daily', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+const parseTimeOutput = (timeStr: string) => {
+  if (!timeStr) return '';
+  const match = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
+  if (!match) return '';
+  let [_, h, m, ampm] = match;
+  let hour = parseInt(h);
+  if (ampm.toUpperCase() === 'PM' && hour < 12) hour += 12;
+  if (ampm.toUpperCase() === 'AM' && hour === 12) hour = 0;
+  return `${String(hour).padStart(2, '0')}:${m}`;
+};
+
+const formatTimeInput = (t: string) => {
+  if (!t) return '';
+  const [h, m] = t.split(':').map(Number);
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  const hour = h % 12 || 12;
+  return `${hour}:${String(m).padStart(2, '0')} ${ampm}`;
+};
 
 interface EditListingModalProps {
   isOpen: boolean;
@@ -15,6 +40,9 @@ export default function EditListingModal({ isOpen, onClose, onSave, listing }: E
     category: "Resto",
     location: "",
     hours: "",
+    operatingDays: [] as string[],
+    openingTime: "",
+    closingTime: "",
     description: "",
     phone: "",
     email: "",
@@ -34,7 +62,25 @@ export default function EditListingModal({ isOpen, onClose, onSave, listing }: E
         email: listing.email || "",
         facebook: listing.facebook || "",
         website: listing.website || "",
+        operatingDays: [],
+        openingTime: "",
+        closingTime: "",
       });
+
+      // Parse existing hours string
+      if (listing.hours) {
+        const parts = listing.hours.split(', ');
+        const timePart = parts.pop() || '';
+        const days = parts;
+        const [start, end] = timePart.split(' – ');
+        
+        setForm(prev => ({
+          ...prev,
+          operatingDays: days,
+          openingTime: parseTimeOutput(start),
+          closingTime: parseTimeOutput(end),
+        }));
+      }
     }
   }, [listing, isOpen]);
 
@@ -46,11 +92,14 @@ export default function EditListingModal({ isOpen, onClose, onSave, listing }: E
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // ← removed onClose() here; MyBusiness.handleSaveListing closes the modal
-    //   after the Supabase update succeeds, preventing a race condition
+    
+    // Format hours string from parts
+    const formattedHours = `${form.operatingDays.join(', ')}, ${formatTimeInput(form.openingTime)} – ${formatTimeInput(form.closingTime)}`;
+    
     onSave({
       ...listing,
       ...form,
+      hours: formattedHours,
     } as Listing);
   };
 
@@ -89,9 +138,12 @@ export default function EditListingModal({ isOpen, onClose, onSave, listing }: E
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-[#FFE2A0] uppercase tracking-wider">Category</label>
                 <select name="category" value={form.category} onChange={handleChange} className={inputBaseLine}>
-                  <option value="Resto">Restaurant</option>
-                  <option value="Cafe">Cafe</option>
+                  <option value="Food & Drinks">Food & Drinks</option>
+                  <option value="Shops">Shops</option>
                   <option value="Activities">Activities</option>
+                  <option value="Services">Services</option>
+                  <option value="Stay">Stay</option>
+                  <option value="Community & Essentials">Community & Essentials</option>
                 </select>
               </div>
 
@@ -101,41 +153,128 @@ export default function EditListingModal({ isOpen, onClose, onSave, listing }: E
                 <input name="location" value={form.location} onChange={handleChange} className={inputBaseLine} placeholder="Angeles City, Pampanga" required />
               </div>
 
-              {/* Hours */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-[#FFE2A0] uppercase tracking-wider">Business Hours</label>
-                <input name="hours" value={form.hours} onChange={handleChange} className={inputBaseLine} placeholder="10:00 AM - 10:00 PM" required />
+              {/* Operating Days */}
+              <div className="space-y-3 md:col-span-2">
+                <label className="text-xs font-bold text-[#FFE2A0] uppercase tracking-wider">Operating Days</label>
+                <div className="flex flex-wrap gap-2">
+                  {OPERATING_DAYS.map((day) => {
+                    const isActive = day === 'Daily' 
+                      ? form.operatingDays.includes('Daily')
+                      : form.operatingDays.includes(day) && !form.operatingDays.includes('Daily');
+                    
+                    return (
+                      <button
+                        key={day}
+                        type="button"
+                        onClick={() => {
+                          if (day === 'Daily') {
+                            setForm(prev => ({ ...prev, operatingDays: prev.operatingDays.includes('Daily') ? [] : ['Daily'] }));
+                          } else {
+                            const without = form.operatingDays.filter(d => d !== 'Daily');
+                            const toggled = without.includes(day)
+                              ? without.filter(d => d !== day)
+                              : [...without, day];
+                            setForm(prev => ({ ...prev, operatingDays: toggled }));
+                          }
+                        }}
+                        className={`px-4 py-2 rounded-lg text-xs font-medium cursor-pointer transition-all border ${
+                          isActive 
+                            ? 'bg-[#FFE2A0] text-[#1A1A1A] border-[#FFE2A0]' 
+                            : 'bg-[#2D2D2D] text-[#FBFAF8]/70 border-transparent hover:border-[#FFE2A0]/40'
+                        }`}
+                      >
+                        {day}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
-              {/* Phone */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-[#FFE2A0] uppercase tracking-wider">Phone Number</label>
-                <input name="phone" value={form.phone} onChange={handleChange} className={inputBaseLine} placeholder="+63 900 000 0000" />
+              {/* Opening & Closing Times */}
+              <div className="space-y-1.5 font-sans">
+                <label className="text-xs font-bold text-[#FFE2A0] uppercase tracking-wider">Opening Time</label>
+                <input 
+                  type="time" 
+                  name="openingTime" 
+                  value={form.openingTime} 
+                  onChange={handleChange} 
+                  className={inputBaseLine} 
+                  required 
+                />
+              </div>
+              <div className="space-y-1.5 font-sans">
+                <label className="text-xs font-bold text-[#FFE2A0] uppercase tracking-wider">Closing Time</label>
+                <input 
+                  type="time" 
+                  name="closingTime" 
+                  value={form.closingTime} 
+                  onChange={handleChange} 
+                  className={inputBaseLine} 
+                  required 
+                />
+              </div>              {/* Description */}
+              <div className="space-y-1.5 md:col-span-2">
+                <label className="text-xs font-bold text-[#FFE2A0] uppercase tracking-wider">Description</label>
+                <textarea name="description" value={form.description} onChange={handleChange} rows={4} className={`${inputBaseLine} resize-none`} placeholder="Tell people about your business..." required />
               </div>
             </div>
 
-            {/* Description */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-[#FFE2A0] uppercase tracking-wider">Description</label>
-              <textarea name="description" value={form.description} onChange={handleChange} rows={4} className={`${inputBaseLine} resize-none`} placeholder="Tell people about your business..." required />
-            </div>
+            {/* Contact & Social Section */}
+            <div className="pt-6 border-t border-zinc-800">
+              <h3 className="text-xs font-bold text-[#FFE2A0] mb-6 uppercase tracking-wider">Contact & Social (optional)</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                {/* Phone */}
+                <div className="flex items-center gap-3 group">
+                  <div className="w-8 flex justify-center shrink-0">
+                    <img src={phoneIcon} alt="phone" className="w-5 h-5 opacity-60 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                  <div className="flex-1 flex items-center bg-[#2a2a2a] rounded-lg border border-[#333333] focus-within:border-[#FFE2A0] transition-all overflow-hidden h-[42px]">
+                    <span className="px-3 text-sm font-bold text-zinc-500 border-r border-zinc-800 py-3 select-none tracking-widest">+63</span>
+                    <input
+                      type="tel"
+                      name="phone"
+                      value={form.phone.replace('+63', '')}
+                      onChange={(e) => {
+                        const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                        setForm(prev => ({ ...prev, phone: digits }));
+                      }}
+                      placeholder="912 345 6789"
+                      className="flex-1 bg-transparent text-[#e0e0e0] text-sm px-3 outline-none placeholder-zinc-500"
+                    />
+                  </div>
+                </div>
 
-            {/* Social Links Section */}
-            <div className="pt-4 border-t border-zinc-800">
-              <h3 className="text-sm font-bold text-[#FBFAF8] mb-4">Online Presence</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Email Address</label>
-                  <input name="email" value={form.email} onChange={handleChange} className={inputBaseLine} placeholder="contact@business.com" />
+                {/* Email */}
+                <div className="flex items-center gap-3 group">
+                  <div className="w-8 flex justify-center shrink-0">
+                    <img src={emailIcon} alt="email" className="w-5 h-5 opacity-60 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                  <div className="flex-1">
+                    <input name="email" value={form.email} onChange={handleChange} className={inputBaseLine} placeholder="contact@business.com" />
+                  </div>
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Facebook Page</label>
-                  <input name="facebook" value={form.facebook} onChange={handleChange} className={inputBaseLine} placeholder="facebook.com/business" />
+
+                {/* Facebook */}
+                <div className="flex items-center gap-3 group">
+                  <div className="w-8 flex justify-center shrink-0">
+                    <img src={fbIcon} alt="facebook" className="w-5 h-5 opacity-60 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                  <div className="flex-1">
+                    <input name="facebook" value={form.facebook} onChange={handleChange} className={inputBaseLine} placeholder="facebook.com/yourbusiness" />
+                  </div>
                 </div>
-                <div className="space-y-1.5 md:col-span-2">
-                  <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Website URL</label>
-                  <input name="website" value={form.website} onChange={handleChange} className={inputBaseLine} placeholder="www.business.com" />
+
+                {/* Website */}
+                <div className="flex items-center gap-3 group">
+                  <div className="w-8 flex justify-center shrink-0">
+                    <img src={webIcon} alt="website" className="w-5 h-5 opacity-60 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                  <div className="flex-1">
+                    <input name="website" value={form.website} onChange={handleChange} className={inputBaseLine} placeholder="www.yourbusiness.com" />
+                  </div>
                 </div>
+
               </div>
             </div>
           </form>

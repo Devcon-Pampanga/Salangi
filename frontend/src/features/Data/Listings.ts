@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase';
 
-export type Category = 'All' | 'Resto' | 'Cafe' | 'Activities';
+export type Category = 'All' | 'Food & Drinks' | 'Shops' | 'Activities' | 'Services' | 'Stay' | 'Community & Essentials';
 
 export interface Coordinates {
   lat: number;
@@ -25,9 +25,12 @@ export interface Listing {
 
 export const CATEGORIES: Record<string, Category> = {
   ALL: 'All',
-  RESTO: 'Resto',
-  CAFE: 'Cafe',
+  FOOD: 'Food & Drinks',
+  SHOPS: 'Shops',
   ACTIVITIES: 'Activities',
+  SERVICES: 'Services',
+  STAY: 'Stay',
+  COMMUNITY: 'Community & Essentials',
 };
 
 function mapRow(row: any): Listing {
