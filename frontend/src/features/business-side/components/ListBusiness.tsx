@@ -456,7 +456,7 @@ function ListBusiness() {
     <div className="relative w-full min-h-screen bg-[#1A1A1A] text-[#FBFAF8] overflow-y-auto overflow-x-hidden">
       <div className="absolute top-0 right-0 w-150 h-150 translate-x-60 -translate-y-60 bg-radial from-[#FFE2A0]/40 via-[#FFE2A0]/10 to-transparent rounded-full blur-3xl opacity-50 pointer-events-none" />
 
-      <div className="relative z-10 max-w-2xl mx-auto px-6 py-10">
+      <div className="relative z-10 max-w-2xl mx-auto px-6 py-12 lg:py-20 pb-24">
         <button
           onClick={() => navigate(ROUTES.DASHBOARD_OVERVIEW)}
           className="flex items-center gap-2 text-[#FBFAF8]/50 hover:text-[#FBFAF8] text-sm mb-8 cursor-pointer transition-colors"
