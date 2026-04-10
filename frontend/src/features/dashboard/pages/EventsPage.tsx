@@ -1,7 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import EventCard from '../components/EventCard';
-import { Search, Calendar, X } from 'lucide-react';
+import { Calendar, X } from 'lucide-react';
+import searchIconDefault from '@assets/icons/search-btn-default.svg';
+import searchIconHover from '@assets/icons/search-btn-hover.svg';
 
 interface PublicEvent {
   id: number;
@@ -28,6 +30,7 @@ function Eventspage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('All');
   const [pickedDate, setPickedDate] = useState('');
+  const [isSearchHovered, setIsSearchHovered] = useState(false);
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -121,51 +124,60 @@ function Eventspage() {
 
       <div className="relative z-10 h-full flex flex-col px-4 py-4 md:px-6 md:py-6 overflow-y-auto no-scrollbar">
 
-        {/* Header */}
-        <div className="shrink-0 mb-6">
-          <h1 className="font-['Playfair_Display'] text-2xl md:text-3xl leading-tight mb-1">
-            Upcoming <span className="text-[#FFE2A0]">Events</span>
-          </h1>
-          <p className="text-[#FBFAF8]/50 text-sm">Discover what's happening around Pampanga.</p>
-        </div>
-
-        {/* Search + Filters */}
-        <div className="shrink-0 flex flex-col sm:flex-row gap-3 mb-6">
-          <div className="relative flex-1 max-w-sm">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#FBFAF8]/40" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search events, venues..."
-              className="w-full bg-[#2E2E2E] text-[#FBFAF8] placeholder-[#FBFAF8]/30 pl-9 pr-4 py-2.5 rounded-xl text-sm outline-none focus:ring-1 focus:ring-[#FFE2A0]/50 transition-all border border-transparent focus:border-[#FFE2A0]/20"
-            />
+        {/* Header Section */}
+        <div className="shrink-0 flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8">
+          <div>
+            <h1 className="font-['Playfair_Display'] text-2xl md:text-3xl leading-tight mb-1">
+              Upcoming <span className="text-[#FFE2A0]">Events</span>
+            </h1>
+            <p className="text-[#FBFAF8]/50 text-sm">Discover what's happening around Pampanga.</p>
           </div>
 
-          <div className="flex items-center gap-2 bg-[#2E2E2E] p-1.5 rounded-xl border border-[#3a3a3a] overflow-x-auto scrollbar-hide">
-            {FILTERS.map((f) => (
-              <button
-                key={f}
-                onClick={() => {
-                  setActiveFilter(f);
-                  if (f !== 'Pick a Date') setPickedDate('');
-                }}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap flex items-center gap-1.5 ${
-                  activeFilter === f
-                    ? 'bg-[#FFE2A0] text-[#1a1a1a] font-semibold shadow-sm'
-                    : 'text-[#FBFAF8]/60 hover:text-[#FBFAF8] hover:bg-white/5'
-                }`}
-              >
-                {f === 'Pick a Date' && <Calendar size={12} />}
-                {f}
-              </button>
-            ))}
+          <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center">
+            <div 
+              onMouseEnter={() => setIsSearchHovered(true)}
+              onMouseLeave={() => setIsSearchHovered(false)}
+              className="relative w-full sm:w-64 lg:w-72 group"
+            >
+              <img 
+                src={isSearchHovered ? searchIconHover : searchIconDefault} 
+                className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 transition-all" 
+                alt="search"
+              />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search events, venues..."
+                className="w-full bg-[#2D2D2D] text-gray-200 placeholder-gray-500 pl-10 pr-4 py-2.5 rounded-xl text-sm outline-none transition-all border border-zinc-700/50 group-hover:border-[#FFE2A0] focus:border-[#FFE2A0] focus:ring-0 shadow-sm"
+              />
+            </div>
+
+            <div className="flex flex-nowrap items-center gap-1.5 bg-[#2E2E2E] p-1.5 rounded-2xl sm:rounded-xl border border-[#3a3a3a] overflow-x-auto scrollbar-hide no-scrollbar">
+              {FILTERS.map((f) => (
+                <button
+                  key={f}
+                  onClick={() => {
+                    setActiveFilter(f);
+                    if (f !== 'Pick a Date') setPickedDate('');
+                  }}
+                  className={`flex-none px-4 sm:px-3 py-2 sm:py-1.5 rounded-xl sm:rounded-lg text-xs font-medium transition-all whitespace-nowrap flex items-center justify-center gap-2 ${
+                    activeFilter === f
+                      ? 'bg-[#FFE2A0] text-[#1a1a1a] font-bold shadow-md'
+                      : 'text-[#FBFAF8]/60 hover:text-[#FBFAF8] hover:bg-white/5'
+                  }`}
+                >
+                  {f === 'Pick a Date' && <Calendar size={14} />}
+                  {f}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
         {/* ✅ NEW: Styled date picker — hidden native input behind custom label */}
         {activeFilter === 'Pick a Date' && (
-          <div className="shrink-0 flex items-center gap-3 mb-5">
+          <div className="shrink-0 flex items-center justify-center sm:justify-end gap-3 mb-6">
             <label className="relative flex items-center gap-2 bg-[#2E2E2E] border border-[#3a3a3a] focus-within:border-[#FFE2A0]/50 rounded-xl px-4 py-2.5 cursor-pointer transition-all group">
               <Calendar size={14} className="text-[#FFE2A0]/70 shrink-0" />
               <span className="text-sm text-[#FBFAF8]/60 group-focus-within:text-[#FBFAF8] transition-colors min-w-[110px] select-none">

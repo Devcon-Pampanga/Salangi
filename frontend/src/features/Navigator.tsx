@@ -2,7 +2,6 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { Settings, LogOut } from 'lucide-react';
 import { createPortal } from 'react-dom';
-import { IoCalendarOutline } from "react-icons/io5";
 import SettingsPage from './settings/pages/SettingsPage';
 import { ROUTES } from '../routes/paths';
 import { supabase } from '@/lib/supabase';
@@ -11,12 +10,14 @@ import { supabase } from '@/lib/supabase';
 import homeBtn from '@assets/icons/home-btn-default.svg';
 import locBtn from '@assets/icons/map-btn-default.svg';
 import saveBtn from '@assets/icons/save-btn-default.svg';
+import eventsBtn from '@assets/icons/events-btn-default.svg';
 import salangiLogo from '@assets/png-files/salangi-logo.png';
 
 // colored icons
 import homeBtnSelected from '@assets/icons/home-btn-active.svg';
 import locBtnSelected from '@assets/icons/map-btn-active.svg';
 import saveBtnSelected from '@assets/icons/save-btn-active.svg';
+import eventsBtnSelected from '@assets/icons/events-btn-active.svg';
 
 interface NavItemProps {
   to: string;
@@ -53,33 +54,7 @@ const NavItem = ({ to, defaultIcon, activeIcon, alt, isEnd = false }: NavItemPro
   );
 };
 
-// Calendar nav item using react-icons (no image asset needed)
-const CalendarNavItem = () => {
-  const [isHovered, setIsHovered] = useState(false);
 
-  return (
-    <NavLink to={ROUTES.EVENTS_PAGE}>
-      {({ isActive }) => {
-        const showActive = isActive || isHovered;
-        return (
-          <div
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}
-            className={`flex items-center justify-center transition-all duration-200 border w-12 h-12 md:w-14 md:h-14 rounded-xl ${
-              showActive ? 'bg-[#222222]' : 'bg-transparent border-transparent'
-            } ${isHovered ? 'border-[#FFE2A0]' : 'border-transparent'}`}
-          >
-            <IoCalendarOutline
-              className={`w-6 h-6 transition-colors ${
-                showActive ? 'text-[#FFE2A0]' : 'text-[#FBFAF8]/60'
-              }`}
-            />
-          </div>
-        );
-      }}
-    </NavLink>
-  );
-};
 
 export function Navigator() {
   const navigate = useNavigate();
@@ -181,7 +156,12 @@ export function Navigator() {
             activeIcon={saveBtnSelected}
             alt="Save"
           />
-          <CalendarNavItem />
+          <NavItem
+            to={ROUTES.EVENTS_PAGE}
+            defaultIcon={eventsBtn}
+            activeIcon={eventsBtnSelected}
+            alt="Events"
+          />
         </div>
 
         <div className="relative pr-4 md:pr-0 hidden md:block">
