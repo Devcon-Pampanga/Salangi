@@ -43,9 +43,9 @@ function BusinessSignin() {
   };
 
   return (
-    <div className="relative bg-[#1a1a1a] flex items-center justify-center px-6 md:px-16 min-h-screen overflow-hidden">
+    <div className="relative bg-[#1a1a1a] flex items-center justify-center px-6 sm:px-12 md:px-16 min-h-screen overflow-x-hidden">
 
-      <div className="absolute top-0 left-0 p-6 md:p-10 z-50">
+      <div className="absolute top-0 left-0 p-6 sm:p-10 z-50">
         <button
           onClick={() => navigate(ROUTES.LIST_YOUR_BUSINESS)}
           className="flex items-center gap-2 text-[#FBFAF8]/50 hover:text-[#FBFAF8] text-sm cursor-pointer transition-colors"
@@ -54,21 +54,15 @@ function BusinessSignin() {
         </button>
       </div>
 
-      <div className="w-full max-w-md relative z-10">
-        <div
-          className="absolute top-30 left-20 rounded-full blur-3xl opacity-60 pointer-events-none -z-10"
-          style={{
-            width: '760px',
-            height: '680px',
-            transform: 'translate(-250px, -650px)',
-            background: 'radial-gradient(circle, rgba(255,226,160,0.8) 0%, rgba(255,226,160,0.2) 50%, transparent 70%)',
-          }}
-        />
+      {/* Brighter concentrated top glow for all screen sizes */}
+      <div className="absolute top-0 left-0 right-0 h-80 lg:h-[500px] bg-radial from-[#FFE2A0]/60 via-transparent to-transparent blur-3xl opacity-100 lg:opacity-70 pointer-events-none -translate-y-1/2 z-0" />
 
-        <h2 className="font-['Playfair_Display'] text-white text-4xl font-bold mb-2">
+      <div className="w-full max-w-md relative z-10 py-24 lg:py-0">
+
+        <h2 className="font-['Playfair_Display'] text-white text-3xl sm:text-4xl font-bold mb-2">
           Sign in.
         </h2>
-        <p className="text-gray-400 text-sm mb-8">
+        <p className="text-gray-400 text-xs sm:text-sm mb-8">
           Continue exploring local businesses and experiences.
         </p>
 

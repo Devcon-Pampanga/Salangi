@@ -78,12 +78,13 @@ function Savepage() {
           <CategoryFilters
             activeCategory={activeCategory}
             onCategoryChange={setActiveCategory}
+            className="order-2 md:order-1"
           />
           <SearchBar
             glass
             searchIcon={search}
             className="w-full md:w-110 py-3"
-            containerClassName="w-full md:w-auto"
+            containerClassName="w-full md:w-auto order-1 md:order-2"
             placeholder="Search your saved spots"
             value={searchQuery}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}

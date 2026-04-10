@@ -8,6 +8,8 @@ import { ROUTES } from '../../../routes/paths';
 import { LOCATIONS, CITY_COORDS } from '../../../constant/location';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { IoFastFood, IoStorefront, IoBowlingBallSharp } from "react-icons/io5";
+import { FaConciergeBell, FaHotel, FaHandHoldingHeart } from "react-icons/fa";
 
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
@@ -27,7 +29,7 @@ L.Icon.Default.mergeOptions({
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-type Category = 'Resto' | 'Cafe' | 'Activities' | '';
+type Category = 'Food & Drinks' | 'Shops' | 'Activities' | 'Services' | 'Stay' | 'Community & Essentials' | '';
 
 interface FormState {
   name: string;
@@ -69,7 +71,14 @@ interface TextInputProps {
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-const CATEGORIES: Category[] = ['Resto', 'Cafe', 'Activities'];
+const CATEGORIES: { label: Category; icon: any }[] = [
+  { label: 'Food & Drinks', icon: IoFastFood },
+  { label: 'Shops', icon: IoStorefront },
+  { label: 'Activities', icon: IoBowlingBallSharp },
+  { label: 'Services', icon: FaConciergeBell },
+  { label: 'Stay', icon: FaHotel },
+  { label: 'Community & Essentials', icon: FaHandHoldingHeart },
+];
 
 const OPERATING_DAYS = ['Daily', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -421,7 +430,7 @@ function ListBusiness() {
   // ── Success screen ────────────────────────────────────────────────────────
   if (submitted) {
     return (
-      <div className="relative w-full h-full bg-[#1A1A1A] text-[#FBFAF8] flex items-center justify-center">
+      <div className="relative w-full min-h-screen bg-[#1A1A1A] text-[#FBFAF8] flex items-center justify-center px-6">
         <div className="text-center max-w-sm">
           <div className="text-6xl mb-6">🎉</div>
           <h2 className="text-2xl font-['Playfair-Display'] mb-3">
@@ -444,10 +453,10 @@ function ListBusiness() {
 
   // ── Main form ─────────────────────────────────────────────────────────────
   return (
-    <div className="relative w-full h-full bg-[#1A1A1A] text-[#FBFAF8] overflow-y-auto overflow-x-hidden">
+    <div className="relative w-full min-h-screen bg-[#1A1A1A] text-[#FBFAF8] overflow-y-auto overflow-x-hidden">
       <div className="absolute top-0 right-0 w-150 h-150 translate-x-60 -translate-y-60 bg-radial from-[#FFE2A0]/40 via-[#FFE2A0]/10 to-transparent rounded-full blur-3xl opacity-50 pointer-events-none" />
 
-      <div className="relative z-10 max-w-2xl mx-auto px-6 py-10">
+      <div className="relative z-10 max-w-2xl mx-auto px-6 py-12 lg:py-20 pb-24">
         <button
           onClick={() => navigate(ROUTES.DASHBOARD_OVERVIEW)}
           className="flex items-center gap-2 text-[#FBFAF8]/50 hover:text-[#FBFAF8] text-sm mb-8 cursor-pointer transition-colors"
@@ -472,13 +481,24 @@ function ListBusiness() {
             </Field>
 
             <Field label="Category *">
-              <div className="flex gap-3">
-                {CATEGORIES.map((cat) => (
-                  <button key={cat} onClick={() => update('category', cat)}
-                    className={`flex-1 py-3 rounded-lg text-sm font-semibold cursor-pointer transition-all border ${
-                      form.category === cat ? 'bg-[#FFE2A0] text-[#1A1A1A] border-[#FFE2A0]' : 'bg-[#2D2D2D] text-[#FBFAF8]/70 border-transparent hover:border-[#FFE2A0]/40'
-                    }`}>{cat}</button>
-                ))}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {CATEGORIES.map((cat) => {
+                  const Icon = cat.icon;
+                  return (
+                    <button 
+                      key={cat.label} 
+                      onClick={() => update('category', cat.label)}
+                      className={`flex flex-col items-center justify-center gap-2 py-4 rounded-xl text-xs font-bold cursor-pointer transition-all border ${
+                        form.category === cat.label 
+                          ? 'bg-[#FFE2A0] text-[#1A1A1A] border-[#FFE2A0] shadow-lg shadow-[#FFE2A0]/20 scale-[1.02]' 
+                          : 'bg-[#2D2D2D] text-[#FBFAF8]/70 border-transparent hover:border-[#FFE2A0]/40'
+                      }`}
+                    >
+                      <Icon className="size-5" />
+                      <span className="text-center px-1">{cat.label}</span>
+                    </button>
+                  );
+                })}
               </div>
             </Field>
 

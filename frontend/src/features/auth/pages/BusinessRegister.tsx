@@ -36,60 +36,54 @@ function BusinessRegister() {
   };
 
   return (
-    <div>
-      <div className="absolute px-10 py-10">
+    <div className="relative bg-[#1a1a1a] flex items-center justify-center px-6 sm:px-12 md:px-16 min-h-screen overflow-x-hidden">
+
+      <div className="absolute top-0 left-0 p-6 sm:p-10 z-50">
         <button
           onClick={() => navigate(ROUTES.LIST_YOUR_BUSINESS)}
-          className="flex items-center gap-2 text-[#FBFAF8]/50 hover:text-[#FBFAF8] text-sm mb-8 cursor-pointer transition-colors"
+          className="flex items-center gap-2 text-[#FBFAF8]/50 hover:text-[#FBFAF8] text-sm cursor-pointer transition-colors"
         >
           ← Go Back.
         </button>
       </div>
 
-      <div className="bg-[#1a1a1a] flex items-center justify-center px-16 min-h-screen">
-        <div className="w-full max-w-md">
-          <div
-            className="absolute top-2 left-170 rounded-full blur-3xl opacity-60 pointer-events-none"
-            style={{
-              width: '760px',
-              height: '680px',
-              transform: 'translate(-400px, -440px)',
-              background: 'radial-gradient(circle, rgba(255,226,160,0.8) 0%, rgba(255,226,160,0.2) 50%, transparent 70%)',
-            }}
-          />
+      {/* Brighter concentrated top glow for all screen sizes */}
+      <div className="absolute top-0 left-0 right-0 h-80 lg:h-[500px] bg-radial from-[#FFE2A0]/60 via-transparent to-transparent blur-3xl opacity-100 lg:opacity-70 pointer-events-none -translate-y-1/2 z-0" />
 
-          <h2 className="font-['Playfair_Display'] text-white text-4xl font-bold mb-2">
-            Register now.
-          </h2>
-          <p className="text-gray-400 text-sm mb-8">
-            Create your account to get started.
-          </p>
+      <div className="w-full max-w-md relative z-10 py-24 lg:py-0">
 
-          {/* First Name & Last Name */}
-          <div className="flex gap-4 mb-4">
-            <div className="flex-1">
-              <label className="text-gray-300 text-sm mb-1 block">First Name</label>
-              <input
-                type="text"
-                name="first_name"
-                value={formData.first_name}
-                onChange={handleChange}
-                placeholder="eg. Juan"
-                className="w-full bg-[#2E2E2E] text-white placeholder-gray-500 px-4 py-3 rounded-lg outline-none focus:ring-1 focus:ring-[#FFE2A0]"
-              />
-            </div>
-            <div className="flex-1">
-              <label className="text-gray-300 text-sm mb-1 block">Last Name</label>
-              <input
-                type="text"
-                name="last_name"
-                value={formData.last_name}
-                onChange={handleChange}
-                placeholder="eg. Dela Cruz"
-                className="w-full bg-[#2E2E2E] text-white placeholder-gray-500 px-4 py-3 rounded-lg outline-none focus:ring-1 focus:ring-[#FFE2A0]"
-              />
-            </div>
+        <h2 className="font-['Playfair_Display'] text-white text-3xl sm:text-4xl font-bold mb-2">
+          Register now.
+        </h2>
+        <p className="text-gray-400 text-xs sm:text-sm mb-8">
+          Create your account to get started.
+        </p>
+
+        {/* First Name & Last Name */}
+        <div className="flex flex-col sm:flex-row gap-4 mb-4">
+          <div className="flex-1">
+            <label className="text-gray-300 text-sm mb-1 block">First Name</label>
+            <input
+              type="text"
+              name="first_name"
+              value={formData.first_name}
+              onChange={handleChange}
+              placeholder="eg. Juan"
+              className="w-full bg-[#2E2E2E] text-white placeholder-gray-500 px-4 py-3 rounded-lg outline-none focus:ring-1 focus:ring-[#FFE2A0]"
+            />
           </div>
+          <div className="flex-1">
+            <label className="text-gray-300 text-sm mb-1 block">Last Name</label>
+            <input
+              type="text"
+              name="last_name"
+              value={formData.last_name}
+              onChange={handleChange}
+              placeholder="eg. Dela Cruz"
+              className="w-full bg-[#2E2E2E] text-white placeholder-gray-500 px-4 py-3 rounded-lg outline-none focus:ring-1 focus:ring-[#FFE2A0]"
+            />
+          </div>
+        </div>
 
           {/* Email */}
           <div className="mb-4">
@@ -161,7 +155,6 @@ function BusinessRegister() {
           </p>
         </div>
       </div>
-    </div>
   );
 }
 

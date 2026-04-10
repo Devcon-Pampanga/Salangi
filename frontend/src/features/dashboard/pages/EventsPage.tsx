@@ -162,7 +162,6 @@ function Eventspage() {
   const [activeFilter, setActiveFilter] = useState('All');
   const [pickedDate, setPickedDate] = useState('');
   const [isSearchHovered, setIsSearchHovered] = useState(false);
-  // ── NEW ──
   const [isDateModalOpen, setIsDateModalOpen] = useState(false);
 
   useEffect(() => {
@@ -250,7 +249,6 @@ function Eventspage() {
   return (
     <div className="relative w-full h-full bg-[#1A1A1A] text-[#FBFAF8] overflow-hidden">
 
-      {/* ── Date Picker Modal ── */}
       <DatePickerModal
         isOpen={isDateModalOpen}
         currentDate={pickedDate}
@@ -284,14 +282,14 @@ function Eventspage() {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center">
-            <div
+            <div 
               onMouseEnter={() => setIsSearchHovered(true)}
               onMouseLeave={() => setIsSearchHovered(false)}
               className="relative w-full sm:w-64 lg:w-72 group"
             >
-              <img
-                src={isSearchHovered ? searchIconHover : searchIconDefault}
-                className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 transition-all"
+              <img 
+                src={isSearchHovered ? searchIconHover : searchIconDefault} 
+                className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 transition-all" 
                 alt="search"
               />
               <input
@@ -303,14 +301,12 @@ function Eventspage() {
               />
             </div>
 
-            {/* ── Filter pills ── */}
             <div className="flex flex-nowrap items-center gap-1.5 bg-[#2E2E2E] p-1.5 rounded-2xl sm:rounded-xl border border-[#3a3a3a] overflow-x-auto scrollbar-hide no-scrollbar">
               {FILTERS.map((f) => (
                 <button
                   key={f}
                   onClick={() => {
                     setActiveFilter(f);
-                    // ── UPDATED CLICK HANDLER ──
                     if (f === 'Pick a Date') {
                       setIsDateModalOpen(true);
                     } else {
@@ -331,7 +327,7 @@ function Eventspage() {
           </div>
         </div>
 
-        {/* ── Active date badge (replaces the old inline date picker row) ── */}
+        {/* Active date badge */}
         {activeFilter === 'Pick a Date' && pickedDate && (
           <div className="shrink-0 flex items-center justify-center sm:justify-end gap-3 mb-6">
             <button
@@ -356,7 +352,7 @@ function Eventspage() {
           </div>
         )}
 
-        {/* ── Prompt to pick when no date chosen yet ── */}
+        {/* Prompt to pick when no date chosen yet */}
         {activeFilter === 'Pick a Date' && !pickedDate && (
           <div className="shrink-0 flex items-center justify-center sm:justify-end mb-6">
             <button

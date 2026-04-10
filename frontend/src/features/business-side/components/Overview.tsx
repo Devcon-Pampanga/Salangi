@@ -23,7 +23,7 @@ export default function Overview() {
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [userName, setUserName] = useState("there");
-  const [userListings, setUserListings] = useState<{id: number, name: string}[]>([]);
+  const [userListings, setUserListings] = useState<{id: number, name: string, location: string}[]>([]);
   const [activeFilter, setActiveFilter] = useState("All");
   const [events, setEvents] = useState<Event[]>([]);
   const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([]);
@@ -61,7 +61,7 @@ export default function Overview() {
 
       const { data: listings } = await supabase
         .from("listings")
-        .select("id, name")
+        .select("id, name, location")
         .eq("user_id", user.id);
 
       if (!listings || listings.length === 0) {
@@ -118,15 +118,22 @@ export default function Overview() {
       const today = new Date().toISOString().split("T")[0];
       const { data: eventsData } = await supabase
         .from("events")
-        .select("title, date, location, venue")
-        .in("listing_id", targetListingIds)
-        .gte("date", today)
-        .order("date", { ascending: true })
-        .limit(5);
+        .select("title, date, location, venue, listing_id, date_range")
+        .eq("user_id", user.id)
+        .order("date", { ascending: true, nullsFirst: false });
 
       if (eventsData) {
-        const formatted = eventsData.map((e) => {
-          const d = new Date(e.date);
+        // Filter by listing + upcoming
+        const filtered = eventsData.filter(e => {
+          const matchesListing = activeFilter === "All" || e.listing_id === targetListingIds[0];
+          const eventDate = e.date || e.date_range?.split(" to ")[0] || "";
+          const isUpcoming = eventDate >= today || !eventDate;
+          return matchesListing && isUpcoming;
+        });
+
+        const formatted = filtered.slice(0, 5).map((e) => {
+          const rawDate = e.date || e.date_range?.split(" to ")[0] || "";
+          const d = rawDate ? new Date(rawDate) : new Date();
           return {
             month: d.toLocaleString("default", { month: "short" }),
             day: String(d.getDate()),
@@ -509,6 +516,7 @@ export default function Overview() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onAddEvent={handleAddEvent}
+        userListings={userListings}
       />
     </div>
   );
