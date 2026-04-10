@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { HiOutlineOfficeBuilding } from "react-icons/hi";
 import { ROUTES } from '../../../routes/paths';
 import BusinessCard from "../../dashboard/components/BusinessCard";
@@ -275,29 +276,7 @@ const MyBusiness = () => {
                                     onViewAnalytics={() => navigate(ROUTES.DASHBOARD_ANALYTICS)}
                                 />
 
-                                {/* ── Delete confirmation overlay ───────────── */}
-                                {confirmDeleteId === listing.id && (
-                                    <div className="absolute inset-0 bg-black/70 rounded-2xl flex flex-col items-center justify-center gap-4 z-20 p-6">
-                                        <p className="text-white text-sm text-center font-semibold">
-                                            Delete "{listing.name}"? This cannot be undone.
-                                        </p>
-                                        <div className="flex gap-3">
-                                            <button
-                                                onClick={() => setConfirmDeleteId(null)}
-                                                className="px-4 py-2 rounded-lg bg-[#5a5241] border border-[#FFE2A0] text-white text-sm hover:bg-[#857657] transition-all"
-                                            >
-                                                Cancel
-                                            </button>
-                                            <button
-                                                onClick={() => handleDeleteListing(listing.id)}
-                                                disabled={deletingId === listing.id}
-                                                className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm transition-all disabled:opacity-50"
-                                            >
-                                                {deletingId === listing.id ? "Deleting..." : "Delete"}
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
+
 
                                 {/* ── Delete trigger button ─────────────────── */}
                                 {confirmDeleteId !== listing.id && (
@@ -326,6 +305,42 @@ const MyBusiness = () => {
                 onSave={handleSaveListing}
                 listing={editingListing}
             />
+
+            {/* ── Global Delete Confirmation Modal ── */}
+            {confirmDeleteId !== null && createPortal(
+              <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+                <div className="bg-[#1A1A1A] border border-zinc-700/50 rounded-2xl p-8 max-w-sm w-full shadow-2xl text-center flex flex-col items-center gap-6">
+                   <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center text-red-500 mb-2">
+                       <svg xmlns="http://www.w3.org/2000/svg" className="size-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                           <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                       </svg>
+                   </div>
+                   <div>
+                       <h3 className="text-white font-['Playfair_Display'] font-bold text-2xl mb-2">Delete Listing?</h3>
+                       <p className="text-[#FBFAF8]/60 text-sm leading-relaxed">
+                           Are you sure you want to delete <span className="text-[#FFE2A0] font-semibold">"{listings.find(l => l.id === confirmDeleteId)?.name}"</span>? 
+                           This action will permanently remove it from our directory.
+                       </p>
+                   </div>
+                   <div className="flex gap-4 w-full">
+                       <button
+                           onClick={() => setConfirmDeleteId(null)}
+                           className="flex-1 px-4 py-3 rounded-xl bg-[#2D2D2D] text-white text-sm font-semibold hover:bg-[#3D3D3D] transition-all border border-[#3A3A3A] cursor-pointer"
+                       >
+                           Cancel
+                       </button>
+                       <button
+                           onClick={() => handleDeleteListing(confirmDeleteId)}
+                           disabled={deletingId === confirmDeleteId}
+                           className="flex-1 px-4 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-bold transition-all disabled:opacity-50 shadow-lg shadow-red-600/20 cursor-pointer"
+                       >
+                           {deletingId === confirmDeleteId ? "Deleting..." : "Confirm Delete"}
+                       </button>
+                   </div>
+                </div>
+              </div>,
+              document.body
+            )}
         </div>
     );
 };

@@ -112,7 +112,7 @@ function Signin() {
           }} 
           className = "border border-amber-200 hover:bg-amber-200 hover:text-black w-37 p-2 rounded-full text-white font-normal cursor-pointer "
           >
-            Business Acc
+            Business Account
           </button>
       </div>
 
