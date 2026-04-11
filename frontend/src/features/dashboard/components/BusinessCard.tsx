@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Image as ImageIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Image as ImageIcon, Star } from 'lucide-react';
 import type { Listing } from '../../Data/Listings';
 import { ROUTES } from '../../../routes/paths';
 import { supabase } from '@/lib/supabase';
@@ -22,6 +22,7 @@ interface BusinessCardProps {
   onEdit?: (listing: Listing) => void;
   onDelete?: (id: number) => void;
   onViewAnalytics?: () => void;
+  rating?: number;
 }
 
 // ── Hours formatter ───────────────────────────────────────────────────────────
@@ -87,6 +88,7 @@ function BusinessCard({
   isBusinessSide,
   onEdit,
   onViewAnalytics,
+  rating = 0,
 }: BusinessCardProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [imgError, setImgError] = useState(false);
@@ -152,7 +154,7 @@ function BusinessCard({
     <div
       id={`listing-card-${listing.id}`}
       onClick={handleCardClick}
-      className={`w-full max-w-120 bg-[#333333] rounded-xl cursor-pointer overflow-hidden flex flex-col h-full shrink-0 transition-all duration-200 border border-zinc-800/50 ${
+      className={`w-full max-w-120 min-h-[550px] bg-[#333333] rounded-xl cursor-pointer overflow-hidden flex flex-col shrink-0 transition-all duration-200 border border-zinc-800/50 ${
         isSelected
           ? 'ring-2 ring-[#FFE2A0] shadow-xl shadow-[#FFE2A0]/5'
           : 'hover:bg-[#3d3d3d] hover:shadow-2xl hover:shadow-black/50'
@@ -171,7 +173,7 @@ function BusinessCard({
           </button>
         )}
 
-        <div className="relative w-full h-72 overflow-hidden bg-zinc-800">
+        <div className="relative w-full h-80 overflow-hidden bg-zinc-800">
           {hasImages && !imgError ? (
             <img
               key={galleryImages[currentIndex]}
@@ -223,7 +225,7 @@ function BusinessCard({
       </div>
 
       <div className="p-6 flex flex-col flex-1">
-        <div className="flex items-center justify-between gap-4 mb-4">
+        <div className="flex flex-col gap-3 mb-4">
           <div className="flex items-center gap-2">
             <h3 className="text-[#FBFAF8] font-['Playfair_Display'] font-bold text-2xl tracking-tight leading-tight">
               {listing.name}
@@ -232,14 +234,25 @@ function BusinessCard({
               <img src={verified} width="16" height="16" alt="verified" className="mt-1" />
             )}
           </div>
-          <div className="px-2 py-0.5 rounded border border-[#FFE2A0]/20 bg-[#FFE2A0]/5 shrink-0 flex items-center justify-center">
-            <span className="text-[#FFE2A0] text-[9px] font-bold uppercase tracking-widest">
-              {listing.category}
-            </span>
+          
+          <div className="flex items-center gap-4">
+            <div className="px-2 py-1 rounded border border-[#FFE2A0]/20 bg-[#FFE2A0]/5 flex items-center justify-center">
+              <span className="text-[#FFE2A0] text-[9px] font-bold uppercase tracking-widest leading-none">
+                {listing.category}
+              </span>
+            </div>
+            {rating > 0 && (
+              <div className="flex items-center gap-1.5">
+                <Star size={12} fill="#FFE2A0" className="text-[#FFE2A0]" />
+                <span className="text-[#FFE2A0] text-xs font-bold leading-none">
+                  {rating.toFixed(1)}
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
-        <p className="text-sm text-[#FBFAF8]/70 leading-relaxed line-clamp-2 mb-6 h-10">
+        <p className="text-sm text-[#FBFAF8]/70 leading-relaxed line-clamp-2 mb-6">
           {listing.description}
         </p>
 
