@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
+import { Heart } from "lucide-react";
 import EventPostModal from "./PostEventModal";
 import type { Event } from "../../Data/Events";
 import EventCard from "../../dashboard/components/EventCard";
 import { supabase } from "../../../lib/supabase";
+import { BusinessFilterDropdown } from "./BusinessFilterDropdown";
 
 interface SupabaseEvent {
   id: number;
@@ -111,11 +113,11 @@ export default function Events() {
     setEvents((prev) => [{ ...newEvent, interest_count: 0 }, ...prev]);
   };
 
-  // Total interests across all events
-  const totalInterests = events.reduce((sum, e) => sum + (e.interest_count ?? 0), 0);
+  // Total interests across currently filtered events
+  const totalInterests = filteredEvents.reduce((sum, e) => sum + (e.interest_count ?? 0), 0);
 
   return (
-    <div className="w-full h-full">
+    <div className="w-full h-full pb-10">
       <div className="px-4 md:px-6 py-4">
 
         {/* Header */}
@@ -128,21 +130,11 @@ export default function Events() {
           </div>
 
           {/* Listing filter */}
-          <div className="flex flex-row items-center overflow-x-auto lg:overflow-visible gap-2 bg-[#3a3a3a] p-2 rounded-xl border border-[#4d4d4d] w-full lg:w-fit scrollbar-hide">
-            {["All", ...userListings.map(l => l.name)].map((name) => (
-              <button
-                key={name}
-                onClick={() => setActiveFilter(name)}
-                className={`px-4 py-1.5 rounded-lg text-xs md:text-sm font-medium transition-all whitespace-nowrap relative ${
-                  activeFilter === name
-                    ? 'bg-[#FFE2A0] text-[#1a1a1a] shadow-md scale-[1.02] z-10 font-semibold'
-                    : 'text-white hover:bg-white/5'
-                }`}
-              >
-                {name}
-              </button>
-            ))}
-          </div>
+          <BusinessFilterDropdown 
+            activeFilter={activeFilter} 
+            onFilterChange={setActiveFilter} 
+            listings={userListings} 
+          />
         </div>
 
         {/* Post Event button + total interests summary */}
@@ -163,14 +155,16 @@ export default function Events() {
           </button>
 
           {/* Total interests pill */}
-          {totalInterests > 0 && (
-            <div className="flex items-center gap-2 bg-[#3a3a3a] border border-[#4d4d4d] rounded-xl px-4 py-3">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-4 text-[#FFE2A0]">
-                <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 0 1-.383-.218 25.18 25.18 0 0 1-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0 1 12 5.052 5.5 5.5 0 0 1 16.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 0 1-4.244 3.17 15.247 15.247 0 0 1-.383.219l-.022.012-.007.004-.003.001a.752.752 0 0 1-.704 0l-.003-.001Z" />
-              </svg>
+          {(
+            <div className="flex items-center gap-3 bg-[#3a3a3a] border border-[#4d4d4d] rounded-2xl px-5 py-3 shadow-lg hover:border-[#FFE2A0]/30 transition-all group cursor-default">
+              <div className="p-2 bg-[#FFE2A0]/10 rounded-xl group-hover:bg-[#FFE2A0]/20 transition-colors">
+                <Heart size={18} fill="#FFE2A0" className="text-[#FFE2A0]" />
+              </div>
               <div className="flex flex-col leading-tight">
-                <span className="text-white text-sm font-bold">{totalInterests}</span>
-                <span className="text-[#a0a0a0] text-[10px]">Total interests</span>
+                <span className="text-white text-lg font-bold font-['Playfair_Display'] leading-none">
+                  {loading ? "..." : totalInterests}
+                </span>
+                <span className="text-[#a0a0a0] text-[10px] uppercase tracking-widest font-bold mt-1">Total interests</span>
               </div>
             </div>
           )}

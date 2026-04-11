@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { IoChatbubbleEllipsesOutline } from "react-icons/io5";
 import { supabase } from "../../../lib/supabase";
+import { BusinessFilterDropdown } from "./BusinessFilterDropdown";
 
 interface Review {
   id: number;
@@ -133,7 +134,8 @@ export default function Review() {
   };
 
   return (
-    <div className="px-4 md:px-6 py-4">
+    <div className="w-full h-full pb-10">
+      <div className="px-4 md:px-6 py-4">
       <div className="flex flex-col lg:flex-row justify-between items-start gap-4 lg:gap-0">
         <div className="mb-4">
           <h1 className="font-['Playfair_Display'] text-white text-3xl font-semibold tracking-wide cursor-default">
@@ -142,23 +144,15 @@ export default function Review() {
           <p className="text-white text-sm">Monitor and respond to your latest business feedback</p>
         </div>
 
-        <div className="flex flex-row items-center overflow-x-auto lg:overflow-visible gap-2 bg-[#3a3a3a] p-2 rounded-xl border border-[#4d4d4d] w-full lg:w-fit scrollbar-hide">
-          {["All", ...userListings.map(l => l.name)].map((name) => (
-            <button
-              key={name}
-              onClick={() => setActiveFilter(name)}
-              className={`px-4 py-1.5 rounded-lg text-xs md:text-sm font-medium transition-all whitespace-nowrap relative ${
-                activeFilter === name
-                  ? 'bg-[#FFE2A0] text-[#1a1a1a] shadow-md scale-[1.02] z-10 font-semibold'
-                  : 'text-white hover:bg-white/5'
-              }`}
-            >
-              {name}
-            </button>
-          ))}
-        </div>
-      </div>
-
+        <BusinessFilterDropdown 
+          activeFilter={activeFilter} 
+          onFilterChange={setActiveFilter} 
+          listings={userListings} 
+        />
+    </div>
+    </div>
+    
+    <div className="px-4 md:px-6 py-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mt-8 mb-6 gap-3">
         <h2 className="text-[#FFE2A0] text-xl font-['Playfair_Display'] font-semibold">Overall Rating</h2>
       </div>
@@ -290,6 +284,7 @@ export default function Review() {
           </div>
         </>
       )}
+    </div>
     </div>
   );
 }

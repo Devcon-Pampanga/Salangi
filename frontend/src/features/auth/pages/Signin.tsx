@@ -97,12 +97,7 @@ function Signin() {
 
       {/* Header with Actions and Logo on the right */}
       <div className="absolute top-0 left-0 right-0 px-4 lg:px-8 py-6 flex items-center justify-end gap-4 lg:gap-6 z-50">
-        <button
-          onClick={() => navigate(ROUTES.LIST_YOUR_BUSINESS)}
-          className="border border-amber-200/50 hover:bg-amber-100 hover:text-black px-4 lg:px-6 py-2 rounded-full text-white text-[10px] lg:text-sm font-medium transition-all cursor-pointer backdrop-blur-sm shrink-0"
-        >
-          Business Account
-        </button>
+        
         <img src={salangiLogo} alt="Salangi Logo" className="w-10 h-10 lg:w-16 lg:h-16 shrink-0" />
       </div>
 
@@ -173,7 +168,6 @@ function Signin() {
                 {/* Status Messages */}
                 {error && (
                   <div className="mt-2 flex items-start gap-2 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">
-                    <span className="text-red-400 text-sm mt-0.5">⚠</span>
                     <p className="text-red-400 text-xs leading-normal">{error}</p>
                   </div>
                 )}

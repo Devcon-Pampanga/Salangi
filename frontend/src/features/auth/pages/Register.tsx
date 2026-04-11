@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Info } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import bg from '@assets/images/bg.png';
 import { supabase } from '@/lib/supabase';
@@ -26,6 +26,25 @@ function Register() {
   const handleSubmit = async () => {
     setError('');
     setSuccess('');
+
+    // ── Pre-submit Validation ────────────────────────────────────────────────
+    if (!formData.first_name.trim()) {
+      setError('First name is required.');
+      return;
+    }
+    if (!formData.last_name.trim()) {
+      setError('Last name is required.');
+      return;
+    }
+    if (!formData.email.trim()) {
+      setError('Email is required.');
+      return;
+    }
+    if (!formData.password.trim()) {
+      setError('Password is required.');
+      return;
+    }
+
     setLoading(true);
     try {
       const { error: supabaseError } = await supabase.auth.signUp({
@@ -41,7 +60,15 @@ function Register() {
       if (supabaseError) throw supabaseError;
       setSuccess('Account created! Please check your email to verify your account before signing in.');
     } catch (err) {
-      setError((err as Error).message);
+      // If it's a password strength error, we could customize it, 
+      // but for now, show the actual error message from Supabase or our validation
+      const msg = (err as any)?.message || String(err);
+      
+      if (msg.toLowerCase().includes('password')) {
+        setError('Password must be 8+ characters and include at least 1 uppercase, lowercase, number, and special character.');
+      } else {
+        setError(msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -78,12 +105,6 @@ function Register() {
     
       {/* Header with Actions and Logo on the right */}
       <div className="absolute top-0 left-0 right-0 px-4 lg:px-8 py-6 flex items-center justify-end gap-4 lg:gap-6 z-50">
-        <button
-          onClick={() => navigate(ROUTES.LIST_YOUR_BUSINESS)}
-          className="border border-amber-200/50 hover:bg-amber-100 hover:text-black px-4 lg:px-6 py-2 rounded-full text-white text-[10px] lg:text-sm font-medium transition-all cursor-pointer backdrop-blur-sm shrink-0"
-        >
-          Business Account
-        </button>
         <img src={salangiLogo} alt="Salangi Logo" className="w-10 h-10 lg:w-16 lg:h-16 shrink-0" />
       </div>
 
@@ -114,29 +135,31 @@ function Register() {
             <div className="space-y-4 lg:space-y-6">
               {/* Name Fields */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1.5 lg:gap-2">
-                  <label className="text-[#FBFAF8] text-xs lg:text-sm font-medium">First Name</label>
-                  <input
-                    type="text"
-                    name="first_name"
-                    value={formData.first_name}
-                    onChange={handleChange}
-                    placeholder="Juan"
-                    className="bg-[#2E2E2E]/80 text-white placeholder-gray-500 px-4 py-3.5 rounded-xl border border-white/5 focus:ring-1 focus:ring-[#FFE2A0] outline-none transition-all"
-                  />
+                  <div className="flex flex-col gap-1.5 lg:gap-2">
+                    <label className="text-[#FBFAF8] text-xs lg:text-sm font-medium">First Name <span className="text-[#FFE2A0]">*</span></label>
+                    <input
+                      type="text"
+                      name="first_name"
+                      value={formData.first_name}
+                      onChange={handleChange}
+                      required
+                      placeholder="Juan"
+                      className="bg-[#2E2E2E]/80 text-white placeholder-gray-500 px-4 py-3.5 rounded-xl border border-white/5 focus:ring-1 focus:ring-[#FFE2A0] outline-none transition-all"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[#FBFAF8] text-sm font-medium">Last Name <span className="text-[#FFE2A0]">*</span></label>
+                    <input
+                      type="text"
+                      name="last_name"
+                      value={formData.last_name}
+                      onChange={handleChange}
+                      required
+                      placeholder="Dela Cruz"
+                      className="bg-[#2E2E2E]/80 text-white placeholder-gray-500 px-4 py-3.5 rounded-xl border border-white/5 focus:ring-1 focus:ring-[#FFE2A0] outline-none transition-all"
+                    />
+                  </div>
                 </div>
-                <div className="flex flex-col gap-2">
-                  <label className="text-[#FBFAF8] text-sm font-medium">Last Name</label>
-                  <input
-                    type="text"
-                    name="last_name"
-                    value={formData.last_name}
-                    onChange={handleChange}
-                    placeholder="Dela Cruz"
-                    className="bg-[#2E2E2E]/80 text-white placeholder-gray-500 px-4 py-3.5 rounded-xl border border-white/5 focus:ring-1 focus:ring-[#FFE2A0] outline-none transition-all"
-                  />
-                </div>
-              </div>
 
               {/* Email */}
               <div className="flex flex-col gap-2">
@@ -177,9 +200,8 @@ function Register() {
                 {/* Status Messages */}
                 {error && (
                   <div className="mt-2 flex items-start gap-2 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">
-                    <span className="text-red-400 text-sm mt-0.5">⚠</span>
-                    <p className="text-red-400 text-xs leading-normal">
-                      Password must include uppercase, lowercase, number & special character.
+                    <p className="text-red-400 text-[10px] sm:text-xs leading-normal font-medium">
+                      {error}
                     </p>
                   </div>
                 )}

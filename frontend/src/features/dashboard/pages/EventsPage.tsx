@@ -54,10 +54,15 @@ function DatePickerModal({
 
   if (!isOpen) return null;
 
+  const dateObj = tempDate ? new Date(tempDate + 'T12:00:00') : null;
+  const isDateInvalid = tempDate ? (isNaN(dateObj?.getTime() ?? NaN) || (dateObj?.getFullYear() ?? 0) > 9999) : false;
+
   const formattedDisplay = tempDate
-    ? new Date(tempDate + 'T12:00:00').toLocaleDateString('default', {
-        weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
-      })
+    ? isDateInvalid
+      ? 'Invalid Date'
+      : dateObj?.toLocaleDateString('default', {
+          weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+        })
     : null;
 
   return (
@@ -70,7 +75,7 @@ function DatePickerModal({
       <style>{`
         @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
         @keyframes scaleIn { from { opacity: 0; transform: scale(0.94) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
-        input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1) opacity(0.4); cursor: pointer; }
+        input[type="date"]::-webkit-calendar-picker-indicator { filter: brightness(0) invert(1) !important; cursor: pointer; }
       `}</style>
 
       <div
@@ -126,7 +131,7 @@ function DatePickerModal({
             <p className="text-[10px] uppercase tracking-widest font-semibold text-[#FBFAF8]/30 mb-1">
               Selected
             </p>
-            <p className={`text-sm font-medium transition-colors ${tempDate ? 'text-[#FFE2A0]' : 'text-[#FBFAF8]/20'}`}>
+            <p className={`text-sm font-medium transition-colors ${isDateInvalid ? 'text-red-400' : tempDate ? 'text-[#FFE2A0]' : 'text-[#FBFAF8]/20'}`}>
               {formattedDisplay ?? 'No date chosen yet'}
             </p>
           </div>
@@ -142,7 +147,7 @@ function DatePickerModal({
           </button>
           <button
             onClick={() => { onConfirm(tempDate); }}
-            disabled={!tempDate}
+            disabled={!tempDate || isDateInvalid}
             className="flex-1 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed bg-[#FFE2A0] hover:bg-[#f5d47a] text-[#1a1a1a] shadow-lg"
           >
             <Check size={13} />
@@ -359,7 +364,7 @@ function Eventspage() {
               onClick={() => setIsDateModalOpen(true)}
               className="flex items-center gap-2 bg-[#2E2E2E] border border-dashed border-[#444] hover:border-[#FFE2A0]/50 rounded-xl px-4 py-2.5 cursor-pointer transition-all text-[#FBFAF8]/40 hover:text-[#FFE2A0] text-sm"
             >
-              <Calendar size={14} />
+              <Calendar size={14} className='text-white'/>
               Choose a date
             </button>
           </div>

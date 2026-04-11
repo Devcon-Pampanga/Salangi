@@ -298,6 +298,7 @@ function Homepage() {
                   isSelected={selectedListing?.id === listing.id}
                   isSaved={savedIds.includes(listing.id)}
                   onToggleSave={toggleSave}
+                  rating={averageRatings[listing.id]}
                 />
               ))
             ) : (
