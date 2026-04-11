@@ -37,7 +37,7 @@ export async function checkEmailExists(email: string): Promise<boolean> {
   return !!data;
 }
 
-const BASE_URL = 'http://localhost:8000';
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 // -- Get live Supabase session token ------------------------------------------
 async function getToken(): Promise<string> {
