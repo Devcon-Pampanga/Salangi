@@ -12,9 +12,20 @@ interface DayPoint {
     y: number;
 }
 
+/**
+ * ListingSeries: one entry per listing in multi-series (All) mode.
+ * In single-filter mode, chartSeries will have exactly one item.
+ */
+type ListingSeries = {
+    listingId: number;
+    listingName: string;
+    color: string;
+    data: DayPoint[];
+};
+
 interface StatsState {
-    profileViews: number;
-    totalInteractions: number;
+    profileViews: number;       // listing_interactions WHERE type === "view"
+    totalInteractions: number;  // listing_interactions WHERE type !== "view"
     listingSaves: number;
     eventAttendance: number;
     profileViewsTrend: string;
@@ -22,6 +33,23 @@ interface StatsState {
     savesTrend: string;
     attendanceTrend: string;
 }
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+/**
+ * Profile Views = number of times users viewed a listing's detail page.
+ * Tracked via `listing_interactions` where `type === "view"`.
+ */
+const LINE_COLORS = [
+    "#FFE2A0", // gold (default / first listing)
+    "#6EE7B7", // soft mint green
+    "#93C5FD", // soft sky blue
+    "#FCA5A5", // soft coral red
+    "#C4B5FD", // lavender
+    "#FCD34D", // amber
+    "#6DDFDF", // teal
+    "#F9A8D4", // rose
+];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const formatTrend = (current: number, previous: number): string => {
@@ -43,6 +71,30 @@ const timeframeDays: Record<string, number> = {
     "1Y": 365,
 };
 
+/** Build an array of DayPoint[] for the given days, filled from a grouped map. */
+const buildDayPoints = (
+    days: number,
+    grouped: Record<string, number>
+): DayPoint[] => {
+    const allDays: DayPoint[] = [];
+    const skipFactor = days <= 7 ? 1 : days <= 30 ? 5 : days <= 90 ? 10 : 30;
+
+    for (let i = days - 1; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const label = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        const showLabel = i % skipFactor === 0 || i === 0 || i === days - 1;
+
+        allDays.push({
+            day: showLabel ? label : "",
+            val: grouped[label] ?? 0,
+            x: 0,
+            y: 0,
+        });
+    }
+    return allDays;
+};
+
 // ─── Empty State ──────────────────────────────────────────────────────────────
 const EmptyState = () => (
     <div className="flex-1 flex flex-col items-center justify-center text-center px-4 space-y-4 relative">
@@ -61,44 +113,79 @@ const EmptyState = () => (
 );
 
 // ─── Chart ────────────────────────────────────────────────────────────────────
-const EngagementChart = ({ data }: { data: DayPoint[] }) => {
-    const [hoveredNode, setHoveredNode] = useState<number | null>(null);
 
-    // ✅ FIX: Show empty state if all values are 0 or there's only 1 data point
-    const hasActivity = data.some(d => d.val > 0);
-    if (data.length === 0 || !hasActivity) return <EmptyState />;
+interface HoveredInfo {
+    seriesIndex: number;
+    pointIndex: number;
+}
 
-    const svgWidth = 1000;
-    const svgHeight = 400;
-    const padX = 40;
-    const padY = 40;
+const SVG_W = 1000;
+const SVG_H = 400;
+const PAD_X = 40;
+const PAD_Y = 40;
 
-    const vals = data.map((d) => d.val);
-    const minVal = 0; // ✅ FIX: always anchor the bottom at 0, never at minVal
-    const maxVal = Math.max(...vals);
+/** Map a DayPoint[] to SVG-space coordinates given a shared minVal/maxVal. */
+const toSvgPoints = (data: DayPoint[], minVal: number, maxVal: number) => {
     const range = maxVal - minVal || 1;
-
-    const points = data.map((d, i) => ({
+    return data.map((d, i) => ({
         ...d,
-        sx: padX + (i / Math.max(data.length - 1, 1)) * (svgWidth - padX * 2),
-        sy: svgHeight - padY - ((d.val - minVal) / range) * (svgHeight - padY * 2),
+        sx: PAD_X + (i / Math.max(data.length - 1, 1)) * (SVG_W - PAD_X * 2),
+        sy: SVG_H - PAD_Y - ((d.val - minVal) / range) * (SVG_H - PAD_Y * 2),
     }));
+};
 
-    // Smooth bezier path
-    const pathD = points.reduce((acc, pt, i) => {
+/** Build a smooth bezier path string from SVG-space points. */
+const buildPath = (pts: ReturnType<typeof toSvgPoints>): string =>
+    pts.reduce((acc, pt, i) => {
         if (i === 0) return `M${pt.sx},${pt.sy}`;
-        const prev = points[i - 1];
+        const prev = pts[i - 1];
         const cpX = (prev.sx + pt.sx) / 2;
         return `${acc} C${cpX},${prev.sy} ${cpX},${pt.sy} ${pt.sx},${pt.sy}`;
     }, "");
 
-    const fillD = `${pathD} L${points[points.length - 1].sx},${svgHeight} L${points[0].sx},${svgHeight} Z`;
+const EngagementChart = ({ series }: { series: ListingSeries[] }) => {
+    const [hovered, setHovered] = useState<HoveredInfo | null>(null);
 
-    // ✅ FIX: Only render visible (labelled) points to avoid clutter
-    const visiblePoints = points.filter(pt => pt.day !== "");
+    const hasActivity = series.some(s => s.data.some(d => d.val > 0));
+    if (series.length === 0 || !hasActivity) return <EmptyState />;
+
+    // Shared Y scale across all series so lines are comparable
+    const allVals = series.flatMap(s => s.data.map(d => d.val));
+    const maxVal = Math.max(...allVals);
+    const minVal = 0;
+
+    // Compute SVG points per series
+    const computedSeries = series.map(s => ({
+        ...s,
+        pts: toSvgPoints(s.data, minVal, maxVal),
+    }));
+
+    // X-axis labels: use first series (all have same day labels)
+    const visibleLabels = computedSeries[0].pts.filter(pt => pt.day !== "");
+
+    const hoveredSeries = hovered !== null ? computedSeries[hovered.seriesIndex] : null;
+    const hoveredPt = hoveredSeries ? hoveredSeries.pts[hovered!.pointIndex] : null;
+    const hoveredRaw = hoveredSeries ? hoveredSeries.data[hovered!.pointIndex] : null;
 
     return (
         <div className="flex-1 w-full h-full flex flex-col pt-4 relative group/chart">
+            {/* Legend */}
+            {series.length > 1 && (
+                <div className="flex flex-wrap gap-x-5 gap-y-2 mb-4 px-1">
+                    {series.map(s => (
+                        <div key={s.listingId} className="flex items-center gap-2">
+                            <span
+                                className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0"
+                                style={{ backgroundColor: s.color }}
+                            />
+                            <span className="text-[11px] font-medium text-[#c0c0c0] truncate max-w-[140px]">
+                                {s.listingName}
+                            </span>
+                        </div>
+                    ))}
+                </div>
+            )}
+
             <div className="flex-1 relative">
                 {/* Grid lines */}
                 <div className="absolute inset-0 flex flex-col justify-between opacity-5 pointer-events-none">
@@ -108,76 +195,111 @@ const EngagementChart = ({ data }: { data: DayPoint[] }) => {
                 </div>
 
                 {/* Hover vertical line */}
-                {hoveredNode !== null && (
+                {hoveredPt && (
                     <div
                         className="absolute top-0 bottom-0 w-px bg-[#FFE2A0]/20 z-0 transition-all duration-200"
-                        style={{ left: `${((points[hoveredNode].sx) / svgWidth) * 100}%` }}
+                        style={{ left: `${(hoveredPt.sx / SVG_W) * 100}%` }}
                     />
                 )}
 
                 <svg
                     className="w-full h-full relative z-10 overflow-visible"
-                    viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+                    viewBox={`0 0 ${SVG_W} ${SVG_H}`}
                     preserveAspectRatio="none"
                 >
                     <defs>
-                        <linearGradient id="engagementGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#FFE2A0" stopOpacity="0.4" />
-                            <stop offset="100%" stopColor="#FFE2A0" stopOpacity="0" />
-                        </linearGradient>
+                        {computedSeries.map(s => (
+                            <linearGradient
+                                key={`grad-${s.listingId}`}
+                                id={`grad-${s.listingId}`}
+                                x1="0" y1="0" x2="0" y2="1"
+                            >
+                                <stop offset="0%" stopColor={s.color} stopOpacity="0.25" />
+                                <stop offset="100%" stopColor={s.color} stopOpacity="0" />
+                            </linearGradient>
+                        ))}
                     </defs>
 
-                    <path d={fillD} fill="url(#engagementGradient)" />
-                    <path d={pathD} fill="none" stroke="#FFE2A0" strokeWidth="4" strokeLinecap="round" />
+                    {/* Render fill + stroke per series */}
+                    {computedSeries.map(s => {
+                        const pathD = buildPath(s.pts);
+                        const fillD = `${pathD} L${s.pts[s.pts.length - 1].sx},${SVG_H} L${s.pts[0].sx},${SVG_H} Z`;
+                        return (
+                            <g key={`line-${s.listingId}`}>
+                                <path d={fillD} fill={`url(#grad-${s.listingId})`} />
+                                <path d={pathD} fill="none" stroke={s.color} strokeWidth="3.5" strokeLinecap="round" />
+                            </g>
+                        );
+                    })}
 
-                    {points.map((pt, i) => (
-                        <g
-                            key={i}
-                            className="cursor-pointer"
-                            onMouseEnter={() => setHoveredNode(i)}
-                            onMouseLeave={() => setHoveredNode(null)}
-                        >
-                            <circle cx={pt.sx} cy={pt.sy} r="20" fill="transparent" />
-                            <circle
-                                cx={pt.sx} cy={pt.sy}
-                                r={hoveredNode === i ? "10" : "6"}
-                                fill={hoveredNode === i ? "#FFE2A0" : "#3a3a3a"}
-                                stroke="#FFE2A0"
-                                strokeWidth="3"
-                                className="transition-all duration-200"
-                            />
-                            {hoveredNode !== i && <circle cx={pt.sx} cy={pt.sy} r="2" fill="#FFE2A0" />}
-                        </g>
-                    ))}
+                    {/* Interactive hit areas + dots per series */}
+                    {computedSeries.map((s, si) =>
+                        s.pts.map((pt, pi) => {
+                            const isHovered = hovered?.seriesIndex === si && hovered?.pointIndex === pi;
+                            return (
+                                <g
+                                    key={`dot-${s.listingId}-${pi}`}
+                                    className="cursor-pointer"
+                                    onMouseEnter={() => setHovered({ seriesIndex: si, pointIndex: pi })}
+                                    onMouseLeave={() => setHovered(null)}
+                                >
+                                    <circle cx={pt.sx} cy={pt.sy} r="18" fill="transparent" />
+                                    <circle
+                                        cx={pt.sx} cy={pt.sy}
+                                        r={isHovered ? "9" : "5"}
+                                        fill={isHovered ? s.color : "#3a3a3a"}
+                                        stroke={s.color}
+                                        strokeWidth="2.5"
+                                        className="transition-all duration-200"
+                                    />
+                                    {!isHovered && (
+                                        <circle cx={pt.sx} cy={pt.sy} r="2" fill={s.color} />
+                                    )}
+                                </g>
+                            );
+                        })
+                    )}
                 </svg>
 
                 {/* Tooltip */}
-                {hoveredNode !== null && (
+                {hovered !== null && hoveredPt && hoveredRaw && hoveredSeries && (
                     <div
                         className="absolute z-30 bg-[#2d2d2d] border border-[#FFE2A0]/20 rounded-xl p-3 shadow-2xl pointer-events-none transition-all duration-200 -translate-x-1/2 -translate-y-[120%]"
                         style={{
-                            left: `${(points[hoveredNode].sx / svgWidth) * 100}%`,
-                            top: `${(points[hoveredNode].sy / svgHeight) * 100}%`,
+                            left: `${(hoveredPt.sx / SVG_W) * 100}%`,
+                            top: `${(hoveredPt.sy / SVG_H) * 100}%`,
                         }}
                     >
-                        <p className="text-[#a0a0a0] text-[10px] uppercase font-bold tracking-widest mb-1">
-                            {data[hoveredNode].day || points[hoveredNode].day}
-                        </p>
+                        <div className="flex items-center gap-1.5 mb-1">
+                            <span
+                                className="inline-block w-2 h-2 rounded-full flex-shrink-0"
+                                style={{ backgroundColor: hoveredSeries.color }}
+                            />
+                            <p className="text-[#a0a0a0] text-[10px] uppercase font-bold tracking-widest">
+                                {series.length > 1 ? hoveredSeries.listingName : (hoveredRaw.day || hoveredPt.day)}
+                            </p>
+                        </div>
+                        {series.length > 1 && (
+                            <p className="text-[#a0a0a0] text-[10px] mb-0.5">{hoveredRaw.day || hoveredPt.day}</p>
+                        )}
                         <p className="text-white text-lg font-bold">
-                            {data[hoveredNode].val.toLocaleString()}{" "}
-                            <span className="text-xs font-normal text-[#a0a0a0]">Interactions</span>
+                            {hoveredRaw.val.toLocaleString()}{" "}
+                            <span className="text-xs font-normal text-[#a0a0a0]">
+                                {/* Profile Views = type==="view"; others = Interactions */}
+                                Interactions
+                            </span>
                         </p>
                     </div>
                 )}
             </div>
 
-            {/* X-axis labels — only show labelled points */}
+            {/* X-axis labels */}
             <div className="flex justify-between items-center mt-6 px-4 pb-2 border-t border-[#4d4d4d] pt-4">
-                {visiblePoints.map((pt, i) => (
+                {visibleLabels.map((pt, i) => (
                     <span
                         key={i}
                         className={`text-[10px] font-bold uppercase tracking-widest transition-colors duration-200 ${
-                            hoveredNode !== null && points[hoveredNode]?.day === pt.day
+                            hoveredPt && (hoveredPt.day === pt.day || computedSeries[0].data[visibleLabels.indexOf(pt)]?.day === pt.day)
                                 ? "text-[#FFE2A0]"
                                 : "text-[#a0a0a0]"
                         }`}
@@ -195,9 +317,16 @@ const Analytics = () => {
     const { user } = useAuth();
     const [timeframe, setTimeframe] = useState("30D");
     const [activeFilter, setActiveFilter] = useState("All");
-    const [userListings, setUserListings] = useState<{id: number, name: string}[]>([]);
+    const [userListings, setUserListings] = useState<{ id: number; name: string }[]>([]);
     const [loading, setLoading] = useState(true);
-    const [chartData, setChartData] = useState<DayPoint[]>([]);
+
+    /**
+     * chartSeries holds one ListingSeries per listing.
+     * - When activeFilter === "All": one entry per listing (multi-line)
+     * - When a specific listing is selected: exactly one entry (single-line, gold)
+     */
+    const [chartSeries, setChartSeries] = useState<ListingSeries[]>([]);
+
     const [stats, setStats] = useState<StatsState>({
         profileViews: 0,
         totalInteractions: 0,
@@ -209,7 +338,6 @@ const Analytics = () => {
         attendanceTrend: "—",
     });
 
-    // ✅ FIX: activeFilter added to useCallback dependencies
     const fetchAnalytics = useCallback(async () => {
         if (!user?.id) return;
         setLoading(true);
@@ -228,43 +356,48 @@ const Analytics = () => {
                 profileViews: 0, totalInteractions: 0, listingSaves: 0, eventAttendance: 0,
                 profileViewsTrend: "—", interactionsTrend: "—", savesTrend: "—", attendanceTrend: "—",
             });
-            setChartData([]);
+            setChartSeries([]);
             setLoading(false);
             return;
         }
         setUserListings(listings);
 
-        const targetListingIds = activeFilter === "All"
-            ? listings.map(l => l.id)
-            : [listings.find(l => l.name === activeFilter)?.id].filter(Boolean) as number[];
+        const isAll = activeFilter === "All";
+        const targetListings = isAll
+            ? listings
+            : listings.filter(l => l.name === activeFilter);
 
-        if (targetListingIds.length === 0) {
+        const targetIds = targetListings.map(l => l.id).filter(Boolean) as number[];
+
+        if (targetIds.length === 0) {
             setStats({
                 profileViews: 0, totalInteractions: 0, listingSaves: 0, eventAttendance: 0,
                 profileViewsTrend: "—", interactionsTrend: "—", savesTrend: "—", attendanceTrend: "—",
             });
-            setChartData([]);
+            setChartSeries([]);
             setLoading(false);
             return;
         }
 
+        // ── Aggregate stats (always across targetIds) ──────────────────────
         const [
             { data: currInteractions },
             { data: prevInteractions },
         ] = await Promise.all([
             supabase
                 .from("listing_interactions")
-                .select("id, type, created_at")
-                .in("listing_id", targetListingIds)
+                .select("id, type, created_at, listing_id")
+                .in("listing_id", targetIds)
                 .gte("created_at", currentStart),
             supabase
                 .from("listing_interactions")
-                .select("id, type")
-                .in("listing_id", targetListingIds)
+                .select("id, type, listing_id")
+                .in("listing_id", targetIds)
                 .gte("created_at", previousStart)
                 .lt("created_at", currentStart),
         ]);
 
+        // Profile Views = listing_interactions WHERE type === "view"
         const currViews   = (currInteractions ?? []).filter((r: any) => r.type === "view").length;
         const currActions = (currInteractions ?? []).filter((r: any) => r.type !== "view").length;
         const prevViews   = (prevInteractions ?? []).filter((r: any) => r.type === "view").length;
@@ -274,12 +407,12 @@ const Analytics = () => {
             supabase
                 .from("saves")
                 .select("id", { count: "exact", head: true })
-                .in("listing_id", targetListingIds)
+                .in("listing_id", targetIds)
                 .gte("created_at", currentStart),
             supabase
                 .from("saves")
                 .select("id", { count: "exact", head: true })
-                .in("listing_id", targetListingIds)
+                .in("listing_id", targetIds)
                 .gte("created_at", previousStart)
                 .lt("created_at", currentStart),
         ]);
@@ -288,12 +421,12 @@ const Analytics = () => {
             supabase
                 .from("events")
                 .select("id", { count: "exact", head: true })
-                .in("listing_id", targetListingIds)
+                .in("listing_id", targetIds)
                 .gte("created_at", currentStart),
             supabase
                 .from("events")
                 .select("id", { count: "exact", head: true })
-                .in("listing_id", targetListingIds)
+                .in("listing_id", targetIds)
                 .gte("created_at", previousStart)
                 .lt("created_at", currentStart),
         ]);
@@ -309,36 +442,52 @@ const Analytics = () => {
             attendanceTrend: formatTrend(currAttendance ?? 0, prevAttendance ?? 0),
         });
 
-        // Build chart data
-        const grouped: Record<string, number> = {};
-        (currInteractions ?? []).forEach((row: any) => {
-            const dateKey = new Date(row.created_at).toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
+        // ── Build chart series ──────────────────────────────────────────────
+        if (isAll) {
+            // Multi-series: one line per listing
+            const newSeries: ListingSeries[] = targetListings.map((listing, idx) => {
+                const color = LINE_COLORS[idx % LINE_COLORS.length];
+                const grouped: Record<string, number> = {};
+
+                (currInteractions ?? [])
+                    .filter((r: any) => r.listing_id === listing.id)
+                    .forEach((row: any) => {
+                        const dateKey = new Date(row.created_at).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                        });
+                        grouped[dateKey] = (grouped[dateKey] ?? 0) + 1;
+                    });
+
+                return {
+                    listingId: listing.id,
+                    listingName: listing.name,
+                    color,
+                    data: buildDayPoints(days, grouped),
+                };
             });
-            grouped[dateKey] = (grouped[dateKey] ?? 0) + 1;
-        });
 
-        const allDays: DayPoint[] = [];
-        for (let i = days - 1; i >= 0; i--) {
-            const d = new Date();
-            d.setDate(d.getDate() - i);
-            const label = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-
-            const skipFactor = days <= 7 ? 1 : days <= 30 ? 5 : days <= 90 ? 10 : 30;
-            const showLabel = i % skipFactor === 0 || i === 0 || i === days - 1;
-
-            allDays.push({
-                day: showLabel ? label : "",
-                val: grouped[label] ?? 0,
-                x: 0,
-                y: 0,
+            setChartSeries(newSeries);
+        } else {
+            // Single-series: one line for the selected listing, always gold
+            const grouped: Record<string, number> = {};
+            (currInteractions ?? []).forEach((row: any) => {
+                const dateKey = new Date(row.created_at).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                });
+                grouped[dateKey] = (grouped[dateKey] ?? 0) + 1;
             });
+
+            setChartSeries([{
+                listingId: targetListings[0]?.id ?? 0,
+                listingName: targetListings[0]?.name ?? activeFilter,
+                color: "#FFE2A0",
+                data: buildDayPoints(days, grouped),
+            }]);
         }
 
-        setChartData(allDays);
         setLoading(false);
-    // ✅ FIX: activeFilter is now in the dependency array
     }, [user?.id, timeframe, activeFilter]);
 
     useEffect(() => {
@@ -395,7 +544,7 @@ const Analytics = () => {
                 {/* KPI Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-6">
                     <StatsCard
-                        title="Total Profile Views"
+                        title="Total Listing Views"
                         value={loading ? "—" : stats.profileViews.toLocaleString()}
                         trend={loading ? "—" : stats.profileViewsTrend}
                         icon={
@@ -451,7 +600,7 @@ const Analytics = () => {
                                 Loading engagement data...
                             </div>
                         ) : (
-                            <EngagementChart data={chartData} />
+                            <EngagementChart series={chartSeries} />
                         )}
                     </div>
                 </div>
