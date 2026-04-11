@@ -8,6 +8,7 @@ import { useAuth } from '@/context/AuthContext';
 
 interface SettingsPageProps {
   onClose: () => void;
+  scrollTo?: 'upgrade' | null;
 }
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
@@ -61,8 +62,9 @@ function InputField({
 
 // ─── Settings Page ────────────────────────────────────────────────────────────
 
-const SettingsPage = ({ onClose }: SettingsPageProps) => {
+const SettingsPage = ({ onClose, scrollTo }: SettingsPageProps) => {
   const navigate  = useNavigate();
+  const upgradeRef = useRef<HTMLDivElement>(null);
 
   // Pull role + setRole from AuthContext — no need to re-fetch
   const { role: contextRole, setRole: setContextRole } = useAuth();
@@ -131,6 +133,15 @@ const SettingsPage = ({ onClose }: SettingsPageProps) => {
     };
     fetchProfile();
   }, []);
+
+  // ── Scroll to section ──────────────────────────────────────────────────────
+  useEffect(() => {
+    if (scrollTo === 'upgrade' && upgradeRef.current) {
+      setTimeout(() => {
+        upgradeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 300);
+    }
+  }, [scrollTo]);
 
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ message, type });
@@ -412,7 +423,7 @@ const SettingsPage = ({ onClose }: SettingsPageProps) => {
 
               {/* Upgrade to Business — only shown if role is 'user' */}
               {currentRole === 'user' && (
-                <div className="mb-10">
+                <div className="mb-10" ref={upgradeRef} id="upgrade-section">
                   <SectionTitle>Business Account</SectionTitle>
                   {!showUpgradeConfirm ? (
                     <div className="flex items-center justify-between p-4 bg-[#FFE2A0]/5 border border-[#FFE2A0]/20 rounded-2xl gap-4">
