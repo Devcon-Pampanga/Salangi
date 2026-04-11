@@ -5,6 +5,7 @@ export const ROUTES = {
   BUSINESS_REGISTER: '/business-register',
   BUSINESS_SIGNIN: '/business-signin',
   LIST_BUSINESS: '/list-business',
+  UPGRADE_TO_BUSINESS: '/upgrade-to-business',
   
   DASHBOARD: '/dashboard',
   DASHBOARD_OVERVIEW: '/dashboard/overview',

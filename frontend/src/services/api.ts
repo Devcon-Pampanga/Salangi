@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase';
 
-// ── Authentication (Supabase) ────────────────────────────────────────────────
+// -- Authentication (Supabase) ------------------------------------------------
 export async function registerUser(data: {
   first_name: string;
   last_name: string;
@@ -14,7 +14,7 @@ export async function registerUser(data: {
       data: {
         first_name: data.first_name,
         last_name: data.last_name,
-        role: 'business', 
+        role: 'business',
       },
     },
   });
@@ -25,9 +25,21 @@ export async function registerUser(data: {
   };
 }
 
+// -- Check if email already exists in public.users ----------------------------
+export async function checkEmailExists(email: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('users')
+    .select('user_id')
+    .eq('email', email.trim().toLowerCase())
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  return !!data;
+}
+
 const BASE_URL = 'http://localhost:8000';
 
-// ── Get live Supabase session token ──────────────────────────────────────────
+// -- Get live Supabase session token ------------------------------------------
 async function getToken(): Promise<string> {
   const { data, error } = await supabase.auth.getSession();
   if (error || !data.session?.access_token) {
@@ -36,7 +48,7 @@ async function getToken(): Promise<string> {
   return data.session.access_token;
 }
 
-// ── Shared fetch helper ───────────────────────────────────────────────────────
+// -- Shared fetch helper -------------------------------------------------------
 async function authFetch(path: string, options: RequestInit = {}): Promise<any> {
   const token = await getToken();
   const res = await fetch(`${BASE_URL}${path}`, {
@@ -55,7 +67,7 @@ async function authFetch(path: string, options: RequestInit = {}): Promise<any> 
   return text ? JSON.parse(text) : null;
 }
 
-// ── Profile (backend) ─────────────────────────────────────────────────────────
+// -- Profile (backend) ---------------------------------------------------------
 export async function updateProfile(data: {
   first_name?: string;
   last_name?: string;
@@ -67,14 +79,19 @@ export async function updateProfile(data: {
   });
 }
 
-// ── Password (Supabase directly — no backend needed) ─────────────────────────
+// -- Password (Supabase directly) ----------------------------------------------
 export async function changePassword(newPassword: string) {
   const { error } = await supabase.auth.updateUser({ password: newPassword });
   if (error) throw new Error(error.message);
   return { message: 'Password updated successfully.' };
 }
 
-// ── Delete account (backend removes DB row, Supabase handles auth deletion) ──
+// -- Delete account ------------------------------------------------------------
 export async function deleteAccount() {
   return authFetch('/api/auth/delete-account', { method: 'DELETE' });
+}
+
+// -- Upgrade to business -------------------------------------------------------
+export async function upgradeToBusinessAccount(): Promise<void> {
+  await authFetch('/api/auth/upgrade-to-business', { method: 'POST' });
 }

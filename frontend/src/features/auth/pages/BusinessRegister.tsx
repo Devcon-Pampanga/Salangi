@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { registerUser } from '@/services/api';
+import { registerUser, checkEmailExists } from '@/services/api';
 import { ROUTES } from '../../../routes/paths';
 
 function BusinessRegister() {
@@ -16,20 +16,48 @@ function BusinessRegister() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isDuplicate, setIsDuplicate] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+    // Clear duplicate flag when user edits email
+    if (e.target.name === 'email') setIsDuplicate(false);
   };
 
   const handleSubmit = async () => {
     setError('');
     setSuccess('');
+    setIsDuplicate(false);
     setLoading(true);
+
     try {
+      // Validate fields
+      if (!formData.first_name.trim() || !formData.last_name.trim() || !formData.email.trim() || !formData.password) {
+        setError('All fields are required.');
+        return;
+      }
+
+      // Check if email already exists
+      const exists = await checkEmailExists(formData.email);
+      if (exists) {
+        setIsDuplicate(true);
+        setError(
+          'This email is already registered. Sign in and upgrade your account to business from Account Settings.'
+        );
+        return;
+      }
+
+      // Proceed with registration
       const res = await registerUser(formData);
-      setSuccess(res.message?.charAt(0).toUpperCase() + res.message?.slice(1) || 'Account created successfully. Please check your email to verify your account.');
+      setSuccess(
+        res.message?.charAt(0).toUpperCase() + res.message?.slice(1) ||
+        'Account created successfully. Please check your email to verify your account.'
+      );
     } catch (err: any) {
-      setError(err.message?.charAt(0).toUpperCase() + err.message?.slice(1) || 'Something went wrong. Please try again.');
+      setError(
+        err.message?.charAt(0).toUpperCase() + err.message?.slice(1) ||
+        'Something went wrong. Please try again.'
+      );
     } finally {
       setLoading(false);
     }
@@ -85,76 +113,90 @@ function BusinessRegister() {
           </div>
         </div>
 
-          {/* Email */}
-          <div className="mb-4">
-            <label className="text-gray-300 text-sm mb-1 block">Email</label>
+        {/* Email */}
+        <div className="mb-4">
+          <label className="text-gray-300 text-sm mb-1 block">Email</label>
+          <input
+            type="text"
+            name="email"
+            value={formData.email}
+            onChange={handleChange}
+            placeholder="eg. juan.dc@gmail.com"
+            className={`w-full bg-[#2E2E2E] text-white placeholder-gray-500 px-4 py-3 rounded-lg outline-none focus:ring-1 transition-colors ${
+              isDuplicate ? 'ring-1 ring-red-500/60 focus:ring-red-500/60' : 'focus:ring-[#FFE2A0]'
+            }`}
+          />
+        </div>
+
+        {/* Password */}
+        <div className="mb-6">
+          <label className="text-gray-300 text-sm mb-1 block">Password</label>
+          <div className="relative">
             <input
-              type="text"
-              name="email"
-              value={formData.email}
+              type={showPassword ? 'text' : 'password'}
+              name="password"
+              value={formData.password}
               onChange={handleChange}
-              placeholder="eg. juan.dc@gmail.com"
+              placeholder="*************"
               className="w-full bg-[#2E2E2E] text-white placeholder-gray-500 px-4 py-3 rounded-lg outline-none focus:ring-1 focus:ring-[#FFE2A0]"
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
           </div>
+        </div>
 
-          {/* Password */}
-          <div className="mb-6">
-            <label className="text-gray-300 text-sm mb-1 block">Password</label>
-            <div className="relative">
-              <input
-                type={showPassword ? 'text' : 'password'}
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                placeholder="*************"
-                className="w-full bg-[#2E2E2E] text-white placeholder-gray-500 px-4 py-3 rounded-lg outline-none focus:ring-1 focus:ring-[#FFE2A0]"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
-              >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            </div>
-          </div>
+        {/* Sign Up Button */}
+        <button
+          onClick={handleSubmit}
+          disabled={loading}
+          className="w-full bg-[#FFE2A0] hover:bg-[#fcd789] text-[#222222] font-semibold py-3 rounded-lg transition-colors cursor-pointer disabled:opacity-60"
+        >
+          {loading ? 'Checking...' : 'SIGN UP'}
+        </button>
 
-          {/* Sign Up Button */}
-          <button
-            onClick={handleSubmit}
-            disabled={loading}
-            className="w-full bg-[#FFE2A0] hover:bg-[#fcd789] text-[#222222] font-semibold py-3 rounded-lg transition-colors cursor-pointer disabled:opacity-60"
-          >
-            {loading ? 'Creating account...' : 'SIGN UP'}
-          </button>
-
-          {error && (
-            <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2 mt-3">
+        {error && (
+          <div className="flex flex-col gap-2 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2 mt-3">
+            <div className="flex items-center gap-2">
               <span className="text-red-400 text-sm">⚠</span>
               <p className="text-red-400 text-xs leading-snug">
                 {error.charAt(0).toUpperCase() + error.slice(1)}
               </p>
             </div>
-          )}
-          {success && (
-            <div className="flex items-center gap-2 bg-green-500/10 border border-green-500/30 rounded-lg px-3 py-2 mt-3">
-              <span className="text-green-400 text-sm">✓</span>
-              <p className="text-green-400 text-xs">
-                {success.charAt(0).toUpperCase() + success.slice(1)}
-              </p>
-            </div>
-          )}
+            {/* If duplicate, show direct link to sign in */}
+            {isDuplicate && (
+              <Link
+                to={ROUTES.BUSINESS_SIGNIN}
+                className="text-[#FFE2A0] text-xs underline underline-offset-2 ml-5"
+              >
+                Sign in instead →
+              </Link>
+            )}
+          </div>
+        )}
 
-          {/* Already have account */}
-          <p className="text-gray-400 text-sm text-center mt-4">
-            Already have an account?{' '}
-            <Link to={ROUTES.BUSINESS_SIGNIN} className="text-[#FFE2A0] hover:underline">
-              Sign in.
-            </Link>
-          </p>
-        </div>
+        {success && (
+          <div className="flex items-center gap-2 bg-green-500/10 border border-green-500/30 rounded-lg px-3 py-2 mt-3">
+            <span className="text-green-400 text-sm">✓</span>
+            <p className="text-green-400 text-xs">
+              {success.charAt(0).toUpperCase() + success.slice(1)}
+            </p>
+          </div>
+        )}
+
+        {/* Already have account */}
+        <p className="text-gray-400 text-sm text-center mt-4">
+          Already have an account?{' '}
+          <Link to={ROUTES.BUSINESS_SIGNIN} className="text-[#FFE2A0] hover:underline">
+            Sign in.
+          </Link>
+        </p>
       </div>
+    </div>
   );
 }
 
