@@ -8,6 +8,7 @@ import { useAuth } from '@/context/authContext';
 
 interface SettingsPageProps {
   onClose: () => void;
+  scrollTo?: 'upgrade' | null;
 }
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
@@ -61,7 +62,7 @@ function InputField({
 
 // ─── Settings Page ────────────────────────────────────────────────────────────
 
-const SettingsPage = ({ onClose }: SettingsPageProps) => {
+const SettingsPage = ({ onClose, scrollTo }: SettingsPageProps) => {
   const navigate = useNavigate();
 
   // Pull role + refreshRole from AuthContext
@@ -95,6 +96,7 @@ const SettingsPage = ({ onClose }: SettingsPageProps) => {
 
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
+  const upgradeSectionRef = useRef<HTMLDivElement>(null);
 
   // ── Fetch fresh profile from Supabase on mount ─────────────────────────────
   useEffect(() => {
@@ -132,6 +134,15 @@ const SettingsPage = ({ onClose }: SettingsPageProps) => {
     };
     fetchProfile();
   }, []);
+
+  // ── Scroll to section if requested ─────────────────────────────────────────
+  useEffect(() => {
+    if (scrollTo === 'upgrade' && upgradeSectionRef.current) {
+      setTimeout(() => {
+        upgradeSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 500);
+    }
+  }, [scrollTo]);
 
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ message, type });
@@ -420,7 +431,10 @@ const SettingsPage = ({ onClose }: SettingsPageProps) => {
                 <div className="mb-10">
                   <SectionTitle>Business Account</SectionTitle>
                   {!showUpgradeConfirm ? (
-                    <div className="flex items-center justify-between p-4 bg-[#FFE2A0]/5 border border-[#FFE2A0]/20 rounded-2xl gap-4">
+                    <div 
+                      ref={upgradeSectionRef}
+                      className="flex items-center justify-between p-4 bg-[#FFE2A0]/5 border border-[#FFE2A0]/20 rounded-2xl gap-4"
+                    >
                       <div>
                         <p className="text-sm font-semibold text-zinc-300 flex items-center gap-1.5">
                           <Briefcase size={14} className="text-[#FFE2A0]" /> Upgrade to Business
@@ -437,7 +451,10 @@ const SettingsPage = ({ onClose }: SettingsPageProps) => {
                       </button>
                     </div>
                   ) : (
-                    <div className="flex flex-col gap-3 p-5 bg-[#FFE2A0]/5 rounded-2xl border border-[#FFE2A0]/20">
+                    <div 
+                      ref={upgradeSectionRef}
+                      className="flex flex-col gap-3 p-5 bg-[#FFE2A0]/5 rounded-2xl border border-[#FFE2A0]/20"
+                    >
                       <div className="flex items-center gap-2">
                         <Briefcase size={16} className="text-[#FFE2A0] shrink-0" />
                         <p className="text-sm font-bold text-[#FFE2A0]">Confirm upgrade to business</p>
