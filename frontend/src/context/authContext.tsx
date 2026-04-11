@@ -10,8 +10,10 @@ interface AuthContextValue {
   session: Session | null;
   role: Role;
   loading: boolean;
-  /** Call this after a successful upgrade so the role updates globally without re-fetching */
+  /** Directly set the role in context (use refreshRole instead when possible) */
   setRole: (role: Role) => void;
+  /** Re-fetches role from DB and updates context — use this after upgrade */
+  refreshRole: () => Promise<void>;
 }
 
 // ─── Context ──────────────────────────────────────────────────────────────────
@@ -21,6 +23,7 @@ const AuthContext = createContext<AuthContextValue>({
   role: null,
   loading: true,
   setRole: () => {},
+  refreshRole: async () => {},
 });
 
 // ─── Provider ─────────────────────────────────────────────────────────────────
@@ -30,7 +33,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [role, setRole] = useState<Role>(null);
   const [loading, setLoading] = useState(true);
 
-  // Fetch role from Supabase whenever the session changes
+  // ── Fetch role from DB for a given userId ──────────────────────────────────
   const fetchRole = async (userId: string) => {
     const { data } = await supabase
       .from('profiles')
@@ -40,8 +43,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setRole((data?.role as Role) ?? 'user');
   };
 
+  // ── Public: re-fetch role using current session ────────────────────────────
+  // Call this after upgradeToBusinessAccount() so the context is always
+  // sourced from the DB — avoids the race between manual setRole() and
+  // onAuthStateChange firing fetchRole() and overwriting it.
+  const refreshRole = async () => {
+    const {
+      data: { session: currentSession },
+    } = await supabase.auth.getSession();
+    if (currentSession?.user?.id) {
+      await fetchRole(currentSession.user.id);
+    }
+  };
+
   useEffect(() => {
-    // Initial session load
+    // ── Initial session load ─────────────────────────────────────────────────
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (session?.user?.id) {
@@ -51,23 +67,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
-    // Listen for auth changes (login, logout, token refresh)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setSession(session);
-        if (session?.user?.id) {
-          fetchRole(session.user.id);
-        } else {
-          setRole(null);
-        }
+    // ── Listen for auth state changes (login, logout, token refresh) ─────────
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      if (session?.user?.id) {
+        fetchRole(session.user.id);
+      } else {
+        setRole(null);
       }
-    );
+    });
 
     return () => subscription.unsubscribe();
   }, []);
 
   return (
-    <AuthContext.Provider value={{ session, role, loading, setRole }}>
+    <AuthContext.Provider value={{ session, role, loading, setRole, refreshRole }}>
       {children}
     </AuthContext.Provider>
   );
