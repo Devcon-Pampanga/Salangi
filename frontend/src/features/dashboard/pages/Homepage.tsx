@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { ROUTES } from '../../../routes/paths';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/context/authContext';
 import BusinessCard from '../components/BusinessCard';
 import MapView from '../../../map/MapView';
 import SearchBar from '../components/SearchBar';

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Briefcase, Loader2, BarChart2, Star, CalendarDays } from 'lucide-react';
 import { upgradeToBusinessAccount } from '@/services/api';
 import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/context/authContext';
 import { ROUTES } from '../../../routes/paths';
 
 // ─── Feature list shown on the upgrade page ───────────────────────────────────

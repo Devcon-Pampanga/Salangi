@@ -4,7 +4,7 @@ import { X, User, Check, AlertCircle, Loader2, Camera, Eye, EyeOff, Trash2, Shie
 import { supabase } from '@/lib/supabase';
 import { updateProfile, changePassword, deleteAccount, upgradeToBusinessAccount } from '@/services/api';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/context/authContext';
 
 interface SettingsPageProps {
   onClose: () => void;

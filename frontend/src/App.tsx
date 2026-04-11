@@ -3,7 +3,7 @@ import { supabase } from './lib/supabase'
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
 import { ROUTES } from './routes/paths';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/authContext';
 
 // Auth & Protected Components
 import ProtectedRoute from './routes/ProtectedRoute';
