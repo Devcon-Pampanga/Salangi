@@ -5,8 +5,13 @@ import searchIconHover from '@assets/icons/search-btn-hover.svg';
 import filterIconDefault from '@assets/icons/filter-btn-default.svg';
 import filterIconHover from '@assets/icons/filter-btn-hover.svg';
 
+export interface RatingRange {
+  min: number;
+  max: number;
+}
+
 export interface FilterOptions {
-  minRating: number | null;
+  ratingRange: RatingRange | null;
   sortBy: 'default' | 'az' | 'za';
 }
 
@@ -21,6 +26,24 @@ interface SearchBarProps {
   onFilterChange?: (filters: FilterOptions) => void;
   filters?: FilterOptions;
 }
+
+const ratingRanges: RatingRange[] = [
+  { min: 5, max: 5 },
+  { min: 4, max: 4.9 },
+  { min: 3, max: 3.9 },
+  { min: 2, max: 2.9 },
+  { min: 1, max: 1.9 },
+];
+
+const formatRangeLabel = (range: RatingRange): string => {
+  if (range.min === range.max) return `${range.min.toFixed(1)}`;
+  return `${range.min.toFixed(1)} – ${range.max.toFixed(1)}`;
+};
+
+const isRangeActive = (range: RatingRange, active: RatingRange | null | undefined): boolean =>
+  active !== null && active !== undefined &&
+  active.min === range.min &&
+  active.max === range.max;
 
 const SearchBar = ({
   searchIcon,
@@ -42,7 +65,7 @@ const SearchBar = ({
 
   const currentSearchIcon = isHovered && !searchIcon ? searchIconHover : (searchIcon || searchIconDefault);
   const currentFilterIcon = isHovered ? filterIconHover : filterIconDefault;
-  const isFilterActive = filters && (filters.minRating !== null || filters.sortBy !== 'default');
+  const isFilterActive = filters && (filters.ratingRange !== null || filters.sortBy !== 'default');
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -68,22 +91,22 @@ const SearchBar = ({
     setShowFilter(prev => !prev);
   };
 
-  const handleRatingFilter = (rating: number | null) => {
+  const handleRatingFilter = (range: RatingRange) => {
     onFilterChange?.({
-      minRating: filters?.minRating === rating ? null : rating,
+      ratingRange: isRangeActive(range, filters?.ratingRange) ? null : range,
       sortBy: filters?.sortBy ?? 'default',
     });
   };
 
   const handleSortBy = (sort: 'az' | 'za') => {
     onFilterChange?.({
-      minRating: filters?.minRating ?? null,
+      ratingRange: filters?.ratingRange ?? null,
       sortBy: filters?.sortBy === sort ? 'default' : sort,
     });
   };
 
   const handleClearFilters = () => {
-    onFilterChange?.({ minRating: null, sortBy: 'default' });
+    onFilterChange?.({ ratingRange: null, sortBy: 'default' });
     setShowFilter(false);
   };
 
@@ -108,40 +131,43 @@ const SearchBar = ({
       </div>
 
       <div className="p-4 flex flex-col gap-5">
-        {/* Min Rating */}
+        {/* Rating Range */}
         <div>
-          <p className="text-[10px] text-[#FBFAF8]/40 uppercase tracking-widest mb-3">Min Rating</p>
+          <p className="text-[10px] text-[#FBFAF8]/40 uppercase tracking-widest mb-3">Rating Range</p>
           <div className="flex flex-col gap-2">
-            {[5, 4, 3, 2, 1].map(rating => (
-              <button
-                key={rating}
-                onClick={() => handleRatingFilter(rating)}
-                className={`w-full py-2 px-3 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer border flex items-center justify-between group ${
-                  filters?.minRating === rating
-                    ? 'bg-[#FFE2A0]/10 border-[#FFE2A0] text-[#FFE2A0]'
-                    : 'bg-transparent border-zinc-700 hover:border-[#FFE2A0]/40 hover:bg-[#FFE2A0]/5'
-                }`}
-              >
-                <div className="flex gap-0.5">
-                  {[1, 2, 3, 4, 5].map(star => (
-                    <span
-                      key={star}
-                      className={`text-sm transition-all duration-100 ${
-                        star <= rating
-                          ? 'text-[#FFE2A0]'
-                          : 'text-zinc-600 group-hover:text-zinc-500'
-                      }`}
-                    >
-                      ★
-                    </span>
-                  ))}
-                </div>
-                <span className={`text-[10px] ${filters?.minRating === rating ? 'text-[#FFE2A0]' : 'text-[#FBFAF8]/40'}`}>
-                  {rating}+ & up
-                  {filters?.minRating === rating && ' ✓'}
-                </span>
-              </button>
-            ))}
+            {ratingRanges.map(range => {
+              const active = isRangeActive(range, filters?.ratingRange);
+              return (
+                <button
+                  key={`${range.min}-${range.max}`}
+                  onClick={() => handleRatingFilter(range)}
+                  className={`w-full py-2 px-3 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer border flex items-center justify-between group ${
+                    active
+                      ? 'bg-[#FFE2A0]/10 border-[#FFE2A0] text-[#FFE2A0]'
+                      : 'bg-transparent border-zinc-700 hover:border-[#FFE2A0]/40 hover:bg-[#FFE2A0]/5'
+                  }`}
+                >
+                  <div className="flex gap-0.5">
+                    {[1, 2, 3, 4, 5].map(star => (
+                      <span
+                        key={star}
+                        className={`text-sm transition-all duration-100 ${
+                          star <= range.min
+                            ? 'text-[#FFE2A0]'
+                            : 'text-zinc-600 group-hover:text-zinc-500'
+                        }`}
+                      >
+                        ★
+                      </span>
+                    ))}
+                  </div>
+                  <span className={`text-[10px] ${active ? 'text-[#FFE2A0]' : 'text-[#FBFAF8]/40'}`}>
+                    {formatRangeLabel(range)}
+                    {active && ' ✓'}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
 

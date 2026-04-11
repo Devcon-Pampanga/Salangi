@@ -17,7 +17,7 @@ function Savepage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [savedIds, setSavedIds]       = useState<number[]>([]);
   const [averageRatings, setAverageRatings] = useState<Record<number, number>>({});
-  const [filters, setFilters]         = useState<FilterOptions>({ minRating: null, sortBy: 'default' });
+  const [filters, setFilters]         = useState<FilterOptions>({ ratingRange: null, sortBy: 'default' });
 
   useEffect(() => {
     const fetchData = async () => {
@@ -60,12 +60,16 @@ function Savepage() {
       const isSaved = savedIds.includes(spot.id);
       const matchesCategory = activeCategory === CATEGORIES.ALL || spot.category === activeCategory;
       const matchesSearch = spot.name.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesRating = filters.minRating === null || (averageRatings[spot.id] ?? 0) >= filters.minRating;
+      const rating = averageRatings[spot.id] ?? 0;
+      const matchesRating = filters.ratingRange === null ||
+        (rating >= filters.ratingRange.min && rating <= filters.ratingRange.max);
       return isSaved && matchesCategory && matchesSearch && matchesRating;
     });
 
     if (filters.sortBy === 'az') {
       result = [...result].sort((a, b) => a.name.localeCompare(b.name));
+    } else if (filters.sortBy === 'za') {
+      result = [...result].sort((a, b) => b.name.localeCompare(a.name));
     }
 
     return result;

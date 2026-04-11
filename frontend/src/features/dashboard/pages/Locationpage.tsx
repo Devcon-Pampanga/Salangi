@@ -43,7 +43,7 @@ function Locationpage() {
   const [listings, setListings] = useState<Listing[]>([]);
   const [averageRatings, setAverageRatings] = useState<Record<number, number>>({});
   const [searchQuery, setSearchQuery] = useState('');
-  const [filters, setFilters] = useState<FilterOptions>({ minRating: null, sortBy: 'default' });
+  const [filters, setFilters] = useState<FilterOptions>({ ratingRange: null, sortBy: 'default' });
   const [selectedListing, setSelectedListing] = useState<Listing>(listing);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
@@ -59,7 +59,6 @@ function Locationpage() {
       .catch(console.error);
   }, []);
 
-  // Fetch user's saved listings
   useEffect(() => {
     const fetchSaves = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -75,7 +74,6 @@ function Locationpage() {
     fetchSaves();
   }, []);
 
-  // Fetch gallery images — listing's own image always first, then gallery images
   useEffect(() => {
     const fetchGalleryImages = async () => {
       const { data } = await supabase
@@ -93,7 +91,6 @@ function Locationpage() {
           ...galleryUrls,
         ]);
       } else {
-        // No gallery images, just use the listing's own images
         setGalleryImages(selectedListing.images ?? []);
       }
     };
@@ -196,9 +193,11 @@ function Locationpage() {
           item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
           item.location.toLowerCase().includes(searchQuery.toLowerCase())
         )
-        .filter((item: Listing) =>
-          filters.minRating === null || (averageRatings[item.id] ?? 0) >= filters.minRating
-        )
+        .filter((item: Listing) => {
+          const rating = averageRatings[item.id] ?? 0;
+          return filters.ratingRange === null ||
+            (rating >= filters.ratingRange.min && rating <= filters.ratingRange.max);
+        })
         .sort((a, b) => {
           if (filters.sortBy === 'az') return a.name.localeCompare(b.name);
           if (filters.sortBy === 'za') return b.name.localeCompare(a.name);
@@ -208,7 +207,7 @@ function Locationpage() {
 
   return (
     <div className="flex flex-col md:flex-row h-full w-full bg-[#1A1A1A] text-[#FBFAF8] overflow-hidden">
-      
+
       {/* Mobile-only Search Bar (above Map) */}
       <div className="md:hidden flex items-center gap-2 w-full px-4 py-4 shrink-0 order-1 border-b border-zinc-800/50 bg-[#1A1A1A] z-10">
         <button
@@ -229,7 +228,7 @@ function Locationpage() {
 
       {/* Main Left Column */}
       <div className="w-full md:w-125 flex-1 md:flex-none md:h-full overflow-y-auto md:border-r border-zinc-800 flex flex-col items-center px-4 py-4 md:px-6 md:py-6 scrollbar-hide order-3 md:order-1 min-h-0">
-        
+
         {/* Desktop-only Search bar */}
         <div className="hidden md:flex items-center gap-2 w-full mb-4 shrink-0">
           <button

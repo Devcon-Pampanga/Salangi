@@ -27,7 +27,7 @@ function Homepage() {
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
   const [savedIds, setSavedIds]               = useState<number[]>([]);
   const [averageRatings, setAverageRatings]   = useState<Record<number, number>>({});
-  const [filters, setFilters]                 = useState<FilterOptions>({ minRating: null, sortBy: 'default' });
+  const [filters, setFilters]                 = useState<FilterOptions>({ ratingRange: null, sortBy: 'default' });
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen]   = useState(false);
   const [isRedirecting, setIsRedirecting]     = useState(false);
@@ -58,11 +58,9 @@ function Homepage() {
       if (userListings && userListings.length > 0) {
         navigate(ROUTES.DASHBOARD_OVERVIEW);
       } else {
-        // If they are already a business role, go to the listing form
         if (role === 'business') {
           navigate(ROUTES.LIST_BUSINESS);
         } else {
-          // If they are a normal user, redirect to settings upgrade section
           navigate(`${location.pathname}?settings=upgrade`);
         }
       }
@@ -115,7 +113,9 @@ function Homepage() {
     let result = listings.filter((item: Listing) => {
       const matchesCategory = activeCategory === CATEGORIES.ALL || item.category === activeCategory;
       const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesRating = filters.minRating === null || (averageRatings[item.id] ?? 0) >= filters.minRating;
+      const rating = averageRatings[item.id] ?? 0;
+      const matchesRating = filters.ratingRange === null ||
+        (rating >= filters.ratingRange.min && rating <= filters.ratingRange.max);
       return matchesCategory && matchesSearch && matchesRating;
     });
 
@@ -158,7 +158,6 @@ function Homepage() {
           className="fixed inset-0 z-[9999] flex flex-col items-center justify-center gap-6"
           style={{ backgroundColor: '#1A1A1A' }}
         >
-          {/* Glow blob */}
           <div
             className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl opacity-30 pointer-events-none"
             style={{
@@ -167,13 +166,10 @@ function Homepage() {
               background: 'radial-gradient(circle, rgba(255,226,160,0.8) 0%, rgba(255,226,160,0.1) 60%, transparent 80%)',
             }}
           />
-
-          {/* Spinner ring */}
           <div className="relative w-16 h-16">
             <div className="absolute inset-0 rounded-full border-4 border-[#FFE2A0]/10" />
             <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-[#FFE2A0] animate-spin" />
           </div>
-
           <div className="text-center space-y-1 relative z-10">
             <p className="text-[#FFE2A0] font-semibold text-lg tracking-wide">Loading</p>
             <p className="text-[#FBFAF8]/40 text-sm">Taking you there...</p>
@@ -196,7 +192,7 @@ function Homepage() {
 
         {/* ── MOBILE TOP BAR & MENU ── */}
         <div className="md:hidden flex items-center justify-between w-full shrink-0 relative z-50 order-first">
-          <button 
+          <button
             onClick={() => setIsMobileMenuOpen(true)}
             className="p-2 -ml-2 text-[#FFE2A0] hover:bg-[#FFE2A0]/10 rounded-lg transition-colors cursor-pointer"
           >
@@ -209,14 +205,14 @@ function Homepage() {
           <div className="fixed inset-0 z-9999 bg-[#1A1A1A] p-6 flex flex-col gap-8 md:hidden">
             <div className="flex justify-between items-center shrink-0">
               <h2 className="text-[#FFE2A0] font-['Playfair_Display'] text-2xl">Menu</h2>
-              <button 
+              <button
                 onClick={() => setIsMobileMenuOpen(false)}
                 className="p-2 -mr-2 text-[#FBFAF8]/70 hover:text-[#FFE2A0] rounded-lg transition-colors cursor-pointer"
               >
                 <X size={28} />
               </button>
             </div>
-            
+
             <div className="flex flex-col gap-6 flex-1">
               <div className="flex flex-col gap-2">
                 <p className="text-[#FBFAF8]/50 text-xs font-semibold uppercase tracking-wider">Search Spots</p>
@@ -242,7 +238,7 @@ function Homepage() {
               >
                 List Your Business
               </button>
-              
+
               <button
                 onClick={() => {
                   setIsMobileMenuOpen(false);
@@ -282,9 +278,7 @@ function Homepage() {
             />
           </div>
 
-          <div
-            className="flex-none md:flex-1 md:overflow-y-auto flex flex-col gap-4 md:gap-6 pb-10 pr-1 md:pr-2 pl-1 pt-1 no-scrollbar"
-          >
+          <div className="flex-none md:flex-1 md:overflow-y-auto flex flex-col gap-4 md:gap-6 pb-10 pr-1 md:pr-2 pl-1 pt-1 no-scrollbar">
             {isLoading ? (
               <div className="flex flex-col items-center justify-center py-20 text-center">
                 <p className="text-[#FBFAF8]/50 text-sm animate-pulse">Loading listings...</p>
