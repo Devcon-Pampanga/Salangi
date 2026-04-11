@@ -110,7 +110,7 @@ function ImageCarousel({ images, onImageClick }: { images: string[]; onImageClic
   }
 
   return (
-    <div className="relative w-48 h-32 rounded-xl overflow-hidden shrink-0 group border border-zinc-800">
+    <div className="relative w-full sm:w-48 h-48 sm:h-32 rounded-xl overflow-hidden shrink-0 group border border-zinc-800">
       <img
         src={images[current]}
         alt="listing"
@@ -204,7 +204,7 @@ function ListingDetailModal({
         onClick={onClose}
       >
         <div
-          className="relative w-full max-w-2xl bg-[#2a2a2a] rounded-2xl border border-zinc-700/50 shadow-2xl flex flex-col max-h-[90vh] overflow-hidden"
+          className="relative w-full max-w-2xl bg-[#2a2a2a] rounded-2xl border border-zinc-700/50 shadow-2xl flex flex-col max-h-[96vh] sm:max-h-[90vh] overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Image hero */}
@@ -447,7 +447,7 @@ function EventDetailModal({
         onClick={onClose}
       >
         <div
-          className="relative w-full max-w-2xl bg-[#2a2a2a] rounded-2xl border border-zinc-700/50 shadow-2xl flex flex-col max-h-[90vh] overflow-hidden"
+          className="relative w-full max-w-2xl bg-[#2a2a2a] rounded-2xl border border-zinc-700/50 shadow-2xl flex flex-col max-h-[96vh] sm:max-h-[90vh] overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Image hero */}
@@ -651,10 +651,10 @@ function ListingCard({
   return (
     <>
       <div
-        className="bg-[#333333] border border-zinc-800/50 rounded-xl p-6 flex flex-col gap-5 hover:border-[#FFE2A0]/20 transition-colors cursor-pointer group"
+        className="bg-[#333333] border border-zinc-800/50 rounded-xl p-5 sm:p-6 flex flex-col gap-5 hover:border-[#FFE2A0]/20 transition-colors cursor-pointer group"
         onClick={() => setShowModal(true)}
       >
-        <div className="flex items-start gap-6">
+        <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-6">
           <div className="relative shrink-0">
             <ImageCarousel images={listing.images} onImageClick={(src) => { onImageClick(src); }} />
             <div className="absolute inset-0 rounded-xl bg-black/0 group-hover:bg-black/10 transition-all flex items-center justify-center pointer-events-none">
@@ -665,38 +665,38 @@ function ListingCard({
             </div>
           </div>
 
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-3 mb-2">
-              <h3 className="text-lg font-semibold text-[#FBFAF8] font-['Playfair_Display'] truncate">{listing.name}</h3>
-              <span className="text-[9px] font-bold uppercase tracking-widest text-[#FFE2A0] border border-[#FFE2A0]/20 bg-[#FFE2A0]/5 px-2 py-0.5 rounded shrink-0">
+          <div className="flex-1 min-w-0 text-left w-full">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 mb-2">
+              <h3 className="text-base sm:text-lg font-semibold text-[#FBFAF8] font-['Playfair_Display'] truncate w-full sm:w-auto">{listing.name}</h3>
+              <span className="w-fit text-[9px] font-bold uppercase tracking-widest text-[#FFE2A0] border border-[#FFE2A0]/20 bg-[#FFE2A0]/5 px-2 py-0.5 rounded shrink-0">
                 {listing.category}
               </span>
             </div>
-            <div className="flex items-center gap-1.5 text-[#FBFAF8]/50 text-xs mb-1">
+            <div className="flex items-center justify-start gap-1.5 text-[#FBFAF8]/50 text-xs mb-1">
               <MapPin size={12} /> {listing.location}
             </div>
             {listing.hours && (
-              <div className="flex items-center gap-1.5 text-[#FBFAF8]/50 text-xs mb-2">
+              <div className="flex items-center justify-start gap-1.5 text-[#FBFAF8]/50 text-xs mb-2">
                 <Clock size={12} /> {listing.hours}
               </div>
             )}
             {listing.phone && <p className="text-[#FBFAF8]/30 text-xs mb-1">📞 {listing.phone}</p>}
             {listing.facebook && <p className="text-[#FBFAF8]/30 text-xs mb-1 truncate">🌐 {listing.facebook}</p>}
-            <p className="text-[#FBFAF8]/50 text-sm line-clamp-2 mt-2 leading-relaxed">{listing.description}</p>
+            <p className="text-[#FBFAF8]/50 text-sm line-clamp-2 mt-2 leading-relaxed hidden sm:block">{listing.description}</p>
           </div>
 
-          <div className="flex flex-col gap-2 min-w-[130px]" onClick={(e) => e.stopPropagation()}>
+          <div className="flex flex-row sm:flex-col gap-2 w-full sm:min-w-[130px] sm:w-auto" onClick={(e) => e.stopPropagation()}>
             <button
               onClick={() => onApprove(listing.id)}
               disabled={actionLoading === listing.id}
-              className="flex items-center justify-center gap-2 bg-green-600/80 hover:bg-green-500 disabled:opacity-40 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all active:scale-95 border border-green-500/30 shadow-lg"
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-green-600/80 hover:bg-green-500 disabled:opacity-40 text-white text-[10px] sm:text-xs font-bold px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl transition-all active:scale-95 border border-green-500/30 shadow-lg"
             >
               <CheckCircle size={14} /> Approve
             </button>
             <button
               onClick={() => onReject(listing.id)}
               disabled={actionLoading === listing.id}
-              className="flex items-center justify-center gap-2 bg-red-700/80 hover:bg-red-600 disabled:opacity-40 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all active:scale-95 border border-red-600/30 shadow-lg"
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-red-700/80 hover:bg-red-600 disabled:opacity-40 text-white text-[10px] sm:text-xs font-bold px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl transition-all active:scale-95 border border-red-600/30 shadow-lg"
             >
               <XCircle size={14} /> Reject
             </button>
@@ -708,9 +708,9 @@ function ListingCard({
             <p className="text-[9px] font-bold uppercase tracking-widest text-[#FBFAF8]/30 mb-3">
               Verification Documents
             </p>
-            <div className="flex gap-4">
-              {listing.business_permit && <DocThumb src={listing.business_permit} label="Business Permit" onImageClick={onImageClick} />}
-              {listing.government_id && <DocThumb src={listing.government_id} label="Government ID" onImageClick={onImageClick} />}
+            <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+              {listing.business_permit && <DocThumb src={listing.business_permit} label="Permit" onImageClick={onImageClick} />}
+              {listing.government_id && <DocThumb src={listing.government_id} label="Gov ID" onImageClick={onImageClick} />}
               {listing.selfie_verification && <DocThumb src={listing.selfie_verification} label="Selfie" onImageClick={onImageClick} />}
             </div>
           </div>
@@ -753,13 +753,13 @@ function PendingEventCard({
   return (
     <>
       <div
-        className="bg-[#333333] border border-zinc-800/50 rounded-xl p-6 flex items-start gap-6 hover:border-[#FFE2A0]/20 transition-colors cursor-pointer group"
+        className="bg-[#333333] border border-zinc-800/50 rounded-xl p-5 sm:p-6 flex flex-col sm:flex-row items-start gap-4 sm:gap-6 hover:border-[#FFE2A0]/20 transition-colors cursor-pointer group"
         onClick={() => setShowModal(true)}
       >
         {/* Image */}
-        <div className="relative shrink-0">
+        <div className="relative shrink-0 w-full sm:w-auto">
           {event.image_url ? (
-            <div className="relative w-40 h-28 rounded-xl overflow-hidden border border-zinc-800">
+            <div className="relative w-full sm:w-40 h-48 sm:h-28 rounded-xl overflow-hidden border border-zinc-800">
               <img src={event.image_url} alt={event.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center">
                 <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 rounded-full px-3 py-1.5 flex items-center gap-1.5">
@@ -769,51 +769,51 @@ function PendingEventCard({
               </div>
             </div>
           ) : (
-            <div className="w-40 h-28 rounded-xl bg-[#2D2D2D] border border-zinc-800 flex items-center justify-center text-[#FBFAF8]/20">
+            <div className="w-full sm:w-40 h-48 sm:h-28 rounded-xl bg-[#2D2D2D] border border-zinc-800 flex items-center justify-center text-[#FBFAF8]/20">
               <CalendarDays size={28} />
             </div>
           )}
         </div>
 
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-3 mb-2">
-            <h3 className="text-base font-semibold text-[#FBFAF8] font-['Playfair_Display'] truncate">{event.title}</h3>
-            <span className="text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full shrink-0 font-medium">
+        <div className="flex-1 min-w-0 text-left w-full">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 mb-2">
+            <h3 className="text-base font-semibold text-[#FBFAF8] font-['Playfair_Display'] truncate w-full sm:w-auto">{event.title}</h3>
+            <span className="w-fit text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full shrink-0 font-medium">
               Pending Review
             </span>
           </div>
           {event.location && (
-            <div className="flex items-center gap-1.5 text-[#FBFAF8]/50 text-xs mb-1">
+            <div className="flex items-center justify-start gap-1.5 text-[#FBFAF8]/50 text-xs mb-1">
               <MapPin size={12} /> {event.location}
             </div>
           )}
           {event.time && (
-            <div className="flex items-center gap-1.5 text-[#FBFAF8]/50 text-xs mb-1">
+            <div className="flex items-center justify-start gap-1.5 text-[#FBFAF8]/50 text-xs mb-1">
               <Clock size={12} /> {event.time}
             </div>
           )}
           {event.date_range && (
-            <div className="flex items-center gap-1.5 text-[#FBFAF8]/50 text-xs mb-2">
+            <div className="flex items-center justify-start gap-1.5 text-[#FBFAF8]/50 text-xs mb-2">
               <CalendarDays size={12} /> {event.date_range}
             </div>
           )}
           {event.description && (
-            <p className="text-[#FBFAF8]/40 text-sm line-clamp-2 leading-relaxed">{event.description}</p>
+            <p className="text-[#FBFAF8]/40 text-sm line-clamp-2 leading-relaxed hidden sm:block">{event.description}</p>
           )}
         </div>
 
-        <div className="flex flex-col gap-2 min-w-[130px]" onClick={(e) => e.stopPropagation()}>
+        <div className="flex flex-row sm:flex-col gap-2 w-full sm:min-w-[130px] sm:w-auto" onClick={(e) => e.stopPropagation()}>
           <button
             onClick={() => onApprove(event.id)}
             disabled={actionLoading === event.id}
-            className="flex items-center justify-center gap-2 bg-green-600/80 hover:bg-green-500 disabled:opacity-40 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all active:scale-95 border border-green-500/30"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-green-600/80 hover:bg-green-500 disabled:opacity-40 text-white text-[10px] sm:text-xs font-bold px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl transition-all active:scale-95 border border-green-500/30"
           >
             <CheckCircle size={14} /> Approve
           </button>
           <button
             onClick={() => onReject(event.id)}
             disabled={actionLoading === event.id}
-            className="flex items-center justify-center gap-2 bg-red-700/80 hover:bg-red-600 disabled:opacity-40 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all active:scale-95 border border-red-600/30"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-red-700/80 hover:bg-red-600 disabled:opacity-40 text-white text-[10px] sm:text-xs font-bold px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl transition-all active:scale-95 border border-red-600/30"
           >
             <XCircle size={14} /> Reject
           </button>
@@ -912,40 +912,40 @@ function AdminDashboard() {
       {lightbox && <Lightbox src={lightbox} onClose={() => setLightbox(null)} />}
 
       {/* Header */}
-      <div className="bg-[#333333] border-b border-zinc-800/50 px-6 md:px-10 py-5 flex items-center justify-between sticky top-0 z-40 backdrop-blur-sm">
+      <div className="bg-[#333333] border-b border-zinc-800/50 px-5 sm:px-10 py-5 flex items-center justify-between sticky top-0 z-40 backdrop-blur-sm">
         <div>
-          <h1 className="font-['Playfair_Display'] text-2xl font-bold text-[#FFE2A0] tracking-wide">
+          <h1 className="font-['Playfair_Display'] text-xl sm:text-2xl font-bold text-[#FFE2A0] tracking-wide">
             Salangi Admin
           </h1>
-          <p className="text-[#FBFAF8]/40 text-xs mt-0.5">Listing & Event Approval Dashboard</p>
+          <p className="text-[#FBFAF8]/40 text-[10px] sm:text-xs mt-0.5">Approval Dashboard</p>
         </div>
         <button
           onClick={handleLogout}
-          className="flex items-center gap-2 text-[#FBFAF8]/50 hover:text-[#FFE2A0] transition-colors text-sm font-medium group"
+          className="flex items-center gap-2 text-[#FBFAF8]/50 hover:text-[#FFE2A0] transition-colors text-xs sm:text-sm font-medium group"
         >
           <LogOut size={16} className="group-hover:translate-x-0.5 transition-transform" />
-          Logout
+          <span className="hidden sm:inline">Logout</span>
         </button>
       </div>
 
       <div className="px-6 md:px-10 py-8">
 
         {/* Summary stat pills */}
-        <div className="flex gap-3 mb-8">
-          <div className="flex items-center gap-2 bg-[#333333] border border-zinc-800/50 rounded-xl px-4 py-3">
-            <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-            <span className="text-[#FBFAF8]/60 text-xs">Pending Listings</span>
-            <span className="text-[#FFE2A0] text-sm font-bold ml-1">{listings.length}</span>
+        <div className="flex flex-wrap gap-2 sm:gap-3 mb-6 sm:mb-8">
+          <div className="flex-1 flex items-center gap-2 bg-[#333333] border border-zinc-800/50 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 min-w-[140px]">
+            <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+            <span className="text-[#FBFAF8]/60 text-[10px] sm:text-xs">Listings</span>
+            <span className="text-[#FFE2A0] text-xs sm:text-sm font-bold ml-auto">{listings.length}</span>
           </div>
-          <div className="flex items-center gap-2 bg-[#333333] border border-zinc-800/50 rounded-xl px-4 py-3">
-            <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-            <span className="text-[#FBFAF8]/60 text-xs">Pending Events</span>
-            <span className="text-[#FFE2A0] text-sm font-bold ml-1">{events.length}</span>
+          <div className="flex-1 flex items-center gap-2 bg-[#333333] border border-zinc-800/50 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 min-w-[140px]">
+            <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+            <span className="text-[#FBFAF8]/60 text-[10px] sm:text-xs">Events</span>
+            <span className="text-[#FFE2A0] text-xs sm:text-sm font-bold ml-auto">{events.length}</span>
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-2 bg-[#3a3a3a] border border-[#4d4d4d] rounded-xl p-2 w-fit mb-8">
+        <div className="flex gap-1.5 sm:gap-2 bg-[#3a3a3a] border border-[#4d4d4d] rounded-xl p-1.5 sm:p-2 w-full sm:w-fit mb-8">
           {(['listings', 'events'] as const).map((tab) => {
             const count = tab === 'listings' ? listings.length : events.length;
             const isActive = activeTab === tab;
@@ -953,7 +953,7 @@ function AdminDashboard() {
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition-all capitalize ${
+                className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 sm:px-5 py-2 rounded-lg text-[13px] sm:text-sm font-semibold transition-all capitalize ${
                   isActive
                     ? 'bg-[#FFE2A0] text-[#1a1a1a] shadow-md scale-[1.02]'
                     : 'text-[#FBFAF8]/60 hover:text-white hover:bg-white/5'
@@ -961,7 +961,7 @@ function AdminDashboard() {
               >
                 {tab}
                 {count > 0 && (
-                  <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${
+                  <span className={`text-[10px] sm:text-xs font-bold px-1.5 py-0.5 rounded-full ${
                     isActive ? 'bg-[#1a1a1a]/20 text-[#1a1a1a]' : 'bg-[#FFE2A0]/20 text-[#FFE2A0]'
                   }`}>
                     {count}

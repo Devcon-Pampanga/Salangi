@@ -119,7 +119,7 @@ function AppRoutes() {
           <ProtectedRoute
             session={session}
             role={role}
-            redirectPath={ROUTES.BUSINESS_SIGNIN}
+            redirectPath={ROUTES.SIGN_IN}
             requireBusiness
           >
             <Dashboard />
