@@ -1,13 +1,16 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, User, Check, AlertCircle, Loader2, Camera, Eye, EyeOff, Trash2, ShieldAlert } from 'lucide-react';
+import { X, User, Check, AlertCircle, Loader2, Camera, Eye, EyeOff, Trash2, ShieldAlert, Briefcase } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { updateProfile, changePassword, deleteAccount } from '@/services/api';
+import { updateProfile, changePassword, deleteAccount, upgradeToBusinessAccount } from '@/services/api';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/context/AuthContext';
 
 interface SettingsPageProps {
   onClose: () => void;
 }
+
+// ─── Toast ────────────────────────────────────────────────────────────────────
 
 function Toast({ message, type }: { message: string; type: 'success' | 'error' }) {
   return createPortal(
@@ -21,6 +24,8 @@ function Toast({ message, type }: { message: string; type: 'success' | 'error' }
   );
 }
 
+// ─── Section Title ────────────────────────────────────────────────────────────
+
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
     <h3 className="text-[10px] font-bold mb-5 uppercase tracking-[0.15em] text-zinc-500">
@@ -28,6 +33,8 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
     </h3>
   );
 }
+
+// ─── Input Field ──────────────────────────────────────────────────────────────
 
 function InputField({
   label, type = 'text', value, onChange, placeholder, rightElement,
@@ -52,33 +59,43 @@ function InputField({
   );
 }
 
+// ─── Settings Page ────────────────────────────────────────────────────────────
+
 const SettingsPage = ({ onClose }: SettingsPageProps) => {
-  const navigate = useNavigate();
+  const navigate  = useNavigate();
+
+  // Pull role + setRole from AuthContext — no need to re-fetch
+  const { role: contextRole, setRole: setContextRole } = useAuth();
 
   const getStoredUser = () => JSON.parse(localStorage.getItem('user') ?? '{}');
-  const storedUser = getStoredUser();
+  const storedUser    = getStoredUser();
 
   const [firstName,  setFirstName]  = useState<string>(storedUser.first_name ?? '');
   const [lastName,   setLastName]   = useState<string>(storedUser.last_name  ?? '');
   const [email,      setEmail]      = useState<string>(storedUser.email      ?? '');
   const [avatarUrl,  setAvatarUrl]  = useState<string | null>(storedUser.profile_pic ?? storedUser.avatar_url ?? null);
 
+  // currentRole is derived from AuthContext, not a separate useState
+  const currentRole = contextRole;
+
   const [newPassword,     setNewPassword]     = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showNewPw,       setShowNewPw]       = useState(false);
   const [showConfirmPw,   setShowConfirmPw]   = useState(false);
 
-  const [saving,          setSaving]          = useState(false);
-  const [uploadingAvatar, setUploadingAvatar] = useState(false);
-  const [changingPw,      setChangingPw]      = useState(false);
-  const [deletingAcc,     setDeletingAcc]     = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [deleteInput,     setDeleteInput]     = useState('');
+  const [saving,             setSaving]             = useState(false);
+  const [uploadingAvatar,    setUploadingAvatar]    = useState(false);
+  const [changingPw,         setChangingPw]         = useState(false);
+  const [deletingAcc,        setDeletingAcc]        = useState(false);
+  const [upgradingRole,      setUpgradingRole]      = useState(false);
+  const [showUpgradeConfirm, setShowUpgradeConfirm] = useState(false);
+  const [showDeleteConfirm,  setShowDeleteConfirm]  = useState(false);
+  const [deleteInput,        setDeleteInput]        = useState('');
 
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
-  // ── Fetch fresh profile from Supabase on mount ───────────────────────────
+  // ── Fetch fresh profile from Supabase on mount ─────────────────────────────
   useEffect(() => {
     const fetchProfile = async () => {
       const { data: sessionData } = await supabase.auth.getSession();
@@ -100,7 +117,6 @@ const SettingsPage = ({ onClose }: SettingsPageProps) => {
         setEmail(userData.email ?? '');
         setAvatarUrl(userData.profile_pic ?? null);
 
-        // Keep localStorage in sync
         const current = getStoredUser();
         localStorage.setItem('user', JSON.stringify({
           ...current,
@@ -111,6 +127,7 @@ const SettingsPage = ({ onClose }: SettingsPageProps) => {
           avatar_url:  userData.profile_pic,
         }));
       }
+      // Note: role is no longer fetched here — it comes from AuthContext
     };
     fetchProfile();
   }, []);
@@ -130,7 +147,7 @@ const SettingsPage = ({ onClose }: SettingsPageProps) => {
     }
   };
 
-  // ── Save profile info ────────────────────────────────────────────────────
+  // ── Save profile info ──────────────────────────────────────────────────────
   const handleSaveInfo = async () => {
     if (!firstName.trim() || !lastName.trim() || !email.trim()) {
       showToast('All fields are required.', 'error'); return;
@@ -139,8 +156,8 @@ const SettingsPage = ({ onClose }: SettingsPageProps) => {
     try {
       const result = await updateProfile({
         first_name: firstName.trim(),
-        last_name: lastName.trim(),
-        email: email.trim(),
+        last_name:  lastName.trim(),
+        email:      email.trim(),
       });
       const current = getStoredUser();
       localStorage.setItem('user', JSON.stringify({
@@ -157,7 +174,7 @@ const SettingsPage = ({ onClose }: SettingsPageProps) => {
     }
   };
 
-  // ── Upload avatar ────────────────────────────────────────────────────────
+  // ── Upload avatar ──────────────────────────────────────────────────────────
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -203,7 +220,7 @@ const SettingsPage = ({ onClose }: SettingsPageProps) => {
     }
   };
 
-  // ── Change password ──────────────────────────────────────────────────────
+  // ── Change password ────────────────────────────────────────────────────────
   const handleChangePassword = async () => {
     if (!newPassword || !confirmPassword) {
       showToast('Please fill in both password fields.', 'error'); return;
@@ -227,7 +244,44 @@ const SettingsPage = ({ onClose }: SettingsPageProps) => {
     }
   };
 
-  // ── Delete account ───────────────────────────────────────────────────────
+  // ── Upgrade to business ────────────────────────────────────────────────────
+  const handleUpgradeToBusiness = async () => {
+    setUpgradingRole(true);
+    try {
+      // 1. Call API to update the role
+      await upgradeToBusinessAccount();
+
+      // 2. Verify the DB write committed before trusting it
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userId = sessionData.session?.user?.id;
+      if (!userId) throw new Error('Session expired.');
+
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', userId)
+        .single();
+
+      if (profileError) throw new Error('Could not verify upgrade. Please try again.');
+      if (profile?.role !== 'business') throw new Error('Role upgrade did not apply. Please try again.');
+
+      // 3. Update global AuthContext role immediately — no refetch needed
+      setContextRole('business');
+
+      setShowUpgradeConfirm(false);
+      showToast('Account upgraded to business!', 'success');
+
+      // 4. Short delay to let the toast show, then navigate
+      setTimeout(() => navigate('/dashboard/overview', { replace: true }), 1500);
+
+    } catch (err: any) {
+      handleError(err, 'Failed to upgrade account.');
+    } finally {
+      setUpgradingRole(false);
+    }
+  };
+
+  // ── Delete account ─────────────────────────────────────────────────────────
   const handleDeleteAccount = async () => {
     if (deleteInput !== 'DELETE') { showToast('Type DELETE to confirm.', 'error'); return; }
     setDeletingAcc(true);
@@ -243,18 +297,25 @@ const SettingsPage = ({ onClose }: SettingsPageProps) => {
     }
   };
 
+  // ── Render ─────────────────────────────────────────────────────────────────
+
   return (
     <>
       <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 md:p-10 bg-black/70 backdrop-blur-sm cursor-default animate-in fade-in duration-200">
         <div className="flex flex-col w-full max-w-2xl h-[90vh] md:h-[85vh] md:max-h-[700px] bg-[#222222] rounded-2xl md:rounded-3xl overflow-hidden shadow-2xl border border-zinc-800 animate-in zoom-in-95 duration-200 relative">
-          
-          <button onClick={onClose} className="absolute top-4 right-4 md:top-5 md:right-5 w-9 h-9 flex items-center justify-center bg-zinc-800/50 hover:bg-zinc-700 rounded-full transition-colors cursor-pointer z-50" aria-label="Close settings">
+
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 md:top-5 md:right-5 w-9 h-9 flex items-center justify-center bg-zinc-800/50 hover:bg-zinc-700 rounded-full transition-colors cursor-pointer z-50"
+            aria-label="Close settings"
+          >
             <X size={16} className="text-zinc-300" />
           </button>
 
           <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
             <div className="p-8 md:p-10 w-full pt-12 md:pt-10">
-              
+
+              {/* Header */}
               <div className="mb-10">
                 <h2 className="text-[#FFE2A0] font-['Playfair_Display'] text-3xl">Account Settings</h2>
                 <p className="text-zinc-500 text-sm mt-1">Manage your account information and preferences.</p>
@@ -349,6 +410,59 @@ const SettingsPage = ({ onClose }: SettingsPageProps) => {
                 </button>
               </div>
 
+              {/* Upgrade to Business — only shown if role is 'user' */}
+              {currentRole === 'user' && (
+                <div className="mb-10">
+                  <SectionTitle>Business Account</SectionTitle>
+                  {!showUpgradeConfirm ? (
+                    <div className="flex items-center justify-between p-4 bg-[#FFE2A0]/5 border border-[#FFE2A0]/20 rounded-2xl gap-4">
+                      <div>
+                        <p className="text-sm font-semibold text-zinc-300 flex items-center gap-1.5">
+                          <Briefcase size={14} className="text-[#FFE2A0]" /> Upgrade to Business
+                        </p>
+                        <p className="text-xs text-zinc-500 mt-1">
+                          List your business and access the business dashboard.
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => setShowUpgradeConfirm(true)}
+                        className="shrink-0 px-4 py-2 border border-[#FFE2A0]/40 text-[#FFE2A0] text-xs font-semibold rounded-xl hover:bg-[#FFE2A0] hover:text-[#1A1A1A] transition-all cursor-pointer"
+                      >
+                        Upgrade
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-3 p-5 bg-[#FFE2A0]/5 rounded-2xl border border-[#FFE2A0]/20">
+                      <div className="flex items-center gap-2">
+                        <Briefcase size={16} className="text-[#FFE2A0] shrink-0" />
+                        <p className="text-sm font-bold text-[#FFE2A0]">Confirm upgrade to business</p>
+                      </div>
+                      <p className="text-xs text-zinc-400 leading-relaxed">
+                        Your account will be upgraded to a business account. You'll gain access to the business dashboard and can list your business on Salangi.
+                      </p>
+                      <div className="flex gap-2 mt-1">
+                        <button
+                          onClick={() => setShowUpgradeConfirm(false)}
+                          className="flex-1 py-2.5 text-sm font-semibold rounded-xl bg-zinc-800 text-zinc-300 hover:bg-zinc-700 transition-all cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={handleUpgradeToBusiness}
+                          disabled={upgradingRole}
+                          className="flex-1 py-2.5 text-sm font-semibold rounded-xl bg-[#FFE2A0] text-[#1A1A1A] hover:bg-[#f5d880] disabled:opacity-40 transition-all cursor-pointer"
+                        >
+                          {upgradingRole
+                            ? <span className="flex items-center justify-center gap-2"><Loader2 size={14} className="animate-spin" /> Upgrading…</span>
+                            : 'Confirm Upgrade'
+                          }
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Manage Account */}
               <div className="mb-6">
                 <SectionTitle>Manage Account</SectionTitle>
@@ -360,7 +474,10 @@ const SettingsPage = ({ onClose }: SettingsPageProps) => {
                       </p>
                       <p className="text-xs text-zinc-500 mt-1">Permanent and cannot be undone.</p>
                     </div>
-                    <button onClick={() => setShowDeleteConfirm(true)} className="shrink-0 px-4 py-2 border border-red-800/60 text-red-400 text-xs font-semibold rounded-xl hover:bg-red-600 hover:text-white hover:border-red-600 transition-all cursor-pointer">
+                    <button
+                      onClick={() => setShowDeleteConfirm(true)}
+                      className="shrink-0 px-4 py-2 border border-red-800/60 text-red-400 text-xs font-semibold rounded-xl hover:bg-red-600 hover:text-white hover:border-red-600 transition-all cursor-pointer"
+                    >
                       Delete
                     </button>
                   </div>
@@ -379,11 +496,21 @@ const SettingsPage = ({ onClose }: SettingsPageProps) => {
                       className="w-full bg-[#1C1C1C] border border-red-900/50 focus:border-red-500 text-sm text-white rounded-xl px-4 py-2.5 outline-none placeholder-zinc-600 transition-all"
                     />
                     <div className="flex gap-2 mt-1">
-                      <button onClick={() => { setShowDeleteConfirm(false); setDeleteInput(''); }} className="flex-1 py-2.5 text-sm font-semibold rounded-xl bg-zinc-800 text-zinc-300 hover:bg-zinc-700 transition-all cursor-pointer">
+                      <button
+                        onClick={() => { setShowDeleteConfirm(false); setDeleteInput(''); }}
+                        className="flex-1 py-2.5 text-sm font-semibold rounded-xl bg-zinc-800 text-zinc-300 hover:bg-zinc-700 transition-all cursor-pointer"
+                      >
                         Cancel
                       </button>
-                      <button onClick={handleDeleteAccount} disabled={deletingAcc || deleteInput !== 'DELETE'} className="flex-1 py-2.5 text-sm font-semibold rounded-xl bg-red-600 text-white hover:bg-red-500 disabled:opacity-40 transition-all cursor-pointer">
-                        {deletingAcc ? <span className="flex items-center justify-center gap-2"><Loader2 size={14} className="animate-spin" /> Deleting…</span> : 'Confirm Delete'}
+                      <button
+                        onClick={handleDeleteAccount}
+                        disabled={deletingAcc || deleteInput !== 'DELETE'}
+                        className="flex-1 py-2.5 text-sm font-semibold rounded-xl bg-red-600 text-white hover:bg-red-500 disabled:opacity-40 transition-all cursor-pointer"
+                      >
+                        {deletingAcc
+                          ? <span className="flex items-center justify-center gap-2"><Loader2 size={14} className="animate-spin" /> Deleting…</span>
+                          : 'Confirm Delete'
+                        }
                       </button>
                     </div>
                   </div>

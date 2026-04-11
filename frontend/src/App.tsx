@@ -3,6 +3,7 @@ import { supabase } from './lib/supabase'
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
 import { ROUTES } from './routes/paths';
+import { AuthProvider, useAuth } from './context/AuthContext';
 
 // Auth & Protected Components
 import ProtectedRoute from './routes/ProtectedRoute';
@@ -34,9 +35,12 @@ import BusinessSignin from './features/auth/pages/BusinessSignin'
 import HeroListBusiness from './features/dashboard/pages/HeroListBusiness'
 import ListBusiness from './features/business-side/components/ListBusiness'
 import EmailConfirmed from './features/auth/pages/EmailConfirmed'
+import UpgradeToBusinessPage from './features/business-side/pages/UpgradeToBusinessPage'
 
 // Feature Components - Admin Side
 import AdminDashboard from './features/admin/pages/AdminDashboard'
+
+// ─── Auth Callback ────────────────────────────────────────────────────────────
 
 function AuthCallback() {
   const navigate = useNavigate()
@@ -48,6 +52,8 @@ function AuthCallback() {
   }, [navigate]);
   return <div className="min-h-screen bg-[#111111] flex items-center justify-center text-white">Loading...</div>
 }
+
+// ─── Admin redirect helper ────────────────────────────────────────────────────
 
 function AdminRedirectOrHome({ session }: { session: Session }) {
   const [target, setTarget] = useState<string | null>(null);
@@ -67,22 +73,10 @@ function AdminRedirectOrHome({ session }: { session: Session }) {
   return <Navigate to={target} replace />;
 }
 
-function App() {
-  const [session, setSession] = useState<Session | null>(null)
-  const [loading, setLoading] = useState(true)
+// ─── Inner app — has access to AuthContext ────────────────────────────────────
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setLoading(false);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => setSession(session)
-    );
-
-    return () => subscription.unsubscribe();
-  }, []);
+function AppRoutes() {
+  const { session, role, loading } = useAuth();
 
   if (loading) {
     return (
@@ -93,67 +87,85 @@ function App() {
   }
 
   return (
+    <Routes>
+      <Route path="/auth/callback" element={<AuthCallback />} />
+
+      {/* Email confirmation — public */}
+      <Route path="/email-confirmed" element={<EmailConfirmed />} />
+
+      {/* Auth routes — redirect if already logged in */}
+      <Route path="/sign-up" element={session ? <AdminRedirectOrHome session={session} /> : <Register />} />
+      <Route path={ROUTES.SIGN_IN} element={session ? <AdminRedirectOrHome session={session} /> : <Signin />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
+
+      {/* Upgrade to business — public but needs session inside */}
+      <Route path={ROUTES.UPGRADE_TO_BUSINESS} element={<UpgradeToBusinessPage />} />
+
+      {/* Admin routes */}
+      <Route path={ROUTES.ADMIN} element={<Navigate to={ROUTES.SIGN_IN} replace />} />
+      <Route path={ROUTES.ADMIN_DASHBOARD} element={<AdminDashboard />} />
+
+      {/* Business Side Public Routes */}
+      <Route path={ROUTES.LIST_YOUR_BUSINESS} element={<HeroListBusiness />} />
+      <Route path={ROUTES.BUSINESS_REGISTER} element={<BusinessRegister />} />
+      <Route path={ROUTES.BUSINESS_SIGNIN} element={<BusinessSignin />} />
+      <Route path={ROUTES.LIST_BUSINESS} element={<ListBusiness />} />
+
+      {/* Business Side Dashboard — requires business role */}
+      <Route
+        path={ROUTES.DASHBOARD}
+        element={
+          <ProtectedRoute
+            session={session}
+            role={role}
+            redirectPath={ROUTES.BUSINESS_SIGNIN}
+            requireBusiness
+          >
+            <Dashboard />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<Navigate to={ROUTES.DASHBOARD_OVERVIEW} replace />} />
+        <Route path={ROUTES.DASHBOARD_REL.OVERVIEW}     element={<Overview />}    />
+        <Route path={ROUTES.DASHBOARD_REL.MY_BUSINESS}  element={<MyBusiness />}  />
+        <Route path={ROUTES.DASHBOARD_REL.EVENTS}       element={<Events />}      />
+        <Route path={ROUTES.DASHBOARD_REL.REVIEWS}      element={<Reviews />}     />
+        <Route path={ROUTES.DASHBOARD_REL.ANALYTICS}    element={<Analytics />}   />
+        <Route path={ROUTES.DASHBOARD_REL.GALLERY}      element={<Gallery />}     />
+        <Route path={ROUTES.DASHBOARD_REL.SETTINGS}     element={<Settings />}    />
+      </Route>
+
+      {/* Main Application Layout */}
+      <Route
+        path="/"
+        element={
+          <ProtectedRoute session={session} role={role} redirectPath={ROUTES.SIGN_IN}>
+            <Navigator />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<Navigate to={ROUTES.HOME} replace />} />
+        <Route path={ROUTES.HOME}        element={<Homepage />}    />
+        <Route path={ROUTES.EVENTS_PAGE} element={<EventsPage />}  />
+        <Route path={ROUTES.LOCATION}    element={<Locationpage />}/>
+        <Route path={ROUTES.SAVE}        element={<Savepage />}    />
+        <Route path={ROUTES.MAP}         element={<MapView />}     />
+      </Route>
+
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+}
+
+// ─── Root App — wraps everything in AuthProvider ──────────────────────────────
+
+function App() {
+  return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/auth/callback" element={<AuthCallback />} />
-
-        {/* Email confirmation — must be public and BEFORE the wildcard */}
-        <Route path="/email-confirmed" element={<EmailConfirmed />} />
-
-        {/* If already logged in, redirect based on admin status; otherwise show page */}
-        <Route path="/sign-up" element={session ? <AdminRedirectOrHome session={session} /> : <Register />} />
-        <Route path={ROUTES.SIGN_IN} element={session ? <AdminRedirectOrHome session={session} /> : <Signin />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
-
-        {/* Admin routes — /admin redirects to sign-in; Signin handles admin redirect */}
-        <Route path={ROUTES.ADMIN} element={<Navigate to={ROUTES.SIGN_IN} replace />} />
-        <Route path={ROUTES.ADMIN_DASHBOARD} element={<AdminDashboard />} />
-
-        {/* Business Side Public Routes */}
-        <Route path={ROUTES.LIST_YOUR_BUSINESS} element={<HeroListBusiness />} />
-        <Route path={ROUTES.BUSINESS_REGISTER} element={<BusinessRegister />} />
-        <Route path={ROUTES.BUSINESS_SIGNIN} element={<BusinessSignin />} />
-        <Route path={ROUTES.LIST_BUSINESS} element={<ListBusiness />} />
-
-        {/* Business Side Dashboard */}
-        <Route
-          path={ROUTES.DASHBOARD}
-          element={
-            <ProtectedRoute session={session} redirectPath={ROUTES.BUSINESS_SIGNIN} requireBusiness>
-              <Dashboard />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<Navigate to={ROUTES.DASHBOARD_OVERVIEW} replace />} />
-          <Route path={ROUTES.DASHBOARD_REL.OVERVIEW} element={<Overview />} />
-          <Route path={ROUTES.DASHBOARD_REL.MY_BUSINESS} element={<MyBusiness />} />
-          <Route path={ROUTES.DASHBOARD_REL.EVENTS} element={<Events />} />
-          <Route path={ROUTES.DASHBOARD_REL.REVIEWS} element={<Reviews />} />
-          <Route path={ROUTES.DASHBOARD_REL.ANALYTICS} element={<Analytics />} />
-          <Route path={ROUTES.DASHBOARD_REL.GALLERY} element={<Gallery />} />
-          <Route path={ROUTES.DASHBOARD_REL.SETTINGS} element={<Settings />} />
-        </Route>
-
-        {/* Protected routes / Main Application Layout */}
-        <Route
-          path="/"
-          element={
-            <ProtectedRoute session={session} redirectPath={ROUTES.SIGN_IN}>
-              <Navigator />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<Navigate to={ROUTES.HOME} replace />} />
-          <Route path={ROUTES.HOME} element={<Homepage />} />
-          <Route path={ROUTES.EVENTS_PAGE} element={<EventsPage />} />
-          <Route path={ROUTES.LOCATION} element={<Locationpage />} />
-          <Route path={ROUTES.SAVE} element={<Savepage />} />
-          <Route path={ROUTES.MAP} element={<MapView />} />
-        </Route>
-
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <AuthProvider>
+        <AppRoutes />
+      </AuthProvider>
     </BrowserRouter>
   );
 }
