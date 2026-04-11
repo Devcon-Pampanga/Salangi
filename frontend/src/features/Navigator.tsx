@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { Settings, LogOut } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import SettingsPage from './settings/pages/SettingsPage';
@@ -58,8 +58,33 @@ const NavItem = ({ to, defaultIcon, activeIcon, alt, isEnd = false }: NavItemPro
 
 export function Navigator() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [scrollTo, setScrollTo] = useState<'upgrade' | null>(null);
+
+  // Check for search params to open settings
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const settingsParam = params.get('settings');
+    if (settingsParam === 'upgrade') {
+      setIsSettingsOpen(true);
+      setScrollTo('upgrade');
+    }
+  }, [location.search]);
+
+  // Function to handle closing settings and clearing query params
+  const handleCloseSettings = () => {
+    setIsSettingsOpen(false);
+    setScrollTo(null);
+    if (location.search.includes('settings=')) {
+      const params = new URLSearchParams(location.search);
+      params.delete('settings');
+      const newSearch = params.toString();
+      navigate(`${location.pathname}${newSearch ? `?${newSearch}` : ''}`, { replace: true });
+    }
+    refreshUser();
+  };
   const menuRef = useRef<HTMLDivElement>(null);
   const [displayName, setDisplayName] = useState({
     firstName: '',
@@ -214,10 +239,8 @@ export function Navigator() {
 
       {isSettingsOpen && createPortal(
         <SettingsPage
-          onClose={() => {
-            setIsSettingsOpen(false);
-            refreshUser();
-          }}
+          onClose={handleCloseSettings}
+          scrollTo={scrollTo}
         />,
         document.body
       )}

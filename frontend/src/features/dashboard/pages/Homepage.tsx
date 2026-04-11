@@ -1,7 +1,8 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { ROUTES } from '../../../routes/paths';
+import { useAuth } from '@/context/AuthContext';
 import BusinessCard from '../components/BusinessCard';
 import MapView from '../../../map/MapView';
 import SearchBar from '../components/SearchBar';
@@ -16,6 +17,8 @@ import SettingsPage from '../../settings/pages/SettingsPage';
 
 function Homepage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { role } = useAuth();
 
   const [listings, setListings]               = useState<Listing[]>([]);
   const [isLoading, setIsLoading]             = useState(true);
@@ -55,9 +58,17 @@ function Homepage() {
       if (userListings && userListings.length > 0) {
         navigate(ROUTES.DASHBOARD_OVERVIEW);
       } else {
-        navigate(ROUTES.LIST_YOUR_BUSINESS);
+        // If they are already a business role, go to the listing form
+        if (role === 'business') {
+          navigate(ROUTES.LIST_BUSINESS);
+        } else {
+          // If they are a normal user, redirect to settings upgrade section
+          navigate(`${location.pathname}?settings=upgrade`);
+        }
       }
     } catch {
+      setIsRedirecting(false);
+    } finally {
       setIsRedirecting(false);
     }
   };
