@@ -62,10 +62,12 @@ function InputField({
 // ─── Settings Page ────────────────────────────────────────────────────────────
 
 const SettingsPage = ({ onClose }: SettingsPageProps) => {
-  const navigate  = useNavigate();
+  const navigate = useNavigate();
 
-  // Pull role + setRole from AuthContext — no need to re-fetch
-  const { role: contextRole, setRole: setContextRole } = useAuth();
+  // Pull role + refreshRole from AuthContext
+  // refreshRole re-fetches from DB — safer than manually calling setRole,
+  // because it wins the race against onAuthStateChange re-fetching stale data.
+  const { role: contextRole, refreshRole } = useAuth();
 
   const getStoredUser = () => JSON.parse(localStorage.getItem('user') ?? '{}');
   const storedUser    = getStoredUser();
@@ -75,7 +77,6 @@ const SettingsPage = ({ onClose }: SettingsPageProps) => {
   const [email,      setEmail]      = useState<string>(storedUser.email      ?? '');
   const [avatarUrl,  setAvatarUrl]  = useState<string | null>(storedUser.profile_pic ?? storedUser.avatar_url ?? null);
 
-  // currentRole is derived from AuthContext, not a separate useState
   const currentRole = contextRole;
 
   const [newPassword,     setNewPassword]     = useState('');
@@ -127,7 +128,7 @@ const SettingsPage = ({ onClose }: SettingsPageProps) => {
           avatar_url:  userData.profile_pic,
         }));
       }
-      // Note: role is no longer fetched here — it comes from AuthContext
+      // Note: role is not fetched here — it lives in AuthContext
     };
     fetchProfile();
   }, []);
@@ -248,10 +249,17 @@ const SettingsPage = ({ onClose }: SettingsPageProps) => {
   const handleUpgradeToBusiness = async () => {
     setUpgradingRole(true);
     try {
-      // 1. Call API to update the role
+      // 1. Tell FastAPI backend to update the role in DB
       await upgradeToBusinessAccount();
 
-      // 2. Verify the DB write committed before trusting it
+      // 2. Re-fetch role from DB into AuthContext.
+      //    This is the fix: instead of manually calling setRole('business'),
+      //    we let refreshRole() read the DB and set the context. This way,
+      //    if onAuthStateChange fires concurrently and calls fetchRole() too,
+      //    both reads return 'business' and there's no race condition.
+      await refreshRole();
+
+      // 3. Verify the DB write actually committed (guards against silent failures)
       const { data: sessionData } = await supabase.auth.getSession();
       const userId = sessionData.session?.user?.id;
       if (!userId) throw new Error('Session expired.');
@@ -265,13 +273,10 @@ const SettingsPage = ({ onClose }: SettingsPageProps) => {
       if (profileError) throw new Error('Could not verify upgrade. Please try again.');
       if (profile?.role !== 'business') throw new Error('Role upgrade did not apply. Please try again.');
 
-      // 3. Update global AuthContext role immediately — no refetch needed
-      setContextRole('business');
-
       setShowUpgradeConfirm(false);
       showToast('Account upgraded to business!', 'success');
 
-      // 4. Short delay to let the toast show, then navigate
+      // 4. Short delay so the toast is visible, then navigate
       setTimeout(() => navigate('/dashboard/overview', { replace: true }), 1500);
 
     } catch (err: any) {
