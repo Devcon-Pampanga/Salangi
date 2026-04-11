@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Image as ImageIcon } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import locBtnSelected from '@assets/icons/map-btn-active.svg';
-import locBtn from '@assets/icons/map-btn-default.svg';
+import locBtn from '@assets/icons/direction-btn.svg';
 import verifiedIcon from '@assets/icons/verified-btn.svg';
 import heartInactive from '@assets/icons/save-btn-inactive.svg';
 import heartActive from '@assets/icons/save-btn-active.svg';
@@ -115,11 +115,14 @@ function DetailedBusinessCard({
   onReviewAdded,
 }: DetailedBusinessCardProps) {
   const [isSaved, setIsSaved] = useState(initialSaved);
+  const allImages = (images ?? []).filter(Boolean);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAddingReview, setIsAddingReview] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
   const [reviewError, setReviewError] = useState<string | null>(null);
+
+  const hasImages = allImages.length > 0;
 
   useEffect(() => {
     supabase.from('listing_interactions').insert({
@@ -213,12 +216,22 @@ function DetailedBusinessCard({
 
         {/* Image Carousel */}
         <div className="relative w-full h-72 overflow-hidden bg-zinc-800 group">
-          <img
-            src={images[currentIndex]}
-            className="w-full h-full object-cover transition-all duration-500 group-hover:scale-105"
-            alt={`${title} - ${currentIndex + 1}`}
-          />
-          {images.length > 1 && (
+          {hasImages ? (
+            <img
+              src={allImages[currentIndex]}
+              className="w-full h-full object-cover transition-all duration-500 group-hover:scale-105"
+              alt={`${title} - ${currentIndex + 1}`}
+            />
+          ) : (
+            <div className="w-full h-full flex flex-col items-center justify-center gap-3 bg-[#2a2a2a] text-[#FBFAF8]/20">
+              <ImageIcon size={56} strokeWidth={1} />
+              <div className="text-center px-6">
+                <p className="text-[11px] uppercase tracking-[0.2em] font-bold mb-1">No Photos Found</p>
+                <p className="text-[10px] text-[#FBFAF8]/10 line-clamp-1">{title}</p>
+              </div>
+            </div>
+          )}
+          {hasImages && allImages.length > 1 && (
             <>
               <button
                 onClick={prevImage}
@@ -234,9 +247,9 @@ function DetailedBusinessCard({
               </button>
             </>
           )}
-          {images.length > 1 && (
+          {hasImages && allImages.length > 1 && (
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
-              {images.map((_, idx) => (
+              {allImages.map((_, idx) => (
                 <div
                   key={idx}
                   className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
@@ -246,9 +259,9 @@ function DetailedBusinessCard({
               ))}
             </div>
           )}
-          {images.length > 1 && (
+          {hasImages && allImages.length > 1 && (
             <div className="absolute top-3 right-3 bg-[#222222]/70 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-full z-20">
-              {currentIndex + 1} / {images.length}
+              {currentIndex + 1} / {allImages.length}
             </div>
           )}
         </div>
@@ -319,7 +332,7 @@ function DetailedBusinessCard({
               onClick={handleGetDirections}
               className="mt-2 flex items-center gap-3 text-sm text-[#FBFAF8]/80 hover:text-[#FBFAF8] px-3 py-2.5 rounded-xl border border-transparent hover:border-[#FFE2A0] hover:bg-[#FFE2A0]/5 transition-all duration-300 cursor-pointer group w-full text-left"
             >
-              <img src={locBtn} width="16" className="opacity-70 group-hover:opacity-100" alt="directions" />
+              <img src={locBtn} width="16" className="text-[#F5F0EC] opacity-70 group-hover:opacity-100" alt="directions" />
               <span>Get Directions</span>
             </button>
           </div>

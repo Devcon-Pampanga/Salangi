@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Image as ImageIcon } from 'lucide-react';
 import type { Listing } from '../../Data/Listings';
 import { ROUTES } from '../../../routes/paths';
 import { supabase } from '@/lib/supabase';
@@ -68,12 +68,12 @@ function formatHours(hours: string): string {
 
 function NoImagePlaceholder({ name }: { name: string }) {
   return (
-    <div className="w-full h-full flex flex-col items-center justify-center bg-[#2D2D2D] gap-3">
-      <span className="text-5xl">🪧</span>
-      <p className="text-[#FBFAF8]/30 text-xs text-center px-4">
-        No photos yet for<br />
-        <span className="text-[#FBFAF8]/50 font-medium">{name}</span>
-      </p>
+    <div className="w-full h-full flex flex-col items-center justify-center bg-[#2a2a2a] gap-3 text-[#FBFAF8]/20 group-hover:bg-[#2d2d2d] transition-colors">
+      <ImageIcon size={48} strokeWidth={1} />
+      <div className="text-center px-6">
+        <p className="text-[10px] uppercase tracking-[0.2em] font-bold mb-1">No Photos Yet</p>
+        <p className="text-[10px] text-[#FBFAF8]/10 line-clamp-1">{name}</p>
+      </div>
     </div>
   );
 }

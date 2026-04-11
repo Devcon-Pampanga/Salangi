@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Trash2, Heart, X, MapPin, Clock, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Trash2, Heart, X, MapPin, Clock, Calendar, ChevronLeft, ChevronRight, Image as ImageIcon } from 'lucide-react';
 import type { Event } from '../../Data/Events';
 import { supabase } from '@/lib/supabase';
 import L from 'leaflet';
@@ -62,9 +62,9 @@ function EventCard({ event, isBusinessSide, onEdit, onDelete }: EventCardProps) 
   const [modalCarouselIndex, setModalCarouselIndex] = useState(0);
 
   // Build image list: prefer images[] array, fall back to image_url
-  const allImages: string[] = (event as any).images?.length
+  const allImages: string[] = ((event as any).images?.length
     ? (event as any).images
-    : (event.image ? [event.image] : []);
+    : (event.image ? [event.image] : [])).filter(Boolean);
 
   const coverImage = allImages[0] ?? event.image ?? '';
 
@@ -134,9 +134,23 @@ function EventCard({ event, isBusinessSide, onEdit, onDelete }: EventCardProps) 
         onClick={(e) => e.stopPropagation()}
       >
         {/* ── Image carousel ── */}
-        <div className="relative h-64 w-full shrink-0">
-          <img src={allImages[modalCarouselIndex] ?? coverImage} alt={event.title} className="w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#2a2a2a] via-transparent to-transparent" />
+        <div className="relative h-64 w-full shrink-0 bg-[#222222]">
+          {allImages.length > 0 ? (
+            <>
+              <img 
+                src={allImages[modalCarouselIndex] ?? coverImage} 
+                alt={event.title} 
+                className="w-full h-full object-cover" 
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#2a2a2a] via-transparent to-transparent" />
+            </>
+          ) : (
+            <div className="w-full h-full flex flex-col items-center justify-center gap-3 bg-[#2a2a2a] text-[#FBFAF8]/10">
+              <ImageIcon size={48} strokeWidth={1} />
+              <span className="text-[10px] uppercase tracking-[0.2em] font-bold">No Event Image</span>
+              <div className="absolute inset-0 bg-gradient-to-t from-[#2a2a2a] via-transparent to-transparent" />
+            </div>
+          )}
 
           {/* Close */}
           <button
@@ -290,16 +304,23 @@ function EventCard({ event, isBusinessSide, onEdit, onDelete }: EventCardProps) 
     <>
       {/* ── Card ── */}
       <div
-        className="w-full max-w-md bg-[#333333] rounded-xl overflow-hidden border border-zinc-800/50 hover:bg-[#3d3d3d] transition-all duration-200 cursor-pointer"
+        className="w-full max-w-md bg-[#333333] rounded-xl overflow-hidden border border-zinc-800/50 hover:bg-[#3d3d3d] transition-all duration-200 cursor-pointer flex flex-col h-full"
         onClick={() => setShowModal(true)}
       >
         {/* Image with carousel dots if multiple */}
-        <div className="relative group h-72">
-          <img
-            src={allImages[carouselIndex] ?? coverImage}
-            alt={event.title}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-          />
+        <div className="relative group h-72 bg-[#2a2a2a]">
+          {allImages.length > 0 ? (
+            <img
+              src={allImages[carouselIndex] ?? coverImage}
+              alt={event.title}
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            />
+          ) : (
+            <div className="w-full h-full flex flex-col items-center justify-center gap-3 bg-[#2a2a2a] text-[#FBFAF8]/20 group-hover:bg-[#2d2d2d] transition-colors">
+              <ImageIcon size={40} strokeWidth={1} />
+              <span className="text-[9px] uppercase tracking-[0.2em] font-bold">No Image Available</span>
+            </div>
+          )}
 
           {allImages.length > 1 && (
             <>
@@ -340,7 +361,7 @@ function EventCard({ event, isBusinessSide, onEdit, onDelete }: EventCardProps) 
         </div>
 
         {/* Card content */}
-        <div className="p-6">
+        <div className="p-6 flex flex-col flex-1">
           <div className="flex flex-col mb-4">
             <h3 className="text-[#FBFAF8] font-['Playfair_Display'] font-bold text-2xl tracking-tight leading-tight">{event.title}</h3>
             <span className="text-[#FFE2A0] text-[10px] font-bold uppercase tracking-widest mt-1 opacity-80">{event.organizer}</span>
@@ -365,7 +386,7 @@ function EventCard({ event, isBusinessSide, onEdit, onDelete }: EventCardProps) 
             </div>
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex gap-3 mt-auto">
             {isBusinessSide ? (
               <button
                 onClick={(e) => { e.stopPropagation(); onEdit?.(event); }}
