@@ -152,7 +152,7 @@ function BusinessCard({
     <div
       id={`listing-card-${listing.id}`}
       onClick={handleCardClick}
-      className={`w-full max-w-120 bg-[#333333] rounded-xl cursor-pointer overflow-hidden shrink-0 transition-all duration-200 border border-zinc-800/50 ${
+      className={`w-full max-w-120 bg-[#333333] rounded-xl cursor-pointer overflow-hidden flex flex-col h-full shrink-0 transition-all duration-200 border border-zinc-800/50 ${
         isSelected
           ? 'ring-2 ring-[#FFE2A0] shadow-xl shadow-[#FFE2A0]/5'
           : 'hover:bg-[#3d3d3d] hover:shadow-2xl hover:shadow-black/50'
@@ -222,7 +222,7 @@ function BusinessCard({
         </div>
       </div>
 
-      <div className="p-6">
+      <div className="p-6 flex flex-col flex-1">
         <div className="flex items-center justify-between gap-4 mb-4">
           <div className="flex items-center gap-2">
             <h3 className="text-[#FBFAF8] font-['Playfair_Display'] font-bold text-2xl tracking-tight leading-tight">
@@ -255,7 +255,7 @@ function BusinessCard({
           </div>
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex gap-3 mt-auto">
           {isBusinessSide ? (
             <div className="flex gap-3 w-full">
               <button 

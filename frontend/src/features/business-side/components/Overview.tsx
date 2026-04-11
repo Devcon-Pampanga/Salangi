@@ -4,6 +4,7 @@ import { ROUTES } from '../../../routes/paths';
 import EventPostModal from "./PostEventModal";
 import StatsCard from "./StatsCard";
 import { supabase } from "../../../lib/supabase";
+import { BusinessFilterDropdown } from "./BusinessFilterDropdown";
 
 interface Event {
   month: string;
@@ -317,21 +318,11 @@ export default function Overview() {
             <p className="text-white text-sm">Here's what's happening with your listing today.</p>
           </div>
 
-          <div className="flex flex-row items-center overflow-x-auto lg:overflow-visible gap-2 bg-[#3a3a3a] p-2 rounded-xl border border-[#4d4d4d] w-full lg:w-fit scrollbar-hide">
-            {["All", ...userListings.map(l => l.name)].map((name) => (
-              <button
-                key={name}
-                onClick={() => setActiveFilter(name)}
-                className={`px-4 py-1.5 rounded-lg text-xs md:text-sm font-medium transition-all whitespace-nowrap relative ${
-                  activeFilter === name
-                    ? 'bg-[#FFE2A0] text-[#1a1a1a] shadow-md scale-[1.02] z-10 font-semibold'
-                    : 'text-white hover:bg-white/5'
-                }`}
-              >
-                {name}
-              </button>
-            ))}
-          </div>
+          <BusinessFilterDropdown 
+            activeFilter={activeFilter} 
+            onFilterChange={setActiveFilter} 
+            listings={userListings} 
+          />
         </div>
       </div>
 
