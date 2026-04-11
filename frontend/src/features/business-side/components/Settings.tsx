@@ -1,11 +1,7 @@
 import { useState, useEffect } from "react";
 import { 
-    HiOutlineBell, 
-    HiOutlineShieldCheck,
-    HiOutlineTrash
+    HiOutlineBell
 } from "react-icons/hi";
-import ChangePasswordModal from "./ChangePasswordModal";
-import DeleteAccountModal from "./DeleteAccountModal";
 import { supabase } from "../../../lib/supabase";
 import { useAuth } from "../../../hooks/useAuth";
 
@@ -13,8 +9,6 @@ const Settings = () => {
     // 1. Auth and State Hooks
     const { user } = useAuth();
     const [businessName, setBusinessName] = useState("");
-    const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
-    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [notifications, setNotifications] = useState({
         savedListing: true,
         eventAttendance: true,
@@ -54,8 +48,8 @@ const Settings = () => {
 
             <div className="px-4 md:px-6 py-4 space-y-10 max-w-6xl">
                 
-                {/* Section: Preferences & Security */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-10 pt-4">
+                {/* Section: Preferences */}
+                <div className="grid grid-cols-1 gap-10 pt-4">
                     {/* Notifications */}
                     <section className="space-y-6">
                         <div className="flex items-center gap-2 border-b border-[#4d4d4d] pb-2">
@@ -86,56 +80,8 @@ const Settings = () => {
                         </div>
                     </section>
 
-                    {/* Security */}
-                    <section className="space-y-6">
-                        <div className="flex items-center gap-2 border-b border-[#4d4d4d] pb-2">
-                            <HiOutlineShieldCheck className="text-[#FFE2A0] size-6" />
-                            <h2 className="text-white text-xl font-semibold">Security</h2>
-                        </div>
-                        <div className="space-y-4">
-                            <button 
-                                onClick={() => setIsPasswordModalOpen(true)}
-                                className="w-full flex items-center justify-between bg-[#3a3a3a] border border-[#4d4d4d] rounded-xl px-4 py-3 text-white hover:border-[#FFE2A0] transition-colors group"
-                            >
-                                <span className="text-sm">Change Business Password</span>
-                                <span className="text-[#a0a0a0] text-[10px] uppercase tracking-widest font-bold group-hover:text-[#FFE2A0] transition-colors">Update</span>
-                            </button>
-                            <button 
-                                onClick={() => setIsDeleteModalOpen(true)}
-                                className="w-full flex items-center justify-between bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 text-red-500 hover:bg-red-500/20 transition-colors cursor-pointer group"
-                            >
-                                <div className="flex items-center gap-2">
-                                    <HiOutlineTrash className="size-4" />
-                                    <span className="text-sm font-semibold">Delete Business Account</span>
-                                </div>
-                                <span className="text-[10px] uppercase tracking-widest font-bold group-hover:scale-105 transition-transform">Permanent</span>
-                            </button>
-                        </div>
-                    </section>
-                </div>
-
-                {/* Footer Actions */}
-                <div className="pt-10 flex flex-col md:flex-row border-t border-[#4d4d4d] justify-end gap-3 md:gap-4">
-                    <button className="w-full md:w-auto px-8 py-3 rounded-xl text-[#a0a0a0] hover:text-white transition-colors font-semibold bg-[#3a3a3a] md:bg-transparent border md:border-0 border-[#4d4d4d] md:order-1 order-2 mt-2 md:mt-0">
-                        Discard Changes
-                    </button>
-                    <button className="w-full md:w-auto px-10 py-3 rounded-xl bg-[#FFE2A0] text-[#1a1a1a] font-bold hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg md:order-2 order-1">
-                        Save All Changes
-                    </button>
                 </div>
             </div>
-            
-            {/* Modals */}
-            <ChangePasswordModal 
-                isOpen={isPasswordModalOpen} 
-                onClose={() => setIsPasswordModalOpen(false)} 
-            />
-
-            <DeleteAccountModal 
-                isOpen={isDeleteModalOpen} 
-                onClose={() => setIsDeleteModalOpen(false)} 
-                businessName={businessName}
-            />
         </div>
     );
 };
