@@ -37,7 +37,10 @@ export async function checkEmailExists(email: string): Promise<boolean> {
   return !!data;
 }
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+const BASE_URL = import.meta.env.VITE_API_URL || (isProduction ? 'https://salangi-backend.onrender.com' : 'http://localhost:8000');
+
+console.log('API Base URL:', BASE_URL, 'Mode:', import.meta.env.MODE);
 
 // -- Get live Supabase session token ------------------------------------------
 async function getToken(): Promise<string> {
