@@ -459,9 +459,9 @@ function ListBusiness() {
       <div className="relative z-10 max-w-2xl mx-auto px-6 py-12 lg:py-20 pb-24">
         <button
           onClick={() => navigate(ROUTES.DASHBOARD_OVERVIEW)}
-          className="flex items-center gap-2 text-[#FBFAF8]/50 hover:text-[#FBFAF8] text-sm mb-8 cursor-pointer transition-colors"
+          className="gap-2 text-[#FBFAF8]/50 hover:text-[#FBFAF8] text-sm mb-8 cursor-pointer transition-colors mr-80"
         >
-          ← Back
+        Go to Business Dashboard →
         </button>
 
         <h1 className="font-['Playfair-Display'] text-3xl leading-tight mb-2">
