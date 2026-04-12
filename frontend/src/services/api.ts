@@ -51,7 +51,8 @@ async function getToken(): Promise<string> {
 // -- Shared fetch helper -------------------------------------------------------
 async function authFetch(path: string, options: RequestInit = {}): Promise<any> {
   const token = await getToken();
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const baseUrl = BASE_URL.endsWith('/') ? BASE_URL.slice(0, -1) : BASE_URL;
+  const res = await fetch(`${baseUrl}${path}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
