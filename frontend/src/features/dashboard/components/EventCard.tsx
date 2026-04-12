@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Trash2, Heart, X, MapPin, Clock, Calendar, ChevronLeft, ChevronRight, Image as ImageIcon } from 'lucide-react';
+import { Trash2, Heart, X, MapPin, Clock, Calendar, ChevronLeft, ChevronRight, Image as ImageIcon, ExternalLink, Link2 } from 'lucide-react';
 import type { Event } from '../../Data/Events';
 import { supabase } from '@/lib/supabase';
 import L from 'leaflet';
@@ -22,19 +22,26 @@ interface EventCardProps {
   onDelete?: (id: number) => void;
 }
 
-// Formats a raw ISO date string into a readable date.
-// If the value is already a human-readable string (e.g. "April 20–21, 2025"), it passes through.
 function formatDate(raw: string | undefined | null): string {
   if (!raw) return '';
-  if (isNaN(Date.parse(raw))) return raw; // already formatted / date range string
+  if (isNaN(Date.parse(raw))) return raw;
   return new Date(raw.includes('T') ? raw : raw + 'T12:00:00').toLocaleDateString('default', {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
+    month: 'long', day: 'numeric', year: 'numeric',
   });
 }
 
-// Mini static map shown inside the modal
+function getLinkIcon(label: string): string {
+  const lower = label.toLowerCase();
+  if (lower.includes('facebook') || lower.includes('fb')) return '📘';
+  if (lower.includes('instagram') || lower.includes('ig'))  return '📸';
+  if (lower.includes('register') || lower.includes('form')) return '📋';
+  if (lower.includes('ticket'))                              return '🎟️';
+  if (lower.includes('website') || lower.includes('web'))   return '🌐';
+  if (lower.includes('youtube') || lower.includes('video')) return '▶️';
+  if (lower.includes('twitter') || lower.includes('x.com')) return '🐦';
+  return '🔗';
+}
+
 function MiniMap({ lat, lng }: { lat: number; lng: number }) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
@@ -54,22 +61,25 @@ function MiniMap({ lat, lng }: { lat: number; lng: number }) {
 }
 
 function EventCard({ event, isBusinessSide, onEdit, onDelete }: EventCardProps) {
-  const [isInterested, setIsInterested] = useState(false);
-  const [interestCount, setInterestCount] = useState(event.interest_count ?? 0);
-  const [loading, setLoading] = useState(false);
-  const [showModal, setShowModal] = useState(false);
-  const [carouselIndex, setCarouselIndex] = useState(0);
+  const [isInterested, setIsInterested]     = useState(false);
+  const [interestCount, setInterestCount]   = useState(event.interest_count ?? 0);
+  const [loading, setLoading]               = useState(false);
+  const [showModal, setShowModal]           = useState(false);
+  const [carouselIndex, setCarouselIndex]   = useState(0);
   const [modalCarouselIndex, setModalCarouselIndex] = useState(0);
 
-  // Build image list: prefer images[] array, fall back to image_url
   const allImages: string[] = ((event as any).images?.length
     ? (event as any).images
     : (event.image ? [event.image] : [])).filter(Boolean);
 
-  const coverImage = allImages[0] ?? event.image ?? '';
-
-  // Human-readable date string used throughout the card
+  const coverImage  = allImages[0] ?? event.image ?? '';
   const displayDate = formatDate(event.date);
+
+  // Links — filter out any with missing URL
+  const links: { label: string; url: string; isPrimary?: boolean }[] =
+    ((event as any).links ?? []).filter((l: any) => l.url && l.label);
+  const primaryLinks = links.filter((l) => l.isPrimary);
+  const otherLinks   = links.filter((l) => !l.isPrimary);
 
   useEffect(() => {
     if (isBusinessSide) return;
@@ -107,11 +117,9 @@ function EventCard({ event, isBusinessSide, onEdit, onDelete }: EventCardProps) 
       if (isInterested) {
         const { error } = await supabase.from('event_interests').delete().eq('event_id', event.id).eq('user_id', user.id);
         if (!error) { setIsInterested(false); setInterestCount(prev => Math.max(0, prev - 1)); }
-        else console.error('Delete interest error:', error);
       } else {
         const { error } = await supabase.from('event_interests').insert({ event_id: event.id, user_id: user.id });
         if (!error) { setIsInterested(true); setInterestCount(prev => prev + 1); }
-        else console.error('Insert interest error:', error);
       }
     } catch (err) {
       console.error('Unexpected error:', err);
@@ -120,9 +128,7 @@ function EventCard({ event, isBusinessSide, onEdit, onDelete }: EventCardProps) 
     }
   };
 
-  const hasLat = typeof (event as any).lat === 'number';
-  const hasLng = typeof (event as any).lng === 'number';
-  const hasMap = hasLat && hasLng;
+  const hasMap = typeof (event as any).lat === 'number' && typeof (event as any).lng === 'number';
 
   const modal = showModal ? createPortal(
     <div
@@ -133,15 +139,11 @@ function EventCard({ event, isBusinessSide, onEdit, onDelete }: EventCardProps) 
         className="relative w-full max-w-lg bg-[#2a2a2a] rounded-2xl overflow-hidden border border-zinc-700/50 shadow-2xl flex flex-col max-h-[90vh]"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* ── Image carousel ── */}
+        {/* Image carousel */}
         <div className="relative h-64 w-full shrink-0 bg-[#222222]">
           {allImages.length > 0 ? (
             <>
-              <img 
-                src={allImages[modalCarouselIndex] ?? coverImage} 
-                alt={event.title} 
-                className="w-full h-full object-cover" 
-              />
+              <img src={allImages[modalCarouselIndex] ?? coverImage} alt={event.title} className="w-full h-full object-cover" />
               <div className="absolute inset-0 bg-gradient-to-t from-[#2a2a2a] via-transparent to-transparent" />
             </>
           ) : (
@@ -175,7 +177,6 @@ function EventCard({ event, isBusinessSide, onEdit, onDelete }: EventCardProps) 
               >
                 <ChevronRight size={16} className="text-white" />
               </button>
-              {/* Dots */}
               <div className="absolute bottom-14 left-0 right-0 flex justify-center gap-1.5">
                 {allImages.map((_, i) => (
                   <button key={i} onClick={(e) => { e.stopPropagation(); setModalCarouselIndex(i); }}
@@ -186,7 +187,7 @@ function EventCard({ event, isBusinessSide, onEdit, onDelete }: EventCardProps) 
             </>
           )}
 
-          {/* Date badge — formatted */}
+          {/* Date badge */}
           <div className="absolute bottom-4 left-4 px-3 py-1.5 bg-[#FFE2A0]/90 backdrop-blur-md rounded-full shadow-lg">
             <span className="text-[#222222] text-[10px] font-black tracking-wider uppercase">{displayDate}</span>
           </div>
@@ -223,7 +224,6 @@ function EventCard({ event, isBusinessSide, onEdit, onDelete }: EventCardProps) 
                 <p className="text-[#FBFAF8] text-sm font-medium">{event.time}</p>
               </div>
             </div>
-            {/* Date info row — formatted */}
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-[#3a3a3a] flex items-center justify-center shrink-0">
                 <Calendar size={14} className="text-[#FFE2A0]" />
@@ -235,9 +235,89 @@ function EventCard({ event, isBusinessSide, onEdit, onDelete }: EventCardProps) 
             </div>
           </div>
 
+          {/* ── EVENT LINKS SECTION ── */}
+          {links.length > 0 && (
+            <div>
+              <div className="border-t border-white/10 mb-4" />
+              <div className="flex items-center gap-2 mb-3">
+                <Link2 size={13} className="text-[#FFE2A0]" />
+                <p className="text-[#FBFAF8]/40 text-[10px] uppercase tracking-wider font-semibold">Event Links</p>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                {/* Primary links first — larger, highlighted */}
+                {primaryLinks.map((link, i) => (
+                  <a
+                    key={`primary-${i}`}
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group"
+                    style={{
+                      backgroundColor: 'rgba(255,226,160,0.1)',
+                      border: '1px solid rgba(255,226,160,0.25)',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = 'rgba(255,226,160,0.18)';
+                      e.currentTarget.style.borderColor = 'rgba(255,226,160,0.5)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'rgba(255,226,160,0.1)';
+                      e.currentTarget.style.borderColor = 'rgba(255,226,160,0.25)';
+                    }}
+                  >
+                    <span className="text-base shrink-0">{getLinkIcon(link.label)}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-[#FFE2A0] truncate">{link.label}</span>
+                        <span className="text-[9px] px-1.5 py-0.5 rounded font-bold shrink-0"
+                          style={{ backgroundColor: 'rgba(255,226,160,0.2)', color: '#FFE2A0' }}>
+                          KEY
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-[#FBFAF8]/30 truncate mt-0.5">{link.url}</p>
+                    </div>
+                    <ExternalLink size={14} className="text-[#FFE2A0] shrink-0 opacity-70 group-hover:opacity-100 transition-opacity" />
+                  </a>
+                ))}
+
+                {/* Other links */}
+                {otherLinks.map((link, i) => (
+                  <a
+                    key={`other-${i}`}
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group"
+                    style={{ backgroundColor: '#333333', border: '1px solid #3d3d3d' }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#3a3a3a';
+                      e.currentTarget.style.borderColor = '#555555';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = '#333333';
+                      e.currentTarget.style.borderColor = '#3d3d3d';
+                    }}
+                  >
+                    <span className="text-base shrink-0">{getLinkIcon(link.label)}</span>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-sm font-medium text-[#FBFAF8] truncate block">{link.label}</span>
+                      <p className="text-[10px] text-[#FBFAF8]/30 truncate mt-0.5">{link.url}</p>
+                    </div>
+                    <ExternalLink size={13} className="text-[#FBFAF8]/30 shrink-0 group-hover:text-[#FFE2A0] transition-colors" />
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+          {/* ── END LINKS ── */}
+
           {/* Mini Map */}
           {hasMap && (
             <div>
+              <div className="border-t border-white/10 mb-4" />
               <p className="text-[#FBFAF8]/40 text-[10px] uppercase tracking-wider font-semibold mb-2">Map</p>
               <MiniMap lat={(event as any).lat} lng={(event as any).lng} />
               <a
@@ -268,7 +348,7 @@ function EventCard({ event, isBusinessSide, onEdit, onDelete }: EventCardProps) 
             </div>
           )}
 
-          {/* Footer */}
+          {/* Footer actions */}
           {!isBusinessSide ? (
             <div className="flex items-center justify-between pt-2 border-t border-white/10">
               <div className="flex items-center gap-1.5 text-[#FBFAF8]/40">
@@ -307,7 +387,7 @@ function EventCard({ event, isBusinessSide, onEdit, onDelete }: EventCardProps) 
         className="w-full max-w-md bg-[#333333] rounded-xl overflow-hidden border border-zinc-800/50 hover:bg-[#3d3d3d] transition-all duration-200 cursor-pointer flex flex-col h-full"
         onClick={() => setShowModal(true)}
       >
-        {/* Image with carousel dots if multiple */}
+        {/* Image */}
         <div className="relative group h-72 bg-[#2a2a2a]">
           {allImages.length > 0 ? (
             <img
@@ -338,7 +418,7 @@ function EventCard({ event, isBusinessSide, onEdit, onDelete }: EventCardProps) 
             </>
           )}
 
-          {/* Date badge on card — formatted */}
+          {/* Date badge */}
           <div className="absolute bottom-4 left-4 px-2.5 py-1 bg-[#FFE2A0]/90 backdrop-blur-md rounded-full z-20 shadow-lg">
             <span className="text-[#222222] text-[9px] font-black tracking-wider uppercase">{displayDate}</span>
           </div>
@@ -369,8 +449,8 @@ function EventCard({ event, isBusinessSide, onEdit, onDelete }: EventCardProps) 
 
           <p className="text-sm text-[#FBFAF8]/70 leading-relaxed line-clamp-2 mb-4 h-10">{event.description}</p>
 
-          {/* Info row — location, time, and now date */}
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 mb-6">
+          {/* Info row */}
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 mb-4">
             <div className="flex items-center gap-2">
               <img src={locBtnSelected} width="14" alt="location" className="opacity-70" />
               <span className="text-[#FBFAF8]/50 text-xs font-medium">{event.location}</span>
@@ -379,12 +459,39 @@ function EventCard({ event, isBusinessSide, onEdit, onDelete }: EventCardProps) 
               <img src={timeIcon} width="14" alt="hours" className="opacity-70" />
               <span className="text-[#FBFAF8]/50 text-xs font-medium">{event.time}</span>
             </div>
-            {/* ✅ Date shown in card body */}
             <div className="flex items-center gap-2">
               <Calendar size={14} className="text-[#FBFAF8]/50 shrink-0" />
               <span className="text-[#FBFAF8]/50 text-xs font-medium">{displayDate}</span>
             </div>
           </div>
+
+          {/* Primary link preview on card (if any) */}
+          {primaryLinks.length > 0 && (
+            <a
+              href={primaryLinks[0].url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg mb-4 transition-all duration-200 group"
+              style={{ backgroundColor: 'rgba(255,226,160,0.08)', border: '1px solid rgba(255,226,160,0.2)' }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,226,160,0.15)'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,226,160,0.08)'}
+            >
+              <span className="text-sm">{getLinkIcon(primaryLinks[0].label)}</span>
+              <span className="text-xs font-semibold text-[#FFE2A0] flex-1 truncate">{primaryLinks[0].label}</span>
+              <ExternalLink size={11} className="text-[#FFE2A0] opacity-60 group-hover:opacity-100 shrink-0 transition-opacity" />
+            </a>
+          )}
+
+          {/* Links count indicator (if more than just the primary preview) */}
+          {links.length > (primaryLinks.length > 0 ? 1 : 0) && (
+            <div className="flex items-center gap-1.5 mb-4">
+              <Link2 size={11} className="text-[#FBFAF8]/30" />
+              <span className="text-[10px] text-[#FBFAF8]/30">
+                {links.length} link{links.length !== 1 ? 's' : ''} — tap to view
+              </span>
+            </div>
+          )}
 
           <div className="flex gap-3 mt-auto">
             {isBusinessSide ? (

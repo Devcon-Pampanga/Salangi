@@ -16,6 +16,7 @@ interface SupabaseEvent {
   month: string;
   day: string;
   image_url: string;
+  images: string[];
   verified: boolean;
   user_id: string;
   listing_id: number | null;
@@ -23,16 +24,17 @@ interface SupabaseEvent {
   lng: number | null;
   created_at: string;
   interest_count?: number;
+  links?: { label: string; url: string; isPrimary?: boolean }[];
 }
 
 export default function Events() {
-  const [events, setEvents] = useState<SupabaseEvent[]>([]);
-  const [userListings, setUserListings] = useState<{id: number, name: string, location: string}[]>([]);
+  const [events, setEvents]           = useState<SupabaseEvent[]>([]);
+  const [userListings, setUserListings] = useState<{ id: number; name: string; location: string }[]>([]);
   const [activeFilter, setActiveFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState("All");
   const [editingEvent, setEditingEvent] = useState<SupabaseEvent | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [loading, setLoading]           = useState(true);
+  const [isModalOpen, setIsModalOpen]   = useState(false);
 
   const fetchEvents = async () => {
     setLoading(true);
@@ -49,20 +51,19 @@ export default function Events() {
 
       const { data: eventsData } = await supabase
         .from("events")
-        .select("*")
+        .select("*")                   // includes images & links columns
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
       if (!eventsData) { setLoading(false); return; }
 
-      // Fetch interest counts for all events in one go
+      // Fetch interest counts
       const eventIds = eventsData.map((e: any) => e.id);
       const { data: interestData } = await supabase
         .from("event_interests")
         .select("event_id")
         .in("event_id", eventIds);
 
-      // Count interests per event
       const interestMap: Record<number, number> = {};
       (interestData ?? []).forEach((row: any) => {
         interestMap[row.event_id] = (interestMap[row.event_id] ?? 0) + 1;
@@ -70,6 +71,8 @@ export default function Events() {
 
       const eventsWithCounts = eventsData.map((e: any) => ({
         ...e,
+        images: e.images ?? [],
+        links:  e.links  ?? [],
         interest_count: interestMap[e.id] ?? 0,
       }));
 
@@ -81,39 +84,34 @@ export default function Events() {
     }
   };
 
-  useEffect(() => {
-    fetchEvents();
-  }, []);
+  useEffect(() => { fetchEvents(); }, []);
 
   const filteredEvents = events.filter(e => {
     const matchesListing = activeFilter === "All" || userListings.find(l => l.id === e.listing_id)?.name === activeFilter;
-    const matchesStatus =
+    const matchesStatus  =
       statusFilter === "All" ||
       (statusFilter === "Approved" && e.verified) ||
-      (statusFilter === "Pending" && !e.verified);
+      (statusFilter === "Pending"  && !e.verified);
     return matchesListing && matchesStatus;
   });
 
-  const handleEdit = (event: SupabaseEvent) => {
-    setEditingEvent(event);
-    setIsModalOpen(true);
-  };
-
+  const handleEdit   = (event: SupabaseEvent) => { setEditingEvent(event); setIsModalOpen(true); };
   const handleDelete = async (eventId: number) => {
     const { error } = await supabase.from("events").delete().eq("id", eventId);
-    if (!error) setEvents((prev) => prev.filter((e) => e.id !== eventId));
+    if (!error) setEvents(prev => prev.filter(e => e.id !== eventId));
+  };
+  const handleCloseModal = () => { setIsModalOpen(false); setEditingEvent(null); };
+  const handleAddEvent   = (newEvent: any) => {
+    setEvents(prev => {
+      const exists = prev.find(e => e.id === newEvent.id);
+      if (exists) {
+        // update in place (edit flow)
+        return prev.map(e => e.id === newEvent.id ? { ...e, ...newEvent } : e);
+      }
+      return [{ ...newEvent, images: newEvent.images ?? [], links: newEvent.links ?? [], interest_count: 0 }, ...prev];
+    });
   };
 
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setEditingEvent(null);
-  };
-
-  const handleAddEvent = (newEvent: any) => {
-    setEvents((prev) => [{ ...newEvent, interest_count: 0 }, ...prev]);
-  };
-
-  // Total interests across currently filtered events
   const totalInterests = filteredEvents.reduce((sum, e) => sum + (e.interest_count ?? 0), 0);
 
   return (
@@ -128,16 +126,14 @@ export default function Events() {
             </h1>
             <p className="text-white text-sm">Create and manage your upcoming promotional events</p>
           </div>
-
-          {/* Listing filter */}
-          <BusinessFilterDropdown 
-            activeFilter={activeFilter} 
-            onFilterChange={setActiveFilter} 
-            listings={userListings} 
+          <BusinessFilterDropdown
+            activeFilter={activeFilter}
+            onFilterChange={setActiveFilter}
+            listings={userListings}
           />
         </div>
 
-        {/* Post Event button + total interests summary */}
+        {/* Post Event button + total interests */}
         <div className="flex flex-row flex-wrap gap-4 mt-6 items-center">
           <button
             onClick={() => { setEditingEvent(null); setIsModalOpen(true); }}
@@ -154,23 +150,20 @@ export default function Events() {
             </div>
           </button>
 
-          {/* Total interests pill */}
-          {(
-            <div className="flex items-center gap-3 bg-[#3a3a3a] border border-[#4d4d4d] rounded-2xl px-5 py-3 shadow-lg hover:border-[#FFE2A0]/30 transition-all group cursor-default">
-              <div className="p-2 bg-[#FFE2A0]/10 rounded-xl group-hover:bg-[#FFE2A0]/20 transition-colors">
-                <Heart size={18} fill="#FFE2A0" className="text-[#FFE2A0]" />
-              </div>
-              <div className="flex flex-col leading-tight">
-                <span className="text-white text-lg font-bold font-['Playfair_Display'] leading-none">
-                  {loading ? "..." : totalInterests}
-                </span>
-                <span className="text-[#a0a0a0] text-[10px] uppercase tracking-widest font-bold mt-1">Total interests</span>
-              </div>
+          <div className="flex items-center gap-3 bg-[#3a3a3a] border border-[#4d4d4d] rounded-2xl px-5 py-3 shadow-lg hover:border-[#FFE2A0]/30 transition-all group cursor-default">
+            <div className="p-2 bg-[#FFE2A0]/10 rounded-xl group-hover:bg-[#FFE2A0]/20 transition-colors">
+              <Heart size={18} fill="#FFE2A0" className="text-[#FFE2A0]" />
             </div>
-          )}
+            <div className="flex flex-col leading-tight">
+              <span className="text-white text-lg font-bold font-['Playfair_Display'] leading-none">
+                {loading ? "..." : totalInterests}
+              </span>
+              <span className="text-[#a0a0a0] text-[10px] uppercase tracking-widest font-bold mt-1">Total interests</span>
+            </div>
+          </div>
         </div>
 
-        {/* Your Events heading + summary counts + status filter */}
+        {/* Your Events heading + filters */}
         <div className="mt-12 mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div className="flex items-center gap-3">
             <h2 className="text-[#FFE2A0] text-xl font-['Playfair_Display'] font-semibold">Your Events</h2>
@@ -184,7 +177,6 @@ export default function Events() {
             </div>
           </div>
 
-          {/* Status filter */}
           <div className="flex flex-row items-center gap-2 bg-[#3a3a3a] p-1.5 rounded-xl border border-[#4d4d4d] w-full sm:w-fit overflow-x-auto scrollbar-hide">
             {["All", "Approved", "Pending"].map((status) => (
               <button
@@ -235,8 +227,10 @@ export default function Events() {
                 <EventCard
                   event={{
                     ...event,
-                    image: event.image_url,
-                    date: event.date_range,
+                    image:    event.image_url,
+                    images:   event.images ?? [],
+                    links:    event.links  ?? [],
+                    date:     event.date_range,
                     organizer: userListings.find(l => l.id === event.listing_id)?.name || "My Business",
                     interest_count: event.interest_count ?? 0,
                   } as any}
@@ -273,8 +267,10 @@ export default function Events() {
           onAddEvent={handleAddEvent}
           editEvent={editingEvent ? {
             ...editingEvent,
-            image: editingEvent.image_url,
-            organizer: userListings.find(l => l.id === editingEvent.listing_id)?.name || "My Business"
+            image:     editingEvent.image_url,
+            images:    editingEvent.images  ?? [],
+            links:     editingEvent.links   ?? [],
+            organizer: userListings.find(l => l.id === editingEvent.listing_id)?.name || "My Business",
           } as any : null}
           userListings={userListings}
         />
