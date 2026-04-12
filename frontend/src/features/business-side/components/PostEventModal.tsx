@@ -3,6 +3,8 @@ import { supabase } from "../../../lib/supabase";
 import type { Event } from "../../Data/Events";
 import { LOCATIONS, CITY_COORDS } from "../../../constant/location";
 import { X, Plus, ChevronLeft, ChevronRight, Link2, ExternalLink } from "lucide-react";
+import { FaFacebook, FaInstagram, FaClipboardList, FaTicketAlt, FaGlobe, FaYoutube, FaTwitter } from "react-icons/fa";
+import { FaLink } from "react-icons/fa6";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -35,24 +37,26 @@ interface EventPostModalProps {
 
 // ─── Link type metadata ───────────────────────────────────────────────────────
 
-const LINK_PRESETS: { label: string; placeholder: string; icon: string; isPrimary?: boolean }[] = [
-  { label: "Registration Form", placeholder: "https://forms.google.com/...", icon: "📋", isPrimary: true },
-  { label: "Facebook Event",    placeholder: "https://facebook.com/events/...", icon: "📘" },
-  { label: "Website",           placeholder: "https://yourwebsite.com", icon: "🌐" },
-  { label: "Tickets",           placeholder: "https://tickets.com/...", icon: "🎟️", isPrimary: true },
-  { label: "Instagram",         placeholder: "https://instagram.com/...", icon: "📸" },
+const LINK_PRESETS: { label: string; placeholder: string; icon: React.ReactNode; isPrimary?: boolean }[] = [
+  { label: "Registration Form", placeholder: "https://forms.google.com/...", icon: <FaClipboardList className="text-zinc-400" />, isPrimary: true },
+  { label: "Facebook Event",    placeholder: "https://facebook.com/events/...", icon: <FaFacebook className="text-zinc-400" /> },
+  { label: "Website",           placeholder: "https://yourwebsite.com", icon: <FaGlobe className="text-zinc-400" /> },
+  { label: "Tickets",           placeholder: "https://tickets.com/...", icon: <FaTicketAlt className="text-zinc-400" />, isPrimary: true },
+  { label: "Instagram",         placeholder: "https://instagram.com/...", icon: <FaInstagram className="text-zinc-400" /> },
 ];
 
-function getLinkIcon(label: string): string {
+function getLinkIcon(label: string): React.ReactNode {
   const lower = label.toLowerCase();
-  if (lower.includes("facebook") || lower.includes("fb")) return "📘";
-  if (lower.includes("instagram") || lower.includes("ig"))  return "📸";
-  if (lower.includes("register") || lower.includes("form")) return "📋";
-  if (lower.includes("ticket"))                              return "🎟️";
-  if (lower.includes("website") || lower.includes("web"))   return "🌐";
-  if (lower.includes("youtube") || lower.includes("video")) return "▶️";
-  if (lower.includes("twitter") || lower.includes("x.com")) return "🐦";
-  return "🔗";
+  const iconClass = "text-[#FBFAF8]/60 group-hover:text-[#FFE2A0] transition-colors shrink-0";
+  
+  if (lower.includes("facebook") || lower.includes("fb")) return <FaFacebook className={iconClass} />;
+  if (lower.includes("instagram") || lower.includes("ig"))  return <FaInstagram className={iconClass} />;
+  if (lower.includes("register") || lower.includes("form")) return <FaClipboardList className={iconClass} />;
+  if (lower.includes("ticket"))                              return <FaTicketAlt className={iconClass} />;
+  if (lower.includes("website") || lower.includes("web"))   return <FaGlobe className={iconClass} />;
+  if (lower.includes("youtube") || lower.includes("video")) return <FaYoutube className={iconClass} />;
+  if (lower.includes("twitter") || lower.includes("x.com")) return <FaTwitter className={iconClass} />;
+  return <FaLink className={iconClass} />;
 }
 
 function isValidUrl(url: string): boolean {
@@ -683,7 +687,9 @@ export default function PostEventModal({ isOpen, onClose, onAddEvent, editEvent,
               {/* Link rows */}
               {links.length === 0 ? (
                 <div className="rounded-lg px-4 py-5 text-center" style={{ backgroundColor: "#252525", border: "1px dashed #383838" }}>
-                  <div className="text-2xl mb-1">🔗</div>
+                  <div className="flex justify-center mb-2">
+                    <FaLink size={20} className="text-zinc-500" />
+                  </div>
                   <p className="text-xs" style={{ color: "#555" }}>No links added yet. Use the presets above or add a custom link.</p>
                 </div>
               ) : (

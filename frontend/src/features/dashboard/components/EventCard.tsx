@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Trash2, Heart, X, MapPin, Clock, Calendar, ChevronLeft, ChevronRight, Image as ImageIcon, ExternalLink, Link2 } from 'lucide-react';
+import { FaFacebook, FaInstagram, FaClipboardList, FaTicketAlt, FaGlobe, FaYoutube, FaTwitter } from 'react-icons/fa';
+import { FaLink } from 'react-icons/fa6';
 import type { Event } from '../../Data/Events';
 import { supabase } from '@/lib/supabase';
 import L from 'leaflet';
@@ -30,16 +32,18 @@ function formatDate(raw: string | undefined | null): string {
   });
 }
 
-function getLinkIcon(label: string): string {
+function getLinkIcon(label: string): React.ReactNode {
   const lower = label.toLowerCase();
-  if (lower.includes('facebook') || lower.includes('fb')) return '📘';
-  if (lower.includes('instagram') || lower.includes('ig'))  return '📸';
-  if (lower.includes('register') || lower.includes('form')) return '📋';
-  if (lower.includes('ticket'))                              return '🎟️';
-  if (lower.includes('website') || lower.includes('web'))   return '🌐';
-  if (lower.includes('youtube') || lower.includes('video')) return '▶️';
-  if (lower.includes('twitter') || lower.includes('x.com')) return '🐦';
-  return '🔗';
+  const iconClass = "text-[#FBFAF8]/60 group-hover:text-[#FFE2A0] transition-colors shrink-0";
+
+  if (lower.includes('facebook') || lower.includes('fb')) return <FaFacebook className={iconClass} />;
+  if (lower.includes('instagram') || lower.includes('ig'))  return <FaInstagram className={iconClass} />;
+  if (lower.includes('register') || lower.includes('form')) return <FaClipboardList className={iconClass} />;
+  if (lower.includes('ticket'))                              return <FaTicketAlt className={iconClass} />;
+  if (lower.includes('website') || lower.includes('web'))   return <FaGlobe className={iconClass} />;
+  if (lower.includes('youtube') || lower.includes('video')) return <FaYoutube className={iconClass} />;
+  if (lower.includes('twitter') || lower.includes('x.com')) return <FaTwitter className={iconClass} />;
+  return <FaLink className={iconClass} />;
 }
 
 function MiniMap({ lat, lng }: { lat: number; lng: number }) {
@@ -253,24 +257,27 @@ function EventCard({ event, isBusinessSide, onEdit, onDelete }: EventCardProps) 
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={(e) => e.stopPropagation()}
-                    className="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group"
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group shadow-sm hover:shadow-md"
                     style={{
                       backgroundColor: 'rgba(255,226,160,0.1)',
                       border: '1px solid rgba(255,226,160,0.25)',
+                      backdropFilter: 'blur(10px)'
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.backgroundColor = 'rgba(255,226,160,0.18)';
                       e.currentTarget.style.borderColor = 'rgba(255,226,160,0.5)';
+                      e.currentTarget.style.transform = 'translateY(-1px)';
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.backgroundColor = 'rgba(255,226,160,0.1)';
                       e.currentTarget.style.borderColor = 'rgba(255,226,160,0.25)';
+                      e.currentTarget.style.transform = 'translateY(0)';
                     }}
                   >
-                    <span className="text-base shrink-0">{getLinkIcon(link.label)}</span>
+                    <span className="text-base shrink-0 transition-transform duration-300 group-hover:scale-110">{getLinkIcon(link.label)}</span>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-[#FFE2A0] truncate">{link.label}</span>
+                        <span className="text-sm font-bold text-[#FFE2A0] truncate">{link.label}</span>
                         <span className="text-[9px] px-1.5 py-0.5 rounded font-bold shrink-0"
                           style={{ backgroundColor: 'rgba(255,226,160,0.2)', color: '#FFE2A0' }}>
                           KEY
@@ -278,7 +285,7 @@ function EventCard({ event, isBusinessSide, onEdit, onDelete }: EventCardProps) 
                       </div>
                       <p className="text-[10px] text-[#FBFAF8]/30 truncate mt-0.5">{link.url}</p>
                     </div>
-                    <ExternalLink size={14} className="text-[#FFE2A0] shrink-0 opacity-70 group-hover:opacity-100 transition-opacity" />
+                    <ExternalLink size={14} className="text-[#FFE2A0] shrink-0 opacity-70 group-hover:opacity-100 transition-all duration-300 group-hover:translate-x-0.5" />
                   </a>
                 ))}
 
@@ -472,14 +479,26 @@ function EventCard({ event, isBusinessSide, onEdit, onDelete }: EventCardProps) 
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg mb-4 transition-all duration-200 group"
-              style={{ backgroundColor: 'rgba(255,226,160,0.08)', border: '1px solid rgba(255,226,160,0.2)' }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,226,160,0.15)'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,226,160,0.08)'}
+              className="flex items-center gap-3 px-4 py-3 rounded-xl mb-4 transition-all duration-300 group shadow-sm hover:shadow-md"
+              style={{ 
+                backgroundColor: 'rgba(255,226,160,0.1)', 
+                border: '1px solid rgba(255,226,160,0.25)',
+                backdropFilter: 'blur(10px)'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(255,226,160,0.18)';
+                e.currentTarget.style.borderColor = 'rgba(255,226,160,0.5)';
+                e.currentTarget.style.transform = 'translateY(-1px)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(255,226,160,0.1)';
+                e.currentTarget.style.borderColor = 'rgba(255,226,160,0.25)';
+                e.currentTarget.style.transform = 'translateY(0)';
+              }}
             >
-              <span className="text-sm">{getLinkIcon(primaryLinks[0].label)}</span>
-              <span className="text-xs font-semibold text-[#FFE2A0] flex-1 truncate">{primaryLinks[0].label}</span>
-              <ExternalLink size={11} className="text-[#FFE2A0] opacity-60 group-hover:opacity-100 shrink-0 transition-opacity" />
+              <span className="text-base shrink-0 transition-transform duration-300 group-hover:scale-110">{getLinkIcon(primaryLinks[0].label)}</span>
+              <span className="text-sm font-bold text-[#FFE2A0] flex-1 truncate">{primaryLinks[0].label}</span>
+              <ExternalLink size={14} className="text-[#FFE2A0] opacity-60 group-hover:opacity-100 shrink-0 transition-all duration-300 group-hover:translate-x-0.5" />
             </a>
           )}
 
