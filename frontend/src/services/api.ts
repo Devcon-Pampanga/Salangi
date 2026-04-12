@@ -37,8 +37,7 @@ export async function checkEmailExists(email: string): Promise<boolean> {
   return !!data;
 }
 
-const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
-const BASE_URL = import.meta.env.VITE_API_URL || (isProduction ? 'https://salangi-backend.onrender.com' : 'http://localhost:8000');
+const BASE_URL = import.meta.env.VITE_API_URL;
 
 console.log('API Base URL:', BASE_URL, 'Mode:', import.meta.env.MODE);
 
