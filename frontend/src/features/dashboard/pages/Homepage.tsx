@@ -268,9 +268,12 @@ function Homepage() {
         {/* ── LEFT COLUMN ── */}
         <div className="flex flex-col shrink-0 w-full md:w-120 md:h-full overflow-visible md:overflow-hidden order-2 md:order-1">
           <div className="shrink-0 mb-4 md:mb-0">
-            <h1 className="font-['Playfair_Display'] text-2xl md:text-3xl leading-tight mb-5 mt-4 md:mt-0">
-              Discover the <span className="text-[#FFE2A0]">heart</span> of Pampanga.
+            <h1 className="font-['Playfair_Display'] text-6xl md:text-3xl leading-tight mt-4 md:mt-0 text-[#FFE2A0]">
+              Salangi
             </h1>
+            <p className  = "mb-5 text-lg font-['Playfair_Display'] tracking-wide">
+              Bring <span className = "text-[#FFE2A0]">light</span> to my <span className = "text-[#FFE2A0]"> home! </span>
+            </p>
             <CategoryFilters
               activeCategory={activeCategory}
               onCategoryChange={handleCategoryChange}
