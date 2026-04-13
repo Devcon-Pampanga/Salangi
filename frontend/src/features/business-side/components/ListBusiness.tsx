@@ -1,4 +1,4 @@
-// ListBusiness.jsx — 3-step business listing form
+// ListBusiness.tsx — 3-step business listing form
 // Step 1: Business details + draggable pin  |  Step 2: Verification  |  Step 3: Review & Submit
 
 import { useState, useRef, useEffect } from 'react';
@@ -143,18 +143,18 @@ async function uploadFile(file: File, folder: string): Promise<string | null> {
   return publicUrl;
 }
 
-// ✅ Private bucket — for sensitive documents (permits, IDs, selfies)
-// Returns only the storage path, NOT a public URL
+// ✅ Private bucket — stores path only (NOT a public URL)
+// Admin dashboard resolves these to signed URLs via createSignedUrl()
 async function uploadPrivateFile(file: File, folder: string): Promise<string | null> {
   const ext = file.name.split('.').pop();
   const fileName = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
   const { data, error } = await supabase.storage
-    .from('private-documents')  // 🔒 private bucket
+    .from('private-documents')
     .upload(fileName, file, { cacheControl: '3600', upsert: false });
 
   if (error) { console.error('Private upload error:', error); return null; }
 
-  // Return storage path only — no public URL generated
+  // Return storage path only — admin resolves to signed URL when viewing
   return data.path;
 }
 
@@ -379,7 +379,6 @@ function ListBusiness() {
 
       const [imageUrls, businessPermitPath, governmentIdPath, selfiePath] = await Promise.all([
         form.images.length > 0 ? uploadImages(form.images) : Promise.resolve([]),
-        // ✅ CHANGED: now uploads to private-documents bucket, returns path not public URL
         form.businessPermit ? uploadPrivateFile(form.businessPermit, 'permits') : Promise.resolve(null),
         form.governmentId ? uploadPrivateFile(form.governmentId, 'ids') : Promise.resolve(null),
         form.selfie ? uploadPrivateFile(form.selfie, 'selfies') : Promise.resolve(null),
@@ -403,7 +402,7 @@ function ListBusiness() {
           email: form.email.trim() || null,
           facebook: form.facebook.trim() || null,
           website: form.website.trim() || null,
-          // ✅ CHANGED: storing storage paths instead of public URLs
+          // Stored as storage paths — admin generates signed URLs to view
           business_permit: businessPermitPath,
           government_id: governmentIdPath,
           selfie_verification: selfiePath,
@@ -596,7 +595,11 @@ function ListBusiness() {
             )}
 
             <div className="border-t border-[#373737] pt-5">
-              <p className="text-xs text-[#FFE2A0]/70 font-semibold uppercase tracking-wider mb-4">Contact & Social (optional)</p>
+              <p className="text-xs text-[#FFE2A0]/70 font-semibold uppercase tracking-wider mb-1">Contact & Social (optional)</p>
+              {/* Privacy notice */}
+              <p className="text-[10px] text-amber-400/70 mb-4 flex items-center gap-1.5">
+                🔒 Phone and email are private — only visible to admins for verification purposes.
+              </p>
               <div className="flex flex-col gap-4">
                 <div className="flex items-center gap-3">
                   <div className="w-8 flex justify-center"><img src={phoneIcon} alt="phone" className="w-5 h-5" /></div>
@@ -620,6 +623,7 @@ function ListBusiness() {
                     <TextInput type="email" value={form.email} onChange={(e) => update('email', e.target.value)} placeholder="business@email.com" />
                   </div>
                 </div>
+                {/* Facebook and website are semi-public */}
                 <div className="flex items-center gap-3">
                   <div className="w-8 flex justify-center"><img src={fbIcon} alt="facebook" className="w-5 h-5" /></div>
                   <div className="flex-1">
@@ -714,8 +718,20 @@ function ListBusiness() {
                 <div className="mt-4 border-t border-zinc-700 pt-4">
                   <p className="text-[#FBFAF8]/40 text-xs mb-3">Contact & Social</p>
                   <div className="flex flex-col gap-2 text-sm">
-                    {form.phone && <div className="flex items-center gap-2"><img src={phoneIcon} className="w-4 h-4 opacity-50" /><span className="text-[#FBFAF8]/80">+63{form.phone}</span></div>}
-                    {form.email && <div className="flex items-center gap-2"><img src={emailIcon} className="w-4 h-4 opacity-50" /><span className="text-[#FBFAF8]/80">{form.email}</span></div>}
+                    {form.phone && (
+                      <div className="flex items-center gap-2">
+                        <img src={phoneIcon} className="w-4 h-4 opacity-50" />
+                        <span className="text-[#FBFAF8]/80">+63{form.phone}</span>
+                        <span className="text-[10px] text-amber-400/70 ml-1">🔒 private</span>
+                      </div>
+                    )}
+                    {form.email && (
+                      <div className="flex items-center gap-2">
+                        <img src={emailIcon} className="w-4 h-4 opacity-50" />
+                        <span className="text-[#FBFAF8]/80">{form.email}</span>
+                        <span className="text-[10px] text-amber-400/70 ml-1">🔒 private</span>
+                      </div>
+                    )}
                     {form.facebook && <div className="flex items-center gap-2"><img src={fbIcon} className="w-4 h-4 opacity-50" /><span className="text-[#FBFAF8]/80">{form.facebook}</span></div>}
                     {form.website && <div className="flex items-center gap-2"><img src={webIcon} className="w-4 h-4 opacity-50" /><span className="text-[#FBFAF8]/80">{form.website}</span></div>}
                   </div>
