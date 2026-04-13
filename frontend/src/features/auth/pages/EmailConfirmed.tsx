@@ -8,6 +8,7 @@ import bg from '@assets/images/bg.png';
 //icons
 import verify from '@assets/png-files/verify.png';
 import loading from '@assets/png-files/sand-clock.png';
+import failed from '@assets/png-files/failed.png';
 
 function EmailConfirmed() {
   const [searchParams] = useSearchParams();
@@ -72,8 +73,8 @@ function EmailConfirmed() {
         <div className="w-full max-w-md text-center">
           {status === 'loading' && (
             <div className="motion-preset-fade">
-              <div className="text-6xl mb-6">
-                <img src = {loading}/>
+              <div className="flex flex-col items-center justify-center mb-6">
+                <img src = {loading} alt="loading" className="w-25 h-25 object-contain"/>
               </div>
               <h2 className="font-['Playfair_Display'] text-white text-4xl font-bold mb-2">
                 Verifying...
@@ -84,8 +85,8 @@ function EmailConfirmed() {
 
           {status === 'success' && (
             <div className="motion-preset-bounce">
-              <div className="text-6xl mb-6">
-                <img src = {verify} />
+              <div className="flex flex-col items-center justify-center mb-6">
+                <img src = {verify} alt="Success" className="w-25 h-25 object-contain"/>
               </div>
               <h2 className="font-['Playfair_Display'] text-white text-4xl font-bold mb-2">
                 Email Verified!
@@ -104,7 +105,9 @@ function EmailConfirmed() {
 
           {status === 'error' && (
             <div className="motion-preset-shake">
-              <div className="text-6xl mb-6">❌</div>
+              <div className="flex flex-col items-center justify-center mb-6">
+                <img src = {failed} alt="failed" className="w-25 h-25 object-contain" />
+              </div>
               <h2 className="font-['Playfair_Display'] text-white text-4xl font-bold mb-2">
                 Verification Failed
               </h2>
