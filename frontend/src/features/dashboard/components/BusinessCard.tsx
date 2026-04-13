@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Image as ImageIcon, Star, X, ZoomIn } from 'lucide-react';
 import type { Listing } from '../../Data/Listings';
@@ -86,9 +87,9 @@ function Lightbox({ images, activeIndex, onClose, onPrev, onNext }: LightboxProp
     return () => window.removeEventListener('keydown', handleKey);
   }, [onClose, onPrev, onNext]);
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 bg-black/95 z-[100] flex items-center justify-center"
+      className="fixed inset-0 bg-black/95 z-[99999] flex items-center justify-center"
       onClick={onClose}
     >
       <button
@@ -141,7 +142,8 @@ function Lightbox({ images, activeIndex, onClose, onPrev, onNext }: LightboxProp
           ))}
         </div>
       )}
-    </div>
+    </div>,
+    document.body
   );
 }
 
