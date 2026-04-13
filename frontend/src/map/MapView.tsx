@@ -204,11 +204,9 @@ const MapView = ({
       draggableWaypoints: false,
       fitSelectedRoutes: true,
       show: false,
-      // ── Hide the panel on creation ────────────────────────────────────────
-      createMarker: () => null, // optional: skip default A/B markers
+      createMarker: () => null,
     }).addTo(map);
 
-    // ── Most reliable way to hide the panel: grab DOM after route loads ────
     routing.on("routesfound", () => {
       const container = routing.getContainer();
       if (container) {
@@ -222,7 +220,6 @@ const MapView = ({
       }
     });
 
-    // ── Also try immediately in case panel renders before route ───────────
     setTimeout(() => {
       const container = routing.getContainer?.();
       if (container) {
@@ -230,7 +227,6 @@ const MapView = ({
         container.style.visibility = "hidden";
       }
     }, 100);
-    // ──────────────────────────────────────────────────────────────────────
 
     routingControlRef.current = routing;
 
