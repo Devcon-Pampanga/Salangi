@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Trash2, Heart, X, MapPin, Clock, Calendar, ChevronLeft, ChevronRight, Image as ImageIcon, ExternalLink, Link2 } from 'lucide-react';
+import { Trash2, Heart, X, MapPin, Clock, Calendar, ChevronLeft, ChevronRight, Image as ImageIcon, ExternalLink, Link2, ZoomIn } from 'lucide-react';
 import { FaFacebook, FaInstagram, FaClipboardList, FaTicketAlt, FaGlobe, FaYoutube, FaTwitter } from 'react-icons/fa';
 import { FaLink } from 'react-icons/fa6';
 import type { Event } from '../../Data/Events';
@@ -35,7 +35,6 @@ function formatDate(raw: string | undefined | null): string {
 function getLinkIcon(label: string): React.ReactNode {
   const lower = label.toLowerCase();
   const iconClass = "text-[#FBFAF8]/60 group-hover:text-[#FFE2A0] transition-colors shrink-0";
-
   if (lower.includes('facebook') || lower.includes('fb')) return <FaFacebook className={iconClass} />;
   if (lower.includes('instagram') || lower.includes('ig'))  return <FaInstagram className={iconClass} />;
   if (lower.includes('register') || lower.includes('form')) return <FaClipboardList className={iconClass} />;
@@ -49,7 +48,6 @@ function getLinkIcon(label: string): React.ReactNode {
 function MiniMap({ lat, lng }: { lat: number; lng: number }) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
-
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
     const map = L.map(mapRef.current, { zoomControl: false, dragging: false, scrollWheelZoom: false }).setView([lat, lng], 16);
@@ -60,17 +58,108 @@ function MiniMap({ lat, lng }: { lat: number; lng: number }) {
     L.marker([lat, lng]).addTo(map);
     return () => { map.remove(); mapInstanceRef.current = null; };
   }, [lat, lng]);
-
   return <div ref={mapRef} style={{ height: '160px', width: '100%', borderRadius: '10px', overflow: 'hidden' }} />;
 }
 
+// ── Fullscreen Image Lightbox ─────────────────────────────────────────────────
+// Rendered via portal so it sits above the detail modal (z-[99999])
+
+interface LightboxProps {
+  images: string[];
+  activeIndex: number;
+  onClose: () => void;
+  onPrev: () => void;
+  onNext: () => void;
+}
+
+function Lightbox({ images, activeIndex, onClose, onPrev, onNext }: LightboxProps) {
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+      if (e.key === 'ArrowLeft') onPrev();
+      if (e.key === 'ArrowRight') onNext();
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [onClose, onPrev, onNext]);
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/95"
+      onClick={onClose}
+    >
+      {/* Close */}
+      <button
+        onClick={onClose}
+        className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-full border border-white/10 transition-colors cursor-pointer z-10"
+      >
+        <X size={18} className="text-white" />
+      </button>
+
+      {/* Counter */}
+      {images.length > 1 && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-black/50 text-white text-xs px-3 py-1.5 rounded-full backdrop-blur-sm pointer-events-none">
+          {activeIndex + 1} / {images.length}
+        </div>
+      )}
+
+      {/* Prev */}
+      {images.length > 1 && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onPrev(); }}
+          className="absolute left-4 w-10 h-10 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-full border border-white/10 transition-colors cursor-pointer"
+        >
+          <ChevronLeft size={20} className="text-white" />
+        </button>
+      )}
+
+      {/* Image — stopPropagation so clicking it doesn't close the lightbox */}
+      <img
+        src={images[activeIndex]}
+        alt={`Image ${activeIndex + 1}`}
+        className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      />
+
+      {/* Next */}
+      {images.length > 1 && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onNext(); }}
+          className="absolute right-4 w-10 h-10 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-full border border-white/10 transition-colors cursor-pointer"
+        >
+          <ChevronRight size={20} className="text-white" />
+        </button>
+      )}
+
+      {/* Dot indicators */}
+      {images.length > 1 && (
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-1.5 pointer-events-none">
+          {images.map((_, idx) => (
+            <div
+              key={idx}
+              className={`h-1.5 rounded-full transition-all duration-300 ${
+                activeIndex === idx ? 'bg-[#FFE2A0] w-4' : 'bg-white/40 w-1.5'
+              }`}
+            />
+          ))}
+        </div>
+      )}
+    </div>,
+    document.body
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 function EventCard({ event, isBusinessSide, onEdit, onDelete }: EventCardProps) {
-  const [isInterested, setIsInterested]     = useState(false);
-  const [interestCount, setInterestCount]   = useState(event.interest_count ?? 0);
-  const [loading, setLoading]               = useState(false);
-  const [showModal, setShowModal]           = useState(false);
-  const [carouselIndex, setCarouselIndex]   = useState(0);
+  const [isInterested, setIsInterested]           = useState(false);
+  const [interestCount, setInterestCount]         = useState(event.interest_count ?? 0);
+  const [loading, setLoading]                     = useState(false);
+  const [showModal, setShowModal]                 = useState(false);
+  const [carouselIndex, setCarouselIndex]         = useState(0);
   const [modalCarouselIndex, setModalCarouselIndex] = useState(0);
+  // ✅ Lightbox state — null = closed, number = index of image to show
+  const [lightboxIndex, setLightboxIndex]         = useState<number | null>(null);
 
   const allImages: string[] = ((event as any).images?.length
     ? (event as any).images
@@ -79,11 +168,19 @@ function EventCard({ event, isBusinessSide, onEdit, onDelete }: EventCardProps) 
   const coverImage  = allImages[0] ?? event.image ?? '';
   const displayDate = formatDate(event.date);
 
-  // Links — filter out any with missing URL
   const links: { label: string; url: string; isPrimary?: boolean }[] =
     ((event as any).links ?? []).filter((l: any) => l.url && l.label);
   const primaryLinks = links.filter((l) => l.isPrimary);
   const otherLinks   = links.filter((l) => !l.isPrimary);
+
+  // Lightbox navigation (stable refs so keyboard handler doesn't go stale)
+  const lightboxNext = useCallback(() => {
+    setLightboxIndex((prev) => prev === null ? null : (prev + 1) % allImages.length);
+  }, [allImages.length]);
+
+  const lightboxPrev = useCallback(() => {
+    setLightboxIndex((prev) => prev === null ? null : (prev - 1 + allImages.length) % allImages.length);
+  }, [allImages.length]);
 
   useEffect(() => {
     if (isBusinessSide) return;
@@ -134,6 +231,7 @@ function EventCard({ event, isBusinessSide, onEdit, onDelete }: EventCardProps) 
 
   const hasMap = typeof (event as any).lat === 'number' && typeof (event as any).lng === 'number';
 
+  // ── Detail Modal ─────────────────────────────────────────────────────────────
   const modal = showModal ? createPortal(
     <div
       className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
@@ -144,11 +242,28 @@ function EventCard({ event, isBusinessSide, onEdit, onDelete }: EventCardProps) 
         onClick={(e) => e.stopPropagation()}
       >
         {/* Image carousel */}
-        <div className="relative h-64 w-full shrink-0 bg-[#222222]">
+        {/* overflow-hidden ensures the image respects the modal's rounded-2xl corners */}
+        <div className="relative h-64 w-full shrink-0 bg-[#222222] group overflow-hidden rounded-t-2xl">
           {allImages.length > 0 ? (
             <>
-              <img src={allImages[modalCarouselIndex] ?? coverImage} alt={event.title} className="w-full h-full object-cover" />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#2a2a2a] via-transparent to-transparent" />
+              {/* Clicking the image opens the lightbox at the current index */}
+              <div
+                className="relative w-full h-full cursor-zoom-in"
+                onClick={() => setLightboxIndex(modalCarouselIndex)}
+              >
+                <img
+                  src={allImages[modalCarouselIndex] ?? coverImage}
+                  alt={event.title}
+                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                />
+                {/* Zoom hint — centered, avoids top-right corner where X button lives */}
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-end justify-end pb-12 pr-3 pointer-events-none">
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 rounded-full p-2">
+                    <ZoomIn size={16} className="text-white" />
+                  </div>
+                </div>
+              </div>
+              <div className="absolute inset-0 bg-gradient-to-t from-[#2a2a2a] via-transparent to-transparent pointer-events-none" />
             </>
           ) : (
             <div className="w-full h-full flex flex-col items-center justify-center gap-3 bg-[#2a2a2a] text-[#FBFAF8]/10">
@@ -158,33 +273,35 @@ function EventCard({ event, isBusinessSide, onEdit, onDelete }: EventCardProps) 
             </div>
           )}
 
-          {/* Close */}
+          {/* Close modal button */}
           <button
-            onClick={() => setShowModal(false)}
-            className="absolute top-4 right-4 flex items-center justify-center w-9 h-9 bg-black/50 hover:bg-black/70 backdrop-blur-md rounded-full border border-white/10 transition-all hover:scale-110 active:scale-95"
+            onClick={(e) => { e.stopPropagation(); setShowModal(false); }}
+            className="absolute top-4 right-4 flex items-center justify-center w-9 h-9 bg-black/50 hover:bg-black/70 backdrop-blur-md rounded-full border border-white/10 transition-all hover:scale-110 active:scale-95 z-20"
           >
             <X size={16} className="text-white" />
           </button>
 
-          {/* Carousel controls */}
+          {/* Carousel controls — stopPropagation so they don't trigger lightbox */}
           {allImages.length > 1 && (
             <>
               <button
                 onClick={(e) => { e.stopPropagation(); setModalCarouselIndex(i => (i - 1 + allImages.length) % allImages.length); }}
-                className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-black/50 hover:bg-black/70 rounded-full border border-white/10 transition-all"
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-black/50 hover:bg-black/70 rounded-full border border-white/10 transition-all z-20"
               >
                 <ChevronLeft size={16} className="text-white" />
               </button>
               <button
                 onClick={(e) => { e.stopPropagation(); setModalCarouselIndex(i => (i + 1) % allImages.length); }}
-                className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-black/50 hover:bg-black/70 rounded-full border border-white/10 transition-all"
+                className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-black/50 hover:bg-black/70 rounded-full border border-white/10 transition-all z-20"
               >
                 <ChevronRight size={16} className="text-white" />
               </button>
-              <div className="absolute bottom-14 left-0 right-0 flex justify-center gap-1.5">
+              <div className="absolute bottom-14 left-0 right-0 flex justify-center gap-1.5 z-20 pointer-events-none">
                 {allImages.map((_, i) => (
-                  <button key={i} onClick={(e) => { e.stopPropagation(); setModalCarouselIndex(i); }}
-                    className={`w-1.5 h-1.5 rounded-full transition-all ${i === modalCarouselIndex ? 'bg-[#FFE2A0] w-3' : 'bg-white/40'}`}
+                  <button
+                    key={i}
+                    onClick={(e) => { e.stopPropagation(); setModalCarouselIndex(i); }}
+                    className={`w-1.5 h-1.5 rounded-full transition-all pointer-events-auto ${i === modalCarouselIndex ? 'bg-[#FFE2A0] w-3' : 'bg-white/40'}`}
                   />
                 ))}
               </div>
@@ -192,7 +309,7 @@ function EventCard({ event, isBusinessSide, onEdit, onDelete }: EventCardProps) 
           )}
 
           {/* Date badge */}
-          <div className="absolute bottom-4 left-4 px-3 py-1.5 bg-[#FFE2A0]/90 backdrop-blur-md rounded-full shadow-lg">
+          <div className="absolute bottom-4 left-4 px-3 py-1.5 bg-[#FFE2A0]/90 backdrop-blur-md rounded-full shadow-lg z-20 pointer-events-none">
             <span className="text-[#222222] text-[10px] font-black tracking-wider uppercase">{displayDate}</span>
           </div>
         </div>
@@ -239,7 +356,7 @@ function EventCard({ event, isBusinessSide, onEdit, onDelete }: EventCardProps) 
             </div>
           </div>
 
-          {/* ── EVENT LINKS SECTION ── */}
+          {/* Event Links */}
           {links.length > 0 && (
             <div>
               <div className="border-t border-white/10 mb-4" />
@@ -247,66 +364,33 @@ function EventCard({ event, isBusinessSide, onEdit, onDelete }: EventCardProps) 
                 <Link2 size={13} className="text-[#FFE2A0]" />
                 <p className="text-[#FBFAF8]/40 text-[10px] uppercase tracking-wider font-semibold">Event Links</p>
               </div>
-
               <div className="flex flex-col gap-2">
-                {/* Primary links first — larger, highlighted */}
                 {primaryLinks.map((link, i) => (
-                  <a
-                    key={`primary-${i}`}
-                    href={link.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <a key={`primary-${i}`} href={link.url} target="_blank" rel="noopener noreferrer"
                     onClick={(e) => e.stopPropagation()}
                     className="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group shadow-sm hover:shadow-md"
-                    style={{
-                      backgroundColor: 'rgba(255,226,160,0.1)',
-                      border: '1px solid rgba(255,226,160,0.25)',
-                      backdropFilter: 'blur(10px)'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = 'rgba(255,226,160,0.18)';
-                      e.currentTarget.style.borderColor = 'rgba(255,226,160,0.5)';
-                      e.currentTarget.style.transform = 'translateY(-1px)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = 'rgba(255,226,160,0.1)';
-                      e.currentTarget.style.borderColor = 'rgba(255,226,160,0.25)';
-                      e.currentTarget.style.transform = 'translateY(0)';
-                    }}
+                    style={{ backgroundColor: 'rgba(255,226,160,0.1)', border: '1px solid rgba(255,226,160,0.25)', backdropFilter: 'blur(10px)' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,226,160,0.18)'; e.currentTarget.style.borderColor = 'rgba(255,226,160,0.5)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,226,160,0.1)'; e.currentTarget.style.borderColor = 'rgba(255,226,160,0.25)'; e.currentTarget.style.transform = 'translateY(0)'; }}
                   >
                     <span className="text-base shrink-0 transition-transform duration-300 group-hover:scale-110">{getLinkIcon(link.label)}</span>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-bold text-[#FFE2A0] truncate">{link.label}</span>
-                        <span className="text-[9px] px-1.5 py-0.5 rounded font-bold shrink-0"
-                          style={{ backgroundColor: 'rgba(255,226,160,0.2)', color: '#FFE2A0' }}>
-                          KEY
-                        </span>
+                        <span className="text-[9px] px-1.5 py-0.5 rounded font-bold shrink-0" style={{ backgroundColor: 'rgba(255,226,160,0.2)', color: '#FFE2A0' }}>KEY</span>
                       </div>
                       <p className="text-[10px] text-[#FBFAF8]/30 truncate mt-0.5">{link.url}</p>
                     </div>
                     <ExternalLink size={14} className="text-[#FFE2A0] shrink-0 opacity-70 group-hover:opacity-100 transition-all duration-300 group-hover:translate-x-0.5" />
                   </a>
                 ))}
-
-                {/* Other links */}
                 {otherLinks.map((link, i) => (
-                  <a
-                    key={`other-${i}`}
-                    href={link.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <a key={`other-${i}`} href={link.url} target="_blank" rel="noopener noreferrer"
                     onClick={(e) => e.stopPropagation()}
                     className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group"
                     style={{ backgroundColor: '#333333', border: '1px solid #3d3d3d' }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#3a3a3a';
-                      e.currentTarget.style.borderColor = '#555555';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = '#333333';
-                      e.currentTarget.style.borderColor = '#3d3d3d';
-                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#3a3a3a'; e.currentTarget.style.borderColor = '#555555'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#333333'; e.currentTarget.style.borderColor = '#3d3d3d'; }}
                   >
                     <span className="text-base shrink-0">{getLinkIcon(link.label)}</span>
                     <div className="flex-1 min-w-0">
@@ -319,7 +403,6 @@ function EventCard({ event, isBusinessSide, onEdit, onDelete }: EventCardProps) 
               </div>
             </div>
           )}
-          {/* ── END LINKS ── */}
 
           {/* Mini Map */}
           {hasMap && (
@@ -329,8 +412,7 @@ function EventCard({ event, isBusinessSide, onEdit, onDelete }: EventCardProps) 
               <MiniMap lat={(event as any).lat} lng={(event as any).lng} />
               <a
                 href={`https://www.openstreetmap.org/?mlat=${(event as any).lat}&mlon=${(event as any).lng}&zoom=17`}
-                target="_blank"
-                rel="noopener noreferrer"
+                target="_blank" rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
                 className="flex items-center gap-1.5 mt-2 text-[#FFE2A0] text-xs hover:underline"
               >
@@ -345,7 +427,9 @@ function EventCard({ event, isBusinessSide, onEdit, onDelete }: EventCardProps) 
               <p className="text-[#FBFAF8]/40 text-[10px] uppercase tracking-wider font-semibold mb-2">Photos</p>
               <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
                 {allImages.map((src, i) => (
-                  <button key={i} onClick={() => setModalCarouselIndex(i)}
+                  <button
+                    key={i}
+                    onClick={(e) => { e.stopPropagation(); setModalCarouselIndex(i); setLightboxIndex(i); }}
                     className={`shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${i === modalCarouselIndex ? 'border-[#FFE2A0]' : 'border-transparent opacity-60 hover:opacity-100'}`}
                   >
                     <img src={src} alt="" className="w-full h-full object-cover" />
@@ -363,7 +447,7 @@ function EventCard({ event, isBusinessSide, onEdit, onDelete }: EventCardProps) 
                 <span className="text-xs">{interestCount} interested</span>
               </div>
               <button
-                onClick={(e) => handleInterested(e)}
+                onClick={(e) => { e.stopPropagation(); handleInterested(e); }}
                 disabled={loading}
                 className={`flex items-center justify-center gap-2 px-6 py-3 text-xs font-bold rounded-xl transition-all active:scale-95 cursor-pointer shadow-lg disabled:opacity-60 ${
                   isInterested ? 'bg-[#FFE2A0] text-[#222222] hover:bg-[#f5d880]' : 'bg-[#454545] text-[#FBFAF8] hover:bg-[#525252] border border-white/5'
@@ -375,7 +459,7 @@ function EventCard({ event, isBusinessSide, onEdit, onDelete }: EventCardProps) 
             </div>
           ) : (
             <button
-              onClick={() => { setShowModal(false); onEdit?.(event); }}
+              onClick={(e) => { e.stopPropagation(); setShowModal(false); onEdit?.(event); }}
               className="w-full py-3.5 bg-[#454545] text-white text-xs font-bold rounded-xl hover:bg-[#525252] transition-all active:scale-95 cursor-pointer shadow-lg border border-white/5"
             >
               Edit Event
@@ -389,12 +473,23 @@ function EventCard({ event, isBusinessSide, onEdit, onDelete }: EventCardProps) 
 
   return (
     <>
+      {/* ── Lightbox (above everything, z-[99999]) ── */}
+      {lightboxIndex !== null && (
+        <Lightbox
+          images={allImages}
+          activeIndex={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+          onPrev={lightboxPrev}
+          onNext={lightboxNext}
+        />
+      )}
+
       {/* ── Card ── */}
       <div
         className="w-full max-w-md bg-[#333333] rounded-xl overflow-hidden border border-zinc-800/50 hover:bg-[#3d3d3d] transition-all duration-200 cursor-pointer flex flex-col h-full"
-        onClick={() => setShowModal(true)}
+        onClick={() => setShowModal(true)}  // ✅ Card click → detail modal only
       >
-        {/* Image */}
+        {/* Image — no separate click handler; card handles it */}
         <div className="relative group h-72 bg-[#2a2a2a]">
           {allImages.length > 0 ? (
             <img
@@ -409,24 +504,29 @@ function EventCard({ event, isBusinessSide, onEdit, onDelete }: EventCardProps) 
             </div>
           )}
 
+          {/* Carousel arrows — stopPropagation so they don't open the modal */}
           {allImages.length > 1 && (
             <>
-              <button onClick={(e) => { e.stopPropagation(); setCarouselIndex(i => (i - 1 + allImages.length) % allImages.length); }}
-                className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center bg-black/50 rounded-full border border-white/10 opacity-0 group-hover:opacity-100 transition-all z-20">
+              <button
+                onClick={(e) => { e.stopPropagation(); setCarouselIndex(i => (i - 1 + allImages.length) % allImages.length); }}
+                className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center bg-black/50 rounded-full border border-white/10 opacity-0 group-hover:opacity-100 transition-all z-20"
+              >
                 <ChevronLeft size={14} className="text-white" />
               </button>
-              <button onClick={(e) => { e.stopPropagation(); setCarouselIndex(i => (i + 1) % allImages.length); }}
-                className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center bg-black/50 rounded-full border border-white/10 opacity-0 group-hover:opacity-100 transition-all z-20">
+              <button
+                onClick={(e) => { e.stopPropagation(); setCarouselIndex(i => (i + 1) % allImages.length); }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center bg-black/50 rounded-full border border-white/10 opacity-0 group-hover:opacity-100 transition-all z-20"
+              >
                 <ChevronRight size={14} className="text-white" />
               </button>
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 bg-black/50 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 bg-black/50 text-white text-[10px] font-bold px-2 py-0.5 rounded-full pointer-events-none">
                 {carouselIndex + 1}/{allImages.length}
               </div>
             </>
           )}
 
           {/* Date badge */}
-          <div className="absolute bottom-4 left-4 px-2.5 py-1 bg-[#FFE2A0]/90 backdrop-blur-md rounded-full z-20 shadow-lg">
+          <div className="absolute bottom-4 left-4 px-2.5 py-1 bg-[#FFE2A0]/90 backdrop-blur-md rounded-full z-20 shadow-lg pointer-events-none">
             <span className="text-[#222222] text-[9px] font-black tracking-wider uppercase">{displayDate}</span>
           </div>
 
@@ -440,7 +540,7 @@ function EventCard({ event, isBusinessSide, onEdit, onDelete }: EventCardProps) 
           )}
 
           {isBusinessSide && (
-            <div className="absolute bottom-4 right-4 z-20 flex items-center gap-1.5 bg-black/60 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-lg">
+            <div className="absolute bottom-4 right-4 z-20 flex items-center gap-1.5 bg-black/60 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-lg pointer-events-none">
               <Heart size={12} className="text-[#FFE2A0] fill-[#FFE2A0]" />
               <span className="text-[#FFE2A0] text-xs font-bold">{interestCount}</span>
             </div>
@@ -456,7 +556,6 @@ function EventCard({ event, isBusinessSide, onEdit, onDelete }: EventCardProps) 
 
           <p className="text-sm text-[#FBFAF8]/70 leading-relaxed line-clamp-2 mb-4 h-10">{event.description}</p>
 
-          {/* Info row */}
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2 mb-4">
             <div className="flex items-center gap-2">
               <img src={locBtnSelected} width="14" alt="location" className="opacity-70" />
@@ -472,29 +571,17 @@ function EventCard({ event, isBusinessSide, onEdit, onDelete }: EventCardProps) 
             </div>
           </div>
 
-          {/* Primary link preview on card (if any) */}
+          {/* Primary link preview */}
           {primaryLinks.length > 0 && (
             <a
               href={primaryLinks[0].url}
               target="_blank"
               rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}  // ✅ Prevents card modal from opening
               className="flex items-center gap-3 px-4 py-3 rounded-xl mb-4 transition-all duration-300 group shadow-sm hover:shadow-md"
-              style={{ 
-                backgroundColor: 'rgba(255,226,160,0.1)', 
-                border: '1px solid rgba(255,226,160,0.25)',
-                backdropFilter: 'blur(10px)'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = 'rgba(255,226,160,0.18)';
-                e.currentTarget.style.borderColor = 'rgba(255,226,160,0.5)';
-                e.currentTarget.style.transform = 'translateY(-1px)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'rgba(255,226,160,0.1)';
-                e.currentTarget.style.borderColor = 'rgba(255,226,160,0.25)';
-                e.currentTarget.style.transform = 'translateY(0)';
-              }}
+              style={{ backgroundColor: 'rgba(255,226,160,0.1)', border: '1px solid rgba(255,226,160,0.25)', backdropFilter: 'blur(10px)' }}
+              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,226,160,0.18)'; e.currentTarget.style.borderColor = 'rgba(255,226,160,0.5)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,226,160,0.1)'; e.currentTarget.style.borderColor = 'rgba(255,226,160,0.25)'; e.currentTarget.style.transform = 'translateY(0)'; }}
             >
               <span className="text-base shrink-0 transition-transform duration-300 group-hover:scale-110">{getLinkIcon(primaryLinks[0].label)}</span>
               <span className="text-sm font-bold text-[#FFE2A0] flex-1 truncate">{primaryLinks[0].label}</span>
@@ -502,7 +589,6 @@ function EventCard({ event, isBusinessSide, onEdit, onDelete }: EventCardProps) 
             </a>
           )}
 
-          {/* Links count indicator (if more than just the primary preview) */}
           {links.length > (primaryLinks.length > 0 ? 1 : 0) && (
             <div className="flex items-center gap-1.5 mb-4">
               <Link2 size={11} className="text-[#FBFAF8]/30" />

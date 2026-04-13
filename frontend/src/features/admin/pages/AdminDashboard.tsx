@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 import {
   CheckCircle, XCircle, LogOut, MapPin, Clock,
   ChevronLeft, ChevronRight, X, ZoomIn, CalendarDays,
-  Phone, Globe, Facebook, Mail, FileText, Eye,
+  Phone, Globe, Facebook, Mail, FileText, Eye, Lock, User,
 } from 'lucide-react';
 import { ROUTES } from '../../../routes/paths';
 import { useAdminGuard } from '../../../hooks/useAdminGuard';
@@ -141,24 +141,78 @@ function ImageCarousel({ images, onImageClick }: { images: string[]; onImageClic
   );
 }
 
-// ── Doc Thumbnail ─────────────────────────────────────────────────────────────
+// ── Doc Thumbnail (with signed URL resolver) ──────────────────────────────────
+// Handles both:
+//   - Old listings: src is already a full public URL (http/https) → use directly
+//   - New listings: src is a storage path (e.g. "permits/abc.jpg") → generate signed URL
 
 function DocThumb({ src, label, onImageClick }: { src: string; label: string; onImageClick: (src: string) => void }) {
-  const isPdf = src.toLowerCase().includes('.pdf');
+  const [resolvedSrc, setResolvedSrc] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!src) { setLoading(false); return; }
+
+    const resolve = async () => {
+      setLoading(true);
+
+      // Already a full URL (old listings stored public URLs) → use as-is
+      if (src.startsWith('http')) {
+        setResolvedSrc(src);
+        setLoading(false);
+        return;
+      }
+
+      // Storage path → generate a 1-hour signed URL from private-documents bucket
+      const { data, error } = await supabase.storage
+        .from('private-documents')
+        .createSignedUrl(src, 60 * 60);
+
+      if (!error && data?.signedUrl) {
+        setResolvedSrc(data.signedUrl);
+      } else {
+        console.error('Signed URL error for', src, error);
+        setResolvedSrc(null);
+      }
+      setLoading(false);
+    };
+
+    resolve();
+  }, [src]);
+
+  const isPdf = src?.toLowerCase().includes('.pdf');
+
+  const handleClick = () => {
+    if (!resolvedSrc) return;
+    if (isPdf) window.open(resolvedSrc, '_blank');
+    else onImageClick(resolvedSrc);
+  };
+
   return (
     <div className="flex flex-col items-center gap-2">
       <div
         className="w-24 h-20 rounded-xl overflow-hidden border border-zinc-700 cursor-zoom-in relative group hover:border-[#FFE2A0]/40 transition-colors"
-        onClick={() => isPdf ? window.open(src, '_blank') : onImageClick(src)}
+        onClick={handleClick}
       >
-        {isPdf ? (
+        {loading ? (
+          // Spinner while resolving signed URL
+          <div className="w-full h-full bg-[#2D2D2D] animate-pulse flex items-center justify-center">
+            <div className="w-5 h-5 rounded-full border-2 border-[#FFE2A0]/30 border-t-[#FFE2A0] animate-spin" />
+          </div>
+        ) : !resolvedSrc ? (
+          // Failed to resolve
+          <div className="w-full h-full bg-[#2D2D2D] flex flex-col items-center justify-center gap-1">
+            <span className="text-lg">⚠️</span>
+            <span className="text-[10px] text-[#FBFAF8]/30">Unavailable</span>
+          </div>
+        ) : isPdf ? (
           <div className="w-full h-full bg-[#2D2D2D] flex flex-col items-center justify-center gap-1">
             <span className="text-2xl">📄</span>
             <span className="text-xs text-[#FBFAF8]/40">PDF</span>
           </div>
         ) : (
           <>
-            <img src={src} alt={label} className="w-full h-full object-cover" />
+            <img src={resolvedSrc} alt={label} className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center">
               <ZoomIn size={16} className="text-white opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
@@ -271,7 +325,7 @@ function ListingDetailModal({
 
             <div className="border-t border-white/10" />
 
-            {/* Info grid */}
+            {/* Public Info grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {listing.location && (
                 <div className="flex items-start gap-3">
@@ -292,28 +346,6 @@ function ListingDetailModal({
                   <div>
                     <p className="text-[#FBFAF8]/40 text-[10px] uppercase tracking-wider font-semibold">Hours</p>
                     <p className="text-[#FBFAF8] text-sm">{listing.hours}</p>
-                  </div>
-                </div>
-              )}
-              {listing.phone && (
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-[#3a3a3a] flex items-center justify-center shrink-0 mt-0.5">
-                    <Phone size={14} className="text-[#FFE2A0]" />
-                  </div>
-                  <div>
-                    <p className="text-[#FBFAF8]/40 text-[10px] uppercase tracking-wider font-semibold">Phone</p>
-                    <p className="text-[#FBFAF8] text-sm">{listing.phone}</p>
-                  </div>
-                </div>
-              )}
-              {listing.email && (
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-[#3a3a3a] flex items-center justify-center shrink-0 mt-0.5">
-                    <Mail size={14} className="text-[#FFE2A0]" />
-                  </div>
-                  <div>
-                    <p className="text-[#FBFAF8]/40 text-[10px] uppercase tracking-wider font-semibold">Email</p>
-                    <p className="text-[#FBFAF8] text-sm">{listing.email}</p>
                   </div>
                 </div>
               )}
@@ -340,6 +372,41 @@ function ListingDetailModal({
                 </div>
               )}
             </div>
+
+            {/* 🔒 Private Info Section */}
+            {(listing.phone || listing.email) && (
+              <>
+                <div className="border-t border-white/10" />
+                <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 space-y-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Lock size={12} className="text-amber-400" />
+                    <p className="text-amber-400 text-[10px] uppercase tracking-wider font-bold">Private Info — Admin Only</p>
+                  </div>
+                  {listing.phone && (
+                    <div className="flex items-center gap-3">
+                      <div className="w-7 h-7 rounded-lg bg-[#3a3a3a] flex items-center justify-center shrink-0">
+                        <Phone size={12} className="text-[#FFE2A0]" />
+                      </div>
+                      <div>
+                        <p className="text-[#FBFAF8]/40 text-[10px] uppercase tracking-wider font-semibold">Phone</p>
+                        <p className="text-[#FBFAF8] text-sm">{listing.phone}</p>
+                      </div>
+                    </div>
+                  )}
+                  {listing.email && (
+                    <div className="flex items-center gap-3">
+                      <div className="w-7 h-7 rounded-lg bg-[#3a3a3a] flex items-center justify-center shrink-0">
+                        <Mail size={12} className="text-[#FFE2A0]" />
+                      </div>
+                      <div>
+                        <p className="text-[#FBFAF8]/40 text-[10px] uppercase tracking-wider font-semibold">Email</p>
+                        <p className="text-[#FBFAF8] text-sm">{listing.email}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
 
             {listing.description && (
               <>
@@ -375,7 +442,10 @@ function ListingDetailModal({
               <>
                 <div className="border-t border-white/10" />
                 <div>
-                  <p className="text-[#FBFAF8]/40 text-[10px] uppercase tracking-wider font-semibold mb-3">Verification Documents</p>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Lock size={12} className="text-amber-400" />
+                    <p className="text-amber-400 text-[10px] uppercase tracking-wider font-bold">Verification Documents — Admin Only</p>
+                  </div>
                   <div className="flex gap-4 flex-wrap">
                     {listing.business_permit && <DocThumb src={listing.business_permit} label="Business Permit" onImageClick={setLightbox} />}
                     {listing.government_id && <DocThumb src={listing.government_id} label="Government ID" onImageClick={setLightbox} />}
@@ -680,8 +750,19 @@ function ListingCard({
                 <Clock size={12} /> {listing.hours}
               </div>
             )}
-            {listing.phone && <p className="text-[#FBFAF8]/30 text-xs mb-1">📞 {listing.phone}</p>}
-            {listing.facebook && <p className="text-[#FBFAF8]/30 text-xs mb-1 truncate">🌐 {listing.facebook}</p>}
+            {/* Private info shown subtly on card */}
+            {listing.phone && (
+              <div className="flex items-center gap-1.5 text-[#FBFAF8]/30 text-xs mb-1">
+                <Lock size={10} className="text-amber-500/60" />
+                <span>📞 {listing.phone}</span>
+              </div>
+            )}
+            {listing.email && (
+              <div className="flex items-center gap-1.5 text-[#FBFAF8]/30 text-xs mb-1">
+                <Lock size={10} className="text-amber-500/60" />
+                <span>✉️ {listing.email}</span>
+              </div>
+            )}
             <p className="text-[#FBFAF8]/50 text-sm line-clamp-2 mt-2 leading-relaxed hidden sm:block">{listing.description}</p>
           </div>
 
@@ -703,11 +784,15 @@ function ListingCard({
           </div>
         </div>
 
+        {/* Verification docs on card — uses signed URL DocThumb */}
         {(listing.business_permit || listing.government_id || listing.selfie_verification) && (
           <div className="border-t border-zinc-800 pt-5" onClick={(e) => e.stopPropagation()}>
-            <p className="text-[9px] font-bold uppercase tracking-widest text-[#FBFAF8]/30 mb-3">
-              Verification Documents
-            </p>
+            <div className="flex items-center gap-2 mb-3">
+              <Lock size={10} className="text-amber-400/70" />
+              <p className="text-[9px] font-bold uppercase tracking-widest text-amber-400/70">
+                Verification Documents
+              </p>
+            </div>
             <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
               {listing.business_permit && <DocThumb src={listing.business_permit} label="Permit" onImageClick={onImageClick} />}
               {listing.government_id && <DocThumb src={listing.government_id} label="Gov ID" onImageClick={onImageClick} />}
@@ -836,7 +921,7 @@ function PendingEventCard({
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 function AdminDashboard() {
-  useAdminGuard()
+  useAdminGuard();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'listings' | 'events'>('listings');
   const [listings, setListings] = useState<Listing[]>([]);
@@ -898,7 +983,6 @@ function AdminDashboard() {
     setActionLoading(null);
   };
 
-  // ✅ FIXED: properly signs out from Supabase before navigating
   const handleLogout = async () => {
     sessionStorage.removeItem('admin_auth');
     await supabase.auth.signOut();

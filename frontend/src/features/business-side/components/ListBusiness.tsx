@@ -1,4 +1,4 @@
-// ListBusiness.jsx — 3-step business listing form
+// ListBusiness.tsx — 3-step business listing form
 // Step 1: Business details + draggable pin  |  Step 2: Verification  |  Step 3: Review & Submit
 
 import { useState, useRef, useEffect } from 'react';
@@ -126,6 +126,7 @@ async function geocodeAddress(address: string): Promise<{ lat: number; lng: numb
 
 // ── Upload helpers ────────────────────────────────────────────────────────────
 
+// ✅ Public bucket — for listing photos only
 async function uploadFile(file: File, folder: string): Promise<string | null> {
   const ext = file.name.split('.').pop();
   const fileName = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
@@ -140,6 +141,21 @@ async function uploadFile(file: File, folder: string): Promise<string | null> {
     .getPublicUrl(data.path);
 
   return publicUrl;
+}
+
+// ✅ Private bucket — stores path only (NOT a public URL)
+// Admin dashboard resolves these to signed URLs via createSignedUrl()
+async function uploadPrivateFile(file: File, folder: string): Promise<string | null> {
+  const ext = file.name.split('.').pop();
+  const fileName = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+  const { data, error } = await supabase.storage
+    .from('private-documents')
+    .upload(fileName, file, { cacheControl: '3600', upsert: false });
+
+  if (error) { console.error('Private upload error:', error); return null; }
+
+  // Return storage path only — admin resolves to signed URL when viewing
+  return data.path;
 }
 
 async function uploadImages(files: File[]): Promise<string[]> {
@@ -361,14 +377,13 @@ function ListBusiness() {
       const lat = form.lat ?? CITY_COORDS[form.city]?.lat ?? 15.1450;
       const lng = form.lng ?? CITY_COORDS[form.city]?.lng ?? 120.5887;
 
-      const [imageUrls, businessPermitUrl, governmentIdUrl, selfieUrl] = await Promise.all([
+      const [imageUrls, businessPermitPath, governmentIdPath, selfiePath] = await Promise.all([
         form.images.length > 0 ? uploadImages(form.images) : Promise.resolve([]),
-        form.businessPermit ? uploadFile(form.businessPermit, 'permits') : Promise.resolve(null),
-        form.governmentId ? uploadFile(form.governmentId, 'ids') : Promise.resolve(null),
-        form.selfie ? uploadFile(form.selfie, 'selfies') : Promise.resolve(null),
+        form.businessPermit ? uploadPrivateFile(form.businessPermit, 'permits') : Promise.resolve(null),
+        form.governmentId ? uploadPrivateFile(form.governmentId, 'ids') : Promise.resolve(null),
+        form.selfie ? uploadPrivateFile(form.selfie, 'selfies') : Promise.resolve(null),
       ]);
 
-      // Get the currently logged-in user
       const { data: { user } } = await supabase.auth.getUser();
 
       const { data: insertedListing, error } = await supabase
@@ -387,9 +402,10 @@ function ListBusiness() {
           email: form.email.trim() || null,
           facebook: form.facebook.trim() || null,
           website: form.website.trim() || null,
-          business_permit: businessPermitUrl,
-          government_id: governmentIdUrl,
-          selfie_verification: selfieUrl,
+          // Stored as storage paths — admin generates signed URLs to view
+          business_permit: businessPermitPath,
+          government_id: governmentIdPath,
+          selfie_verification: selfiePath,
           user_id: user?.id ?? null,
         })
         .select('id, name')
@@ -397,15 +413,13 @@ function ListBusiness() {
 
       if (error) throw error;
 
-      // ── FIX: Also insert listing images into gallery_images table ──
-      // This ensures photos added during listing creation appear in the Gallery
       if (imageUrls.length > 0 && insertedListing) {
         const galleryRows = imageUrls.map((url) => ({
           url,
           alt: form.name,
           listing_id: insertedListing.id,
           listing_name: insertedListing.name,
-          storage_path: url, // using the public URL as storage path reference
+          storage_path: url,
         }));
 
         const { error: galleryError } = await supabase
@@ -413,7 +427,6 @@ function ListBusiness() {
           .insert(galleryRows);
 
         if (galleryError) {
-          // Non-fatal: listing was saved, just log the gallery sync error
           console.error('Gallery sync error:', galleryError);
         }
       }
@@ -461,7 +474,7 @@ function ListBusiness() {
           onClick={() => navigate(ROUTES.DASHBOARD_OVERVIEW)}
           className="gap-2 text-[#FBFAF8]/50 hover:text-[#FBFAF8] text-sm mb-8 cursor-pointer transition-colors mr-80"
         >
-        Go to Business Dashboard →
+          Go to Business Dashboard →
         </button>
 
         <h1 className="font-['Playfair-Display'] text-3xl leading-tight mb-2">
@@ -485,12 +498,12 @@ function ListBusiness() {
                 {CATEGORIES.map((cat) => {
                   const Icon = cat.icon;
                   return (
-                    <button 
-                      key={cat.label} 
+                    <button
+                      key={cat.label}
                       onClick={() => update('category', cat.label)}
                       className={`flex flex-col items-center justify-center gap-2 py-4 rounded-xl text-xs font-bold cursor-pointer transition-all border ${
-                        form.category === cat.label 
-                          ? 'bg-[#FFE2A0] text-[#1A1A1A] border-[#FFE2A0] shadow-lg shadow-[#FFE2A0]/20 scale-[1.02]' 
+                        form.category === cat.label
+                          ? 'bg-[#FFE2A0] text-[#1A1A1A] border-[#FFE2A0] shadow-lg shadow-[#FFE2A0]/20 scale-[1.02]'
                           : 'bg-[#2D2D2D] text-[#FBFAF8]/70 border-transparent hover:border-[#FFE2A0]/40'
                       }`}
                     >
@@ -582,9 +595,12 @@ function ListBusiness() {
             )}
 
             <div className="border-t border-[#373737] pt-5">
-              <p className="text-xs text-[#FFE2A0]/70 font-semibold uppercase tracking-wider mb-4">Contact & Social (optional)</p>
+              <p className="text-xs text-[#FFE2A0]/70 font-semibold uppercase tracking-wider mb-1">Contact & Social (optional)</p>
+              {/* Privacy notice */}
+              <p className="text-[10px] text-amber-400/70 mb-4 flex items-center gap-1.5">
+                🔒 Phone and email are private — only visible to admins for verification purposes.
+              </p>
               <div className="flex flex-col gap-4">
-                {/* Phone */}
                 <div className="flex items-center gap-3">
                   <div className="w-8 flex justify-center"><img src={phoneIcon} alt="phone" className="w-5 h-5" /></div>
                   <div className="flex-1 flex items-center bg-[#2D2D2D] rounded-lg border border-transparent focus-within:border-[#FFE2A0]/40 transition-all overflow-hidden">
@@ -601,26 +617,19 @@ function ListBusiness() {
                     />
                   </div>
                 </div>
-                {/* Email */}
                 <div className="flex items-center gap-3">
                   <div className="w-8 flex justify-center"><img src={emailIcon} alt="email" className="w-5 h-5" /></div>
                   <div className="flex-1">
-                    <TextInput
-                      type="email"
-                      value={form.email}
-                      onChange={(e) => update('email', e.target.value)}
-                      placeholder="business@email.com"
-                    />
+                    <TextInput type="email" value={form.email} onChange={(e) => update('email', e.target.value)} placeholder="business@email.com" />
                   </div>
                 </div>
-                {/* Facebook */}
+                {/* Facebook and website are semi-public */}
                 <div className="flex items-center gap-3">
                   <div className="w-8 flex justify-center"><img src={fbIcon} alt="facebook" className="w-5 h-5" /></div>
                   <div className="flex-1">
                     <TextInput value={form.facebook} onChange={(e) => update('facebook', e.target.value)} placeholder="facebook.com/yourbusiness" />
                   </div>
                 </div>
-                {/* Website */}
                 <div className="flex items-center gap-3">
                   <div className="w-8 flex justify-center"><img src={webIcon} alt="website" className="w-5 h-5" /></div>
                   <div className="flex-1">
@@ -709,8 +718,20 @@ function ListBusiness() {
                 <div className="mt-4 border-t border-zinc-700 pt-4">
                   <p className="text-[#FBFAF8]/40 text-xs mb-3">Contact & Social</p>
                   <div className="flex flex-col gap-2 text-sm">
-                    {form.phone && <div className="flex items-center gap-2"><img src={phoneIcon} className="w-4 h-4 opacity-50" /><span className="text-[#FBFAF8]/80">+63{form.phone}</span></div>}
-                    {form.email && <div className="flex items-center gap-2"><img src={emailIcon} className="w-4 h-4 opacity-50" /><span className="text-[#FBFAF8]/80">{form.email}</span></div>}
+                    {form.phone && (
+                      <div className="flex items-center gap-2">
+                        <img src={phoneIcon} className="w-4 h-4 opacity-50" />
+                        <span className="text-[#FBFAF8]/80">+63{form.phone}</span>
+                        <span className="text-[10px] text-amber-400/70 ml-1">🔒 private</span>
+                      </div>
+                    )}
+                    {form.email && (
+                      <div className="flex items-center gap-2">
+                        <img src={emailIcon} className="w-4 h-4 opacity-50" />
+                        <span className="text-[#FBFAF8]/80">{form.email}</span>
+                        <span className="text-[10px] text-amber-400/70 ml-1">🔒 private</span>
+                      </div>
+                    )}
                     {form.facebook && <div className="flex items-center gap-2"><img src={fbIcon} className="w-4 h-4 opacity-50" /><span className="text-[#FBFAF8]/80">{form.facebook}</span></div>}
                     {form.website && <div className="flex items-center gap-2"><img src={webIcon} className="w-4 h-4 opacity-50" /><span className="text-[#FBFAF8]/80">{form.website}</span></div>}
                   </div>
