@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Image as ImageIcon } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { ChevronLeft, ChevronRight, Image as ImageIcon, X, ZoomIn } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import locBtnSelected from '@assets/icons/map-btn-active.svg';
 import locBtn from '@assets/icons/direction-btn.svg';
@@ -56,27 +56,18 @@ const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
 
 function formatHours(hours: string): string {
   if (!hours) return '';
-
-  // Extract time part (e.g. "11:11 AM – 2:22 PM") from the end of the string
   const timeMatch = hours.match(/,?\s*(\d{1,2}:\d{2}\s*(?:AM|PM)\s*[–—-]\s*\d{1,2}:\d{2}\s*(?:AM|PM))\s*$/i);
   const timePart = timeMatch ? timeMatch[1].trim() : '';
   const daysPart = timeMatch ? hours.slice(0, timeMatch.index) : hours;
-
-  // Find which days from our ordered list are present in the string
   const activeDays = DAYS.filter(d => daysPart.includes(d));
-
   if (activeDays.length === 0) return hours;
-
-  // Collapse consecutive days into ranges e.g. Mon–Wed
   const ranges: string[] = [];
   let rangeStart = activeDays[0];
   let rangePrev = activeDays[0];
-
   for (let i = 1; i <= activeDays.length; i++) {
     const curr = activeDays[i];
     const prevIdx = DAYS.indexOf(rangePrev);
     const currIdx = curr ? DAYS.indexOf(curr) : -1;
-
     if (curr && currIdx === prevIdx + 1) {
       rangePrev = curr;
     } else {
@@ -85,9 +76,105 @@ function formatHours(hours: string): string {
       rangePrev = curr!;
     }
   }
-
   const dayString = ranges.join(', ');
   return timePart ? `${dayString}, ${timePart}` : dayString;
+}
+
+// ── Dedup helper ──────────────────────────────────────────────────────────────
+
+/**
+ * Removes duplicate URLs while preserving order.
+ * Filters out any falsy values (null, undefined, empty string).
+ */
+function dedupeImages(images: string[]): string[] {
+  return [...new Set((images ?? []).filter(Boolean))];
+}
+
+// ── Lightbox ──────────────────────────────────────────────────────────────────
+
+interface LightboxProps {
+  images: string[];
+  activeIndex: number;
+  onClose: () => void;
+  onPrev: () => void;
+  onNext: () => void;
+}
+
+function Lightbox({ images, activeIndex, onClose, onPrev, onNext }: LightboxProps) {
+  // Close on Escape, navigate with arrow keys
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+      if (e.key === 'ArrowLeft') onPrev();
+      if (e.key === 'ArrowRight') onNext();
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [onClose, onPrev, onNext]);
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/95 z-[100] flex items-center justify-center"
+      onClick={onClose}
+    >
+      {/* Close button */}
+      <button
+        onClick={onClose}
+        className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-full border border-white/10 transition-colors z-10 cursor-pointer"
+      >
+        <X size={18} className="text-white" />
+      </button>
+
+      {/* Counter */}
+      {images.length > 1 && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-black/50 text-white text-xs px-3 py-1.5 rounded-full backdrop-blur-sm">
+          {activeIndex + 1} / {images.length}
+        </div>
+      )}
+
+      {/* Prev button */}
+      {images.length > 1 && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onPrev(); }}
+          className="absolute left-4 w-10 h-10 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-full border border-white/10 transition-colors cursor-pointer"
+        >
+          <ChevronLeft size={20} className="text-white" />
+        </button>
+      )}
+
+      {/* Image */}
+      <img
+        src={images[activeIndex]}
+        alt={`Image ${activeIndex + 1}`}
+        className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      />
+
+      {/* Next button */}
+      {images.length > 1 && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onNext(); }}
+          className="absolute right-4 w-10 h-10 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-full border border-white/10 transition-colors cursor-pointer"
+        >
+          <ChevronRight size={20} className="text-white" />
+        </button>
+      )}
+
+      {/* Dot indicators */}
+      {images.length > 1 && (
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-1.5">
+          {images.map((_, idx) => (
+            <div
+              key={idx}
+              className={`h-1.5 rounded-full transition-all duration-300 ${
+                activeIndex === idx ? 'bg-[#FFE2A0] w-4' : 'bg-white/40 w-1.5'
+              }`}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -115,12 +202,15 @@ function DetailedBusinessCard({
   onReviewAdded,
 }: DetailedBusinessCardProps) {
   const [isSaved, setIsSaved] = useState(initialSaved);
-  const allImages = (images ?? []).filter(Boolean);
+  // ✅ FIX 1: Deduplicate images at the top level — single source of truth
+  const allImages = dedupeImages(images);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAddingReview, setIsAddingReview] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
   const [reviewError, setReviewError] = useState<string | null>(null);
+  // ✅ FIX 2: Lightbox state — null means closed
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   const hasImages = allImages.length > 0;
 
@@ -133,13 +223,22 @@ function DetailedBusinessCard({
 
   const nextImage = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setCurrentIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
+    setCurrentIndex((prev) => (prev === allImages.length - 1 ? 0 : prev + 1));
   };
 
   const prevImage = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setCurrentIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+    setCurrentIndex((prev) => (prev === 0 ? allImages.length - 1 : prev - 1));
   };
+
+  // Lightbox navigation
+  const lightboxNext = useCallback(() => {
+    setLightboxIndex((prev) => prev === null ? null : (prev === allImages.length - 1 ? 0 : prev + 1));
+  }, [allImages.length]);
+
+  const lightboxPrev = useCallback(() => {
+    setLightboxIndex((prev) => prev === null ? null : (prev === 0 ? allImages.length - 1 : prev - 1));
+  }, [allImages.length]);
 
   const handleToggleSave = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -163,9 +262,7 @@ function DetailedBusinessCard({
       listing_id: listingId,
       type: 'directions',
     });
-    const query = lat && lng
-      ? `${lat},${lng}`
-      : encodeURIComponent(location);
+    const query = lat && lng ? `${lat},${lng}` : encodeURIComponent(location);
     window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
   };
 
@@ -202,193 +299,219 @@ function DetailedBusinessCard({
   };
 
   return (
-    <div className="w-full max-w-120 bg-[#333333] rounded-xl overflow-hidden shrink-0 mb-10 shadow-2xl border border-zinc-800/50 mx-auto">
-      <div className="relative flex flex-col">
-        {/* Heart Icon */}
-        <div className="absolute top-4 left-4 z-30">
-          <button
-            onClick={handleToggleSave}
-            className="flex items-center justify-center w-10 h-10 bg-[#222222]/80 backdrop-blur-sm rounded-full z-20 cursor-pointer hover:scale-110 active:scale-95 shadow-lg border border-white/10"
-          >
-            <img src={isSaved ? heartActive : heartInactive} width="20" alt="heart" />
-          </button>
-        </div>
+    <>
+      {/* ✅ Lightbox renders outside card flow, at root level */}
+      {lightboxIndex !== null && (
+        <Lightbox
+          images={allImages}
+          activeIndex={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+          onPrev={lightboxPrev}
+          onNext={lightboxNext}
+        />
+      )}
 
-        {/* Image Carousel */}
-        <div className="relative w-full h-72 overflow-hidden bg-zinc-800 group">
-          {hasImages ? (
-            <img
-              src={allImages[currentIndex]}
-              className="w-full h-full object-cover transition-all duration-500 group-hover:scale-105"
-              alt={`${title} - ${currentIndex + 1}`}
-            />
-          ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center gap-3 bg-[#2a2a2a] text-[#FBFAF8]/20">
-              <ImageIcon size={56} strokeWidth={1} />
-              <div className="text-center px-6">
-                <p className="text-[11px] uppercase tracking-[0.2em] font-bold mb-1">No Photos Found</p>
-                <p className="text-[10px] text-[#FBFAF8]/10 line-clamp-1">{title}</p>
-              </div>
-            </div>
-          )}
-          {hasImages && allImages.length > 1 && (
-            <>
-              <button
-                onClick={prevImage}
-                className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-[#222222]/50 hover:bg-[#222222]/80 backdrop-blur-sm rounded-full border border-white/5 opacity-0 group-hover:opacity-100 transition-opacity z-20 cursor-pointer"
-              >
-                <ChevronLeft size={16} className="text-white" />
-              </button>
-              <button
-                onClick={nextImage}
-                className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-[#222222]/50 hover:bg-[#222222]/80 backdrop-blur-sm rounded-full border border-white/5 opacity-0 group-hover:opacity-100 transition-opacity z-20 cursor-pointer"
-              >
-                <ChevronRight size={16} className="text-white" />
-              </button>
-            </>
-          )}
-          {hasImages && allImages.length > 1 && (
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
-              {allImages.map((_, idx) => (
-                <div
-                  key={idx}
-                  className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
-                    currentIndex === idx ? 'bg-[#FFE2A0] w-4' : 'bg-white/40'
-                  }`}
-                />
-              ))}
-            </div>
-          )}
-          {hasImages && allImages.length > 1 && (
-            <div className="absolute top-3 right-3 bg-[#222222]/70 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-full z-20">
-              {currentIndex + 1} / {allImages.length}
-            </div>
-          )}
-        </div>
-
-        <div className="p-6">
-          {/* Header */}
-          <div className="flex items-center justify-between gap-4 mb-4">
-            <div className="flex items-center gap-2">
-              <h3 className="text-[#FBFAF8] font-['Playfair_Display'] font-bold text-2xl tracking-tight leading-tight">
-                {title}
-              </h3>
-              {isVerified && (
-                <img src={verifiedIcon} width="16" height="16" alt="verified" className="mt-1" />
-              )}
-            </div>
-          </div>
-
-          <p className="text-sm text-[#FBFAF8]/70 leading-relaxed mb-2 pb-6">
-            {description}
-          </p>
-
-          {/* Info Row */}
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mb-6 pb-6 border-b border-zinc-600/50">
-            <div className="flex items-center gap-2">
-              <img src={locBtnSelected} width="14" alt="location" className="opacity-70" />
-              <span className="text-[#FBFAF8]/50 text-xs font-medium">{location}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <img src={timeIcon} width="14" alt="hours" className="opacity-70" />
-              {/* ✅ formatHours applied here */}
-              <span className="text-[#FBFAF8]/50 text-xs font-medium">{formatHours(hours)}</span>
-            </div>
-          </div>
-
-          {/* Contact */}
-          <div className="flex flex-col gap-1 pb-6 border-b border-zinc-600/50">
-            {phone && (
-              <div onClick={() => handleCopy(phone, 'phone')}
-                className="relative flex items-center gap-4 text-sm text-[#FBFAF8]/80 hover:text-[#FBFAF8] px-3 py-2.5 rounded-xl border border-transparent hover:border-[#FFE2A0] hover:bg-[#FFE2A0]/5 transition-all duration-300 cursor-pointer group">
-                <img src={callIcon} width="16" className="opacity-70 group-hover:opacity-100" alt="call" />
-                <span>{phone}</span>
-                {copyFeedback === 'phone' && <span className="absolute right-4 text-[10px] text-[#FFE2A0] font-bold">Copied!</span>}
-              </div>
-            )}
-            {email && (
-              <div onClick={() => handleCopy(email, 'email')}
-                className="relative flex items-center gap-4 text-sm text-[#FBFAF8]/80 hover:text-[#FBFAF8] px-3 py-2.5 rounded-xl border border-transparent hover:border-[#FFE2A0] hover:bg-[#FFE2A0]/5 transition-all duration-300 cursor-pointer group">
-                <img src={emailIcon} width="16" className="opacity-70 group-hover:opacity-100" alt="email" />
-                <span>{email}</span>
-                {copyFeedback === 'email' && <span className="absolute right-4 text-[10px] text-[#FFE2A0] font-bold">Copied!</span>}
-              </div>
-            )}
-            {facebook && (
-              <div onClick={() => window.open(facebook.startsWith('http') ? facebook : `https://${facebook}`, '_blank')}
-                className="relative flex items-center gap-4 text-sm text-[#FBFAF8]/80 hover:text-[#FBFAF8] px-3 py-2.5 rounded-xl border border-transparent hover:border-[#FFE2A0] hover:bg-[#FFE2A0]/5 transition-all duration-300 cursor-pointer group">
-                <img src={facebookIcon} width="16" className="opacity-70 group-hover:opacity-100" alt="fb" />
-                <span>{facebook}</span>
-              </div>
-            )}
-            {website && (
-              <div onClick={() => window.open(website.startsWith('http') ? website : `https://${website}`, '_blank')}
-                className="relative flex items-center gap-4 text-sm text-[#FBFAF8]/80 hover:text-[#FBFAF8] px-3 py-2.5 rounded-xl border border-transparent hover:border-[#FFE2A0] hover:bg-[#FFE2A0]/5 transition-all duration-300 cursor-pointer group">
-                <img src={websiteIcon} width="16" className="opacity-70 group-hover:opacity-100" alt="web" />
-                <span>{website}</span>
-              </div>
-            )}
+      <div className="w-full max-w-120 bg-[#333333] rounded-xl overflow-hidden shrink-0 mb-10 shadow-2xl border border-zinc-800/50 mx-auto">
+        <div className="relative flex flex-col">
+          {/* Heart Icon */}
+          <div className="absolute top-4 left-4 z-30">
             <button
-              onClick={handleGetDirections}
-              className="mt-2 flex items-center gap-3 text-sm text-[#FBFAF8]/80 hover:text-[#FBFAF8] px-3 py-2.5 rounded-xl border border-transparent hover:border-[#FFE2A0] hover:bg-[#FFE2A0]/5 transition-all duration-300 cursor-pointer group w-full text-left"
+              onClick={handleToggleSave}
+              className="flex items-center justify-center w-10 h-10 bg-[#222222]/80 backdrop-blur-sm rounded-full z-20 cursor-pointer hover:scale-110 active:scale-95 shadow-lg border border-white/10"
             >
-              <img src={locBtn} width="16" className="text-[#F5F0EC] opacity-70 group-hover:opacity-100" alt="directions" />
-              <span>Get Directions</span>
+              <img src={isSaved ? heartActive : heartInactive} width="20" alt="heart" />
             </button>
           </div>
 
-          {/* Ratings Summary */}
-          <div className="py-6">
-            <p className="text-xs text-zinc-400 mb-1">Customer Reviews ({reviewsCount})</p>
-            <div className="flex flex-col">
-              <span className="text-5xl font-serif text-[#FBFAF8]">
-                {reviewsCount > 0 ? rating.toFixed(1) : '—'}
-              </span>
-              <div className="flex gap-1 mt-2">
-                {[...Array(5)].map((_, i) => (
-                  <img key={i} src={starIcon} width="9" alt="star"
-                    className={i < Math.floor(rating) ? 'opacity-100' : 'opacity-30'} />
+          {/* Image Carousel */}
+          <div className="relative w-full h-72 overflow-hidden bg-zinc-800 group">
+            {hasImages ? (
+              <>
+                {/* ✅ Clicking image opens lightbox at current index */}
+                <div
+                  className="relative w-full h-full cursor-zoom-in"
+                  onClick={() => setLightboxIndex(currentIndex)}
+                >
+                  <img
+                    src={allImages[currentIndex]}
+                    className="w-full h-full object-cover transition-all duration-500 group-hover:scale-105"
+                    alt={`${title} - ${currentIndex + 1}`}
+                  />
+                  {/* Zoom hint overlay */}
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 rounded-full p-2">
+                      <ZoomIn size={18} className="text-white" />
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="w-full h-full flex flex-col items-center justify-center gap-3 bg-[#2a2a2a] text-[#FBFAF8]/20">
+                <ImageIcon size={56} strokeWidth={1} />
+                <div className="text-center px-6">
+                  <p className="text-[11px] uppercase tracking-[0.2em] font-bold mb-1">No Photos Found</p>
+                  <p className="text-[10px] text-[#FBFAF8]/10 line-clamp-1">{title}</p>
+                </div>
+              </div>
+            )}
+            {hasImages && allImages.length > 1 && (
+              <>
+                <button
+                  onClick={prevImage}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-[#222222]/50 hover:bg-[#222222]/80 backdrop-blur-sm rounded-full border border-white/5 opacity-0 group-hover:opacity-100 transition-opacity z-20 cursor-pointer"
+                >
+                  <ChevronLeft size={16} className="text-white" />
+                </button>
+                <button
+                  onClick={nextImage}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-[#222222]/50 hover:bg-[#222222]/80 backdrop-blur-sm rounded-full border border-white/5 opacity-0 group-hover:opacity-100 transition-opacity z-20 cursor-pointer"
+                >
+                  <ChevronRight size={16} className="text-white" />
+                </button>
+              </>
+            )}
+            {hasImages && allImages.length > 1 && (
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
+                {allImages.map((_, idx) => (
+                  <div
+                    key={idx}
+                    className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
+                      currentIndex === idx ? 'bg-[#FFE2A0] w-4' : 'bg-white/40'
+                    }`}
+                  />
                 ))}
               </div>
-            </div>
-          </div>
-
-          {/* Review List */}
-          {reviewsLoading ? (
-            <p className="text-sm text-zinc-500 animate-pulse">Loading reviews...</p>
-          ) : reviews.length === 0 ? (
-            <p className="text-sm text-zinc-500">No reviews yet. Be the first!</p>
-          ) : (
-            <div className="space-y-12 mt-4">
-              {reviews.map((review) => (
-                <ReviewItem key={review.id} {...review} />
-              ))}
-            </div>
-          )}
-
-          {/* Review Form / Button */}
-          <div className="mt-8">
-            {reviewError && <p className="text-red-400 text-sm mb-3">{reviewError}</p>}
-            {isAddingReview ? (
-              <ReviewForm
-                onSubmit={handleAddReview}
-                onCancel={() => { setIsAddingReview(false); setReviewError(null); }}
-                submitting={submitting}
-              />
-            ) : (
-              <div className="flex justify-end">
-                <button
-                  onClick={() => setIsAddingReview(true)}
-                  className="flex items-center gap-2 bg-[#FFE2A0] text-[#373737] px-4 py-2 rounded-lg text-xs hover:brightness-110 transition-all active:scale-95 shadow-lg cursor-pointer"
-                >
-                  <span><img src={commentIcon} alt="comment" /></span> Leave a review
-                </button>
+            )}
+            {hasImages && allImages.length > 1 && (
+              <div className="absolute top-3 right-3 bg-[#222222]/70 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-full z-20">
+                {currentIndex + 1} / {allImages.length}
               </div>
             )}
           </div>
+
+          <div className="p-6">
+            {/* Header */}
+            <div className="flex items-center justify-between gap-4 mb-4">
+              <div className="flex items-center gap-2">
+                <h3 className="text-[#FBFAF8] font-['Playfair_Display'] font-bold text-2xl tracking-tight leading-tight">
+                  {title}
+                </h3>
+                {isVerified && (
+                  <img src={verifiedIcon} width="16" height="16" alt="verified" className="mt-1" />
+                )}
+              </div>
+            </div>
+
+            <p className="text-sm text-[#FBFAF8]/70 leading-relaxed mb-2 pb-6">
+              {description}
+            </p>
+
+            {/* Info Row */}
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mb-6 pb-6 border-b border-zinc-600/50">
+              <div className="flex items-center gap-2">
+                <img src={locBtnSelected} width="14" alt="location" className="opacity-70" />
+                <span className="text-[#FBFAF8]/50 text-xs font-medium">{location}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <img src={timeIcon} width="14" alt="hours" className="opacity-70" />
+                <span className="text-[#FBFAF8]/50 text-xs font-medium">{formatHours(hours)}</span>
+              </div>
+            </div>
+
+            {/* Contact */}
+            <div className="flex flex-col gap-1 pb-6 border-b border-zinc-600/50">
+              {phone && (
+                <div onClick={() => handleCopy(phone, 'phone')}
+                  className="relative flex items-center gap-4 text-sm text-[#FBFAF8]/80 hover:text-[#FBFAF8] px-3 py-2.5 rounded-xl border border-transparent hover:border-[#FFE2A0] hover:bg-[#FFE2A0]/5 transition-all duration-300 cursor-pointer group">
+                  <img src={callIcon} width="16" className="opacity-70 group-hover:opacity-100" alt="call" />
+                  <span>{phone}</span>
+                  {copyFeedback === 'phone' && <span className="absolute right-4 text-[10px] text-[#FFE2A0] font-bold">Copied!</span>}
+                </div>
+              )}
+              {email && (
+                <div onClick={() => handleCopy(email, 'email')}
+                  className="relative flex items-center gap-4 text-sm text-[#FBFAF8]/80 hover:text-[#FBFAF8] px-3 py-2.5 rounded-xl border border-transparent hover:border-[#FFE2A0] hover:bg-[#FFE2A0]/5 transition-all duration-300 cursor-pointer group">
+                  <img src={emailIcon} width="16" className="opacity-70 group-hover:opacity-100" alt="email" />
+                  <span>{email}</span>
+                  {copyFeedback === 'email' && <span className="absolute right-4 text-[10px] text-[#FFE2A0] font-bold">Copied!</span>}
+                </div>
+              )}
+              {facebook && (
+                <div onClick={() => window.open(facebook.startsWith('http') ? facebook : `https://${facebook}`, '_blank')}
+                  className="relative flex items-center gap-4 text-sm text-[#FBFAF8]/80 hover:text-[#FBFAF8] px-3 py-2.5 rounded-xl border border-transparent hover:border-[#FFE2A0] hover:bg-[#FFE2A0]/5 transition-all duration-300 cursor-pointer group">
+                  <img src={facebookIcon} width="16" className="opacity-70 group-hover:opacity-100" alt="fb" />
+                  <span>{facebook}</span>
+                </div>
+              )}
+              {website && (
+                <div onClick={() => window.open(website.startsWith('http') ? website : `https://${website}`, '_blank')}
+                  className="relative flex items-center gap-4 text-sm text-[#FBFAF8]/80 hover:text-[#FBFAF8] px-3 py-2.5 rounded-xl border border-transparent hover:border-[#FFE2A0] hover:bg-[#FFE2A0]/5 transition-all duration-300 cursor-pointer group">
+                  <img src={websiteIcon} width="16" className="opacity-70 group-hover:opacity-100" alt="web" />
+                  <span>{website}</span>
+                </div>
+              )}
+              <button
+                onClick={handleGetDirections}
+                className="mt-2 flex items-center gap-3 text-sm text-[#FBFAF8]/80 hover:text-[#FBFAF8] px-3 py-2.5 rounded-xl border border-transparent hover:border-[#FFE2A0] hover:bg-[#FFE2A0]/5 transition-all duration-300 cursor-pointer group w-full text-left"
+              >
+                <img src={locBtn} width="16" className="text-[#F5F0EC] opacity-70 group-hover:opacity-100" alt="directions" />
+                <span>Get Directions</span>
+              </button>
+            </div>
+
+            {/* Ratings Summary */}
+            <div className="py-6">
+              <p className="text-xs text-zinc-400 mb-1">Customer Reviews ({reviewsCount})</p>
+              <div className="flex flex-col">
+                <span className="text-5xl font-serif text-[#FBFAF8]">
+                  {reviewsCount > 0 ? rating.toFixed(1) : '—'}
+                </span>
+                <div className="flex gap-1 mt-2">
+                  {[...Array(5)].map((_, i) => (
+                    <img key={i} src={starIcon} width="9" alt="star"
+                      className={i < Math.floor(rating) ? 'opacity-100' : 'opacity-30'} />
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Review List */}
+            {reviewsLoading ? (
+              <p className="text-sm text-zinc-500 animate-pulse">Loading reviews...</p>
+            ) : reviews.length === 0 ? (
+              <p className="text-sm text-zinc-500">No reviews yet. Be the first!</p>
+            ) : (
+              <div className="space-y-12 mt-4">
+                {reviews.map((review) => (
+                  <ReviewItem key={review.id} {...review} />
+                ))}
+              </div>
+            )}
+
+            {/* Review Form / Button */}
+            <div className="mt-8">
+              {reviewError && <p className="text-red-400 text-sm mb-3">{reviewError}</p>}
+              {isAddingReview ? (
+                <ReviewForm
+                  onSubmit={handleAddReview}
+                  onCancel={() => { setIsAddingReview(false); setReviewError(null); }}
+                  submitting={submitting}
+                />
+              ) : (
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => setIsAddingReview(true)}
+                    className="flex items-center gap-2 bg-[#FFE2A0] text-[#373737] px-4 py-2 rounded-lg text-xs hover:brightness-110 transition-all active:scale-95 shadow-lg cursor-pointer"
+                  >
+                    <span><img src={commentIcon} alt="comment" /></span> Leave a review
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
