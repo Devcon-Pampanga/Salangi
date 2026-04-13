@@ -1,10 +1,23 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { Listing } from "../../Data/Listings";
 import { X } from "lucide-react";
 import phoneIcon from '@assets/icons/phone-icon.svg';
 import emailIcon from '@assets/icons/emain-icon.svg';
 import fbIcon from '@assets/icons/fb-icon.svg';
 import webIcon from '@assets/icons/web-icon.svg';
+import { LOCATIONS, CITY_COORDS } from '../../../constant/location';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: markerIcon2x,
+  iconUrl: markerIcon,
+  shadowUrl: markerShadow,
+});
 
 const OPERATING_DAYS = ['Daily', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -27,6 +40,72 @@ const formatTimeInput = (t: string) => {
   return `${hour}:${String(m).padStart(2, '0')} ${ampm}`;
 };
 
+async function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
+  try {
+    const encoded = encodeURIComponent(address);
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${encoded}&format=json&limit=1&countrycodes=ph`,
+      { headers: { 'Accept-Language': 'en' } }
+    );
+    const data = await res.json();
+    if (!data || data.length === 0) return null;
+    return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+  } catch {
+    return null;
+  }
+}
+
+// ── Draggable Map (reused from ListBusiness) ──────────────────────────────────
+
+interface DraggableMapProps {
+  lat: number; lng: number; onPinMove: (lat: number, lng: number) => void;
+}
+
+function DraggableMap({ lat, lng, onPinMove }: DraggableMapProps) {
+  const mapRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<L.Map | null>(null);
+  const markerRef = useRef<L.Marker | null>(null);
+
+  useEffect(() => {
+    if (!mapRef.current) return;
+    if (!mapInstanceRef.current) {
+      const map = L.map(mapRef.current).setView([lat, lng], 17);
+      mapInstanceRef.current = map;
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors', maxZoom: 19,
+      }).addTo(map);
+      const marker = L.marker([lat, lng], { draggable: true }).addTo(map);
+      markerRef.current = marker;
+      marker.on('dragend', () => {
+        const pos = marker.getLatLng();
+        onPinMove(pos.lat, pos.lng);
+      });
+    }
+    return () => {
+      mapInstanceRef.current?.remove();
+      mapInstanceRef.current = null;
+      markerRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!mapInstanceRef.current || !markerRef.current) return;
+    markerRef.current.setLatLng([lat, lng]);
+    mapInstanceRef.current.flyTo([lat, lng], 17, { animate: true, duration: 1 });
+  }, [lat, lng]);
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div ref={mapRef} style={{ height: '220px', width: '100%', borderRadius: '12px', overflow: 'hidden' }} />
+      <p className="text-xs text-[#FBFAF8]/40 text-center">
+        📍 Drag the pin to set the exact location of your business
+      </p>
+    </div>
+  );
+}
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
 interface EditListingModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -34,11 +113,18 @@ interface EditListingModalProps {
   listing: Listing | null;
 }
 
+// ── Main Component ────────────────────────────────────────────────────────────
+
 export default function EditListingModal({ isOpen, onClose, onSave, listing }: EditListingModalProps) {
   const [form, setForm] = useState({
     name: "",
     category: "Resto",
-    location: "",
+    city: "",
+    barangay: "",
+    street: "",
+    otherDetails: "",
+    lat: null as number | null,
+    lng: null as number | null,
     hours: "",
     operatingDays: [] as string[],
     openingTime: "",
@@ -50,65 +136,134 @@ export default function EditListingModal({ isOpen, onClose, onSave, listing }: E
     website: "",
   });
 
-  useEffect(() => {
-    if (listing) {
-      setForm({
-        name: listing.name,
-        category: listing.category,
-        location: listing.location,
-        hours: listing.hours,
-        description: listing.description,
-        phone: listing.phone || "",
-        email: listing.email || "",
-        facebook: listing.facebook || "",
-        website: listing.website || "",
-        operatingDays: [],
-        openingTime: "",
-        closingTime: "",
-      });
+  const [geocoding, setGeocoding] = useState(false);
+  const geocodeTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-      // Parse existing hours string
-      if (listing.hours) {
-        const parts = listing.hours.split(', ');
-        const timePart = parts.pop() || '';
-        const days = parts;
-        const [start, end] = timePart.split(' – ');
-        
-        setForm(prev => ({
-          ...prev,
-          operatingDays: days,
-          openingTime: parseTimeOutput(start),
-          closingTime: parseTimeOutput(end),
-        }));
+  const inputBaseLine = "w-full bg-[#2a2a2a] border border-[#333333] text-[#e0e0e0] rounded-lg px-4 py-2.5 text-sm focus:border-[#FFE2A0] focus:ring-1 focus:ring-[#FFE2A0]/20 outline-none transition-all duration-200";
+
+  // ── Pre-fill form from existing listing ────────────────────────────────────
+  useEffect(() => {
+    if (!listing) return;
+
+    // Parse city, barangay, street from location string
+    // Location format: "street, barangay, city, Pampanga, (otherDetails)"
+    let city = '';
+    let barangay = '';
+    let street = '';
+    let otherDetails = '';
+
+    if (listing.location) {
+      const parts = listing.location.split(', ');
+      // Try to match city from LOCATIONS keys
+      const cityIndex = parts.findIndex(p => Object.keys(LOCATIONS).includes(p));
+      if (cityIndex !== -1) {
+        city = parts[cityIndex];
+        barangay = parts[cityIndex - 1] ?? '';
+        street = parts.slice(0, cityIndex - 1).join(', ');
+        const afterCity = parts.slice(cityIndex + 2).join(', '); // skip "Pampanga"
+        otherDetails = afterCity.replace(/^\(|\)$/g, '');
+      } else {
+        // Fallback: just use full location string as street
+        street = listing.location;
       }
     }
+
+    // Parse hours
+    let operatingDays: string[] = [];
+    let openingTime = '';
+    let closingTime = '';
+
+    if (listing.hours) {
+      const parts = listing.hours.split(', ');
+      const timePart = parts.pop() || '';
+      operatingDays = parts;
+      const [start, end] = timePart.split(' – ');
+      openingTime = parseTimeOutput(start);
+      closingTime = parseTimeOutput(end);
+    }
+
+    setForm({
+      name: listing.name ?? '',
+      category: listing.category ?? '',
+      city,
+      barangay,
+      street,
+      otherDetails,
+      lat: listing.lat ?? null,
+      lng: listing.lng ?? null,
+      hours: listing.hours ?? '',
+      operatingDays,
+      openingTime,
+      closingTime,
+      description: listing.description ?? '',
+      phone: listing.phone?.replace('+63', '') ?? '',
+      email: listing.email ?? '',
+      facebook: listing.facebook ?? '',
+      website: listing.website ?? '',
+    });
   }, [listing, isOpen]);
+
+  // ── Geocode when city/barangay/street changes ──────────────────────────────
+  useEffect(() => {
+    if (!form.city) return;
+    if (geocodeTimeout.current) clearTimeout(geocodeTimeout.current);
+    geocodeTimeout.current = setTimeout(async () => {
+      setGeocoding(true);
+      const attempts = [
+        form.street ? `${form.street}, ${form.barangay}, ${form.city}, Pampanga, Philippines` : null,
+        form.barangay ? `${form.barangay}, ${form.city}, Pampanga, Philippines` : null,
+        `${form.city}, Pampanga, Philippines`,
+      ].filter(Boolean) as string[];
+
+      let coords: { lat: number; lng: number } | null = null;
+      for (const address of attempts) {
+        coords = await geocodeAddress(address);
+        if (coords) break;
+      }
+      if (!coords) coords = CITY_COORDS[form.city] ?? { lat: 15.1450, lng: 120.5887 };
+      setForm(prev => ({ ...prev, lat: coords!.lat, lng: coords!.lng }));
+      setGeocoding(false);
+    }, 800);
+    return () => { if (geocodeTimeout.current) clearTimeout(geocodeTimeout.current); };
+  }, [form.street, form.barangay, form.city]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Format hours string from parts
+
     const formattedHours = `${form.operatingDays.join(', ')}, ${formatTimeInput(form.openingTime)} – ${formatTimeInput(form.closingTime)}`;
-    
+
+    const location = [
+      form.street,
+      form.barangay,
+      form.city,
+      'Pampanga',
+      form.otherDetails ? `(${form.otherDetails})` : '',
+    ].filter(Boolean).join(', ');
+
     onSave({
       ...listing,
       ...form,
       hours: formattedHours,
+      location,
+      lat: form.lat ?? listing?.lat,
+      lng: form.lng ?? listing?.lng,
+      phone: form.phone ? `+63${form.phone}` : '',
     } as Listing);
   };
 
   if (!isOpen) return null;
 
-  const inputBaseLine = "w-full bg-[#2a2a2a] border border-[#333333] text-[#e0e0e0] rounded-lg px-4 py-2.5 text-sm focus:border-[#FFE2A0] focus:ring-1 focus:ring-[#FFE2A0]/20 outline-none transition-all duration-200";
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={(e) => e.target === e.currentTarget && onClose()}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
       <div className="relative w-full max-w-2xl bg-[#222222] rounded-2xl overflow-hidden shadow-2xl border border-zinc-800 flex flex-col max-h-[90vh]">
         {/* Top accent bar */}
         <div className="h-1 w-full bg-[#FFE2A0]" />
@@ -128,6 +283,7 @@ export default function EditListingModal({ isOpen, onClose, onSave, listing }: E
         <div className="flex-1 overflow-y-auto px-8 py-6 scrollbar-hide">
           <form id="edit-listing-form" onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
               {/* Business Name */}
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-[#FFE2A0] uppercase tracking-wider">Business Name</label>
@@ -147,21 +303,77 @@ export default function EditListingModal({ isOpen, onClose, onSave, listing }: E
                 </select>
               </div>
 
-              {/* Location */}
-              <div className="space-y-1.5 md:col-span-2">
-                <label className="text-xs font-bold text-[#FFE2A0] uppercase tracking-wider">Location</label>
-                <input name="location" value={form.location} onChange={handleChange} className={inputBaseLine} placeholder="Angeles City, Pampanga" required />
+              {/* City */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-[#FFE2A0] uppercase tracking-wider">City</label>
+                <select
+                  name="city"
+                  value={form.city}
+                  onChange={(e) => setForm(prev => ({ ...prev, city: e.target.value, barangay: '' }))}
+                  className={inputBaseLine}
+                >
+                  <option value="">Select a city / municipality</option>
+                  {Object.keys(LOCATIONS).map(city => (
+                    <option key={city} value={city}>{city}</option>
+                  ))}
+                </select>
               </div>
+
+              {/* Barangay */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-[#FFE2A0] uppercase tracking-wider">Barangay</label>
+                <select
+                  name="barangay"
+                  value={form.barangay}
+                  onChange={(e) => setForm(prev => ({ ...prev, barangay: e.target.value }))}
+                  className={inputBaseLine}
+                  disabled={!form.city}
+                >
+                  <option value="">Select a barangay</option>
+                  {form.city && LOCATIONS[form.city]?.map(brgy => (
+                    <option key={brgy} value={brgy}>{brgy}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Street */}
+              <div className="space-y-1.5 md:col-span-2">
+                <label className="text-xs font-bold text-[#FFE2A0] uppercase tracking-wider">Street / Building No.</label>
+                <input name="street" value={form.street} onChange={handleChange} className={inputBaseLine} placeholder="e.g. 123 Sto. Rosario St." required />
+              </div>
+
+              {/* Other Details */}
+              <div className="space-y-1.5 md:col-span-2">
+                <label className="text-xs font-bold text-[#FFE2A0] uppercase tracking-wider">Other Details (optional)</label>
+                <input name="otherDetails" value={form.otherDetails} onChange={handleChange} className={inputBaseLine} placeholder="e.g. Near SM Clark, 2nd floor" />
+              </div>
+
+              {/* Map */}
+              {form.lat !== null && form.lng !== null && (
+                <div className="space-y-1.5 md:col-span-2">
+                  <label className="text-xs font-bold text-[#FFE2A0] uppercase tracking-wider">Pin Location</label>
+                  {geocoding && (
+                    <p className="text-xs text-[#FFE2A0]/70 animate-pulse">📡 Finding location...</p>
+                  )}
+                  <DraggableMap
+                    lat={form.lat}
+                    lng={form.lng}
+                    onPinMove={(lat, lng) => setForm(prev => ({ ...prev, lat, lng }))}
+                  />
+                  <p className="text-xs text-zinc-600">
+                    Coordinates: {form.lat.toFixed(5)}, {form.lng.toFixed(5)}
+                  </p>
+                </div>
+              )}
 
               {/* Operating Days */}
               <div className="space-y-3 md:col-span-2">
                 <label className="text-xs font-bold text-[#FFE2A0] uppercase tracking-wider">Operating Days</label>
                 <div className="flex flex-wrap gap-2">
                   {OPERATING_DAYS.map((day) => {
-                    const isActive = day === 'Daily' 
+                    const isActive = day === 'Daily'
                       ? form.operatingDays.includes('Daily')
                       : form.operatingDays.includes(day) && !form.operatingDays.includes('Daily');
-                    
                     return (
                       <button
                         key={day}
@@ -178,8 +390,8 @@ export default function EditListingModal({ isOpen, onClose, onSave, listing }: E
                           }
                         }}
                         className={`px-4 py-2 rounded-lg text-xs font-medium cursor-pointer transition-all border ${
-                          isActive 
-                            ? 'bg-[#FFE2A0] text-[#1A1A1A] border-[#FFE2A0]' 
+                          isActive
+                            ? 'bg-[#FFE2A0] text-[#1A1A1A] border-[#FFE2A0]'
                             : 'bg-[#2D2D2D] text-[#FBFAF8]/70 border-transparent hover:border-[#FFE2A0]/40'
                         }`}
                       >
@@ -193,37 +405,25 @@ export default function EditListingModal({ isOpen, onClose, onSave, listing }: E
               {/* Opening & Closing Times */}
               <div className="space-y-1.5 font-sans">
                 <label className="text-xs font-bold text-[#FFE2A0] uppercase tracking-wider">Opening Time</label>
-                <input 
-                  type="time" 
-                  name="openingTime" 
-                  value={form.openingTime} 
-                  onChange={handleChange} 
-                  className={inputBaseLine} 
-                  required 
-                />
+                <input type="time" name="openingTime" value={form.openingTime} onChange={handleChange} className={inputBaseLine} required />
               </div>
               <div className="space-y-1.5 font-sans">
                 <label className="text-xs font-bold text-[#FFE2A0] uppercase tracking-wider">Closing Time</label>
-                <input 
-                  type="time" 
-                  name="closingTime" 
-                  value={form.closingTime} 
-                  onChange={handleChange} 
-                  className={inputBaseLine} 
-                  required 
-                />
-              </div>              {/* Description */}
+                <input type="time" name="closingTime" value={form.closingTime} onChange={handleChange} className={inputBaseLine} required />
+              </div>
+
+              {/* Description */}
               <div className="space-y-1.5 md:col-span-2">
                 <label className="text-xs font-bold text-[#FFE2A0] uppercase tracking-wider">Description</label>
                 <textarea name="description" value={form.description} onChange={handleChange} rows={4} className={`${inputBaseLine} resize-none`} placeholder="Tell people about your business..." required />
               </div>
             </div>
 
-            {/* Contact & Social Section */}
+            {/* Contact & Social */}
             <div className="pt-6 border-t border-zinc-800">
               <h3 className="text-xs font-bold text-[#FFE2A0] mb-6 uppercase tracking-wider">Contact & Social (optional)</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                
+
                 {/* Phone */}
                 <div className="flex items-center gap-3 group">
                   <div className="w-8 flex justify-center shrink-0">
@@ -234,7 +434,7 @@ export default function EditListingModal({ isOpen, onClose, onSave, listing }: E
                     <input
                       type="tel"
                       name="phone"
-                      value={form.phone.replace('+63', '')}
+                      value={form.phone}
                       onChange={(e) => {
                         const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
                         setForm(prev => ({ ...prev, phone: digits }));
