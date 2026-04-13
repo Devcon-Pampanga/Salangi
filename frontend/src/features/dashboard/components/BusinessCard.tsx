@@ -286,10 +286,10 @@ function BusinessCard({
                   alt={`${listing.name} - ${currentIndex + 1}`}
                   onError={() => setImgError(true)}
                 />
-                {/* Zoom hint */}
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center pointer-events-none">
+                {/* Zoom hint — bottom-right, away from carousel arrows and counter */}
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-end justify-end pb-10 pr-3 pointer-events-none">
                   <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 rounded-full p-2">
-                    <ZoomIn size={18} className="text-white" />
+                    <ZoomIn size={15} className="text-white" />
                   </div>
                 </div>
               </div>

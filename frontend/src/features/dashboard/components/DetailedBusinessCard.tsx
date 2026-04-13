@@ -337,10 +337,10 @@ function DetailedBusinessCard({
                     className="w-full h-full object-cover transition-all duration-500 group-hover:scale-105"
                     alt={`${title} - ${currentIndex + 1}`}
                   />
-                  {/* Zoom hint overlay */}
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                    <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 rounded-full p-2">
-                      <ZoomIn size={18} className="text-white" />
+                  {/* Zoom hint overlay — bottom-right, away from carousel arrows and counter */}
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-end justify-end pb-10 pr-3">
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 rounded-full p-2 pointer-events-none">
+                      <ZoomIn size={15} className="text-white" />
                     </div>
                   </div>
                 </div>
