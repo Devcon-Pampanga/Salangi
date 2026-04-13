@@ -1,14 +1,8 @@
 // MapView.jsx — Simulated map component, ready for Google Maps / Leaflet swap-in
 // Props: selectedListing (object | null)
 
-// HOW TO UPGRADE TO REAL MAP:
-//   1. npm install @react-google-maps/api   (or leaflet + react-leaflet)
-//   2. Replace the <div> placeholder below with <GoogleMap> or <MapContainer>
-//   3. Use selectedListing.coordinates to set center + place a <Marker>
-
+import { useState, useEffect } from 'react';
 import type { Listing } from '../../Data/Listings';
-
-// Asset imports — adjust path to match your project structure
 import locBtnSelected from '@assets/png-files/locBtnSelected.png';
 
 interface MapViewProps {
@@ -16,14 +10,40 @@ interface MapViewProps {
 }
 
 function MapView({ selectedListing }: MapViewProps) {
-  // Default center: Pampanga province
-  const defaultCenter = { lat: 15.0791, lng: 120.6200 };
-  const zoom: number = selectedListing ? 14 : 11;
-  const center = selectedListing ? selectedListing.coordinates : defaultCenter;
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
 
-  // Static map preview via OpenStreetMap — no API key required
-  // Swap this URL out when integrating a real map SDK
-  const staticMapUrl = `https://staticmap.openstreetmap.de/staticmap.php?center=${center.lat},${center.lng}&zoom=${zoom}&size=740x620&markers=${center.lat},${center.lng},red`;
+  // ── Fetch user's current location once on mount ──────────────────────────
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setUserLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        });
+      },
+      (error) => {
+        console.warn("Location access denied:", error);
+      }
+    );
+  }, []);
+
+  // ── Map center logic ──────────────────────────────────────────────────────
+  // Priority: selectedListing → userLocation → default Pampanga
+  const defaultCenter = { lat: 15.0791, lng: 120.6200 };
+  const center = selectedListing
+    ? selectedListing.coordinates
+    : userLocation ?? defaultCenter;
+
+  const zoom: number = selectedListing ? 14 : userLocation ? 13 : 11;
+
+  // ── Markers: red for listing/center, blue for user location ──────────────
+  const markers = userLocation
+    ? `${center.lat},${center.lng},red|${userLocation.lat},${userLocation.lng},blue`
+    : `${center.lat},${center.lng},red`;
+
+  const staticMapUrl = `https://staticmap.openstreetmap.de/staticmap.php?center=${center.lat},${center.lng}&zoom=${zoom}&size=740x620&markers=${markers}`;
 
   return (
     <div className="w-full h-full relative overflow-hidden rounded-xl border border-zinc-800">
@@ -36,6 +56,13 @@ function MapView({ selectedListing }: MapViewProps) {
 
       {/* Dark overlay for aesthetic consistency */}
       <div className="absolute inset-0 bg-[#1A1A1A]/30 pointer-events-none rounded-xl" />
+
+      {/* "You are here" label — only shown when location is available */}
+      {userLocation && (
+        <div className="absolute top-4 right-4 bg-[#222222]/90 backdrop-blur-sm rounded-lg px-3 py-1.5 border border-zinc-700">
+          <p className="text-blue-400 text-xs font-semibold">📍 You are here</p>
+        </div>
+      )}
 
       {/* Selected listing info overlay */}
       {selectedListing && (
@@ -57,7 +84,9 @@ function MapView({ selectedListing }: MapViewProps) {
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
           <div className="bg-[#222222]/80 backdrop-blur-sm rounded-xl p-4 text-center border border-zinc-700">
             <p className="text-[#FFE2A0] text-sm font-semibold">Explore Pampanga</p>
-            <p className="text-zinc-400 text-xs mt-1">Click a card to pin its location</p>
+            <p className="text-zinc-400 text-xs mt-1">
+              {userLocation ? 'Your location is shown on the map' : 'Click a card to pin its location'}
+            </p>
           </div>
         </div>
       )}

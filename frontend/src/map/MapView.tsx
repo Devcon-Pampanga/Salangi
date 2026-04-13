@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Listing } from "../features/Data/Listings";
@@ -14,22 +14,83 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerShadow,
 });
 
+// ── Blue dot icon for user's current location ─────────────────────────────────
+const userLocationIcon = L.divIcon({
+  className: "",
+  html: `
+    <div style="
+      width: 16px; height: 16px;
+      background: #3B82F6;
+      border: 3px solid white;
+      border-radius: 50%;
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.4);
+    "></div>
+  `,
+  iconSize: [16, 16],
+  iconAnchor: [8, 8],
+});
+
 interface MapViewProps {
   listings?: Listing[];
   selectedListing?: Listing | null;
   onSelect?: (listing: Listing) => void;
 }
 
-const MapView = ({ 
-  listings = [], 
-  selectedListing = null, 
-  onSelect = () => {} 
+const MapView = ({
+  listings = [],
+  selectedListing = null,
+  onSelect = () => {},
 }: MapViewProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markersRef = useRef<Map<number, L.Marker>>(new Map());
+  const userMarkerRef = useRef<L.Marker | null>(null);
 
-  // Initialize map once
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+
+  // ── Fetch user location on mount ──────────────────────────────────────────
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+
+    navigator.geolocation.getCurrentPosition(
+  (position) => {
+    console.log("Accuracy:", position.coords.accuracy, "meters");
+    console.log("Lat:", position.coords.latitude);
+    console.log("Lng:", position.coords.longitude);
+
+    const coords = {
+      lat: position.coords.latitude,
+      lng: position.coords.longitude,
+    };
+    setUserLocation(coords);
+
+    setTimeout(() => {
+      const map = mapInstanceRef.current;
+      if (!map) return;
+
+      userMarkerRef.current?.remove();
+
+      const marker = L.marker([coords.lat, coords.lng], {
+        icon: userLocationIcon,
+        zIndexOffset: 1000,
+      })
+        .addTo(map)
+        .bindPopup(`<div style="text-align:center"><strong>📍 You are here</strong></div>`);
+
+      userMarkerRef.current = marker;
+
+      if (!selectedListing) {
+        map.flyTo([coords.lat, coords.lng], 14, { animate: true, duration: 1 });
+      }
+    }, 300);
+  },
+  (error) => {
+    console.warn("Location access denied:", error);
+  }
+);
+  }, []);
+
+  // ── Initialize map once ───────────────────────────────────────────────────
   useEffect(() => {
     if (mapRef.current && !mapInstanceRef.current) {
       const map = L.map(mapRef.current).setView([15.145, 120.589], 13);
@@ -46,19 +107,42 @@ const MapView = ({
       mapInstanceRef.current?.remove();
       mapInstanceRef.current = null;
       markersRef.current.clear();
+      userMarkerRef.current = null;
     };
   }, []);
 
-  // Add all listing markers once listings are available
+  // ── Update user marker when userLocation state changes ────────────────────
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || !userLocation) return;
+
+    userMarkerRef.current?.remove();
+
+    const marker = L.marker([userLocation.lat, userLocation.lng], {
+      icon: userLocationIcon,
+      zIndexOffset: 1000,
+    })
+      .addTo(map)
+      .bindPopup(`<div style="text-align:center"><strong>📍 You are here</strong></div>`);
+
+    userMarkerRef.current = marker;
+
+    if (!selectedListing) {
+      map.flyTo([userLocation.lat, userLocation.lng], 14, {
+        animate: true,
+        duration: 1,
+      });
+    }
+  }, [userLocation]);
+
+  // ── Add all listing markers once listings are available ───────────────────
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map || listings.length === 0) return;
 
-    // Clear old markers
     markersRef.current.forEach((marker) => marker.remove());
     markersRef.current.clear();
 
-    // Add a marker for every listing
     listings.forEach((listing) => {
       const { lat, lng } = listing.coordinates;
       const marker = L.marker([lat, lng])
@@ -79,7 +163,7 @@ const MapView = ({
     });
   }, [listings]);
 
-  // Pan to selected listing when it changes
+  // ── Pan to selected listing when it changes ───────────────────────────────
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map || !selectedListing) return;
