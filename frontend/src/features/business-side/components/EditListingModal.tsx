@@ -189,8 +189,8 @@ export default function EditListingModal({ isOpen, onClose, onSave, listing }: E
       barangay,
       street,
       otherDetails,
-      lat: listing.lat ?? null,
-      lng: listing.lng ?? null,
+      lat: listing.coordinates?.lat ?? null,
+      lng: listing.coordinates?.lng ?? null,
       hours: listing.hours ?? '',
       operatingDays,
       openingTime,
@@ -252,8 +252,8 @@ export default function EditListingModal({ isOpen, onClose, onSave, listing }: E
       hours: formattedHours,
       location,
       coordinates: {
-        lat: form.lat ?? listing?.lat ?? 0,
-        lng: form.lng ?? listing?.lng ?? 0,
+        lat: form.lat ?? listing?.coordinates?.lat ?? 0,
+        lng: form.lng ?? listing?.coordinates?.lng ?? 0,
       },
       phone: form.phone ? `+63${form.phone}` : '',
       } as Listing);
