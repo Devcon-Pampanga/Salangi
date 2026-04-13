@@ -251,11 +251,13 @@ export default function EditListingModal({ isOpen, onClose, onSave, listing }: E
       ...form,
       hours: formattedHours,
       location,
-      lat: form.lat ?? listing?.lat,
-      lng: form.lng ?? listing?.lng,
+      coordinates: {
+        lat: form.lat ?? listing?.lat ?? 0,
+        lng: form.lng ?? listing?.lng ?? 0,
+      },
       phone: form.phone ? `+63${form.phone}` : '',
-    } as Listing);
-  };
+      } as Listing);
+    };
 
   if (!isOpen) return null;
 

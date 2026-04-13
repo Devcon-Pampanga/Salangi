@@ -81,8 +81,8 @@ const MyBusiness = () => {
             .update({
                 name: updatedListing.name,
                 location: updatedListing.location,
-                lat: updatedListing.coordinates?.lat,
-                lng: updatedListing.coordinates?.lng,
+                lat: updatedListing.coordinates?.lat ?? (updatedListing as any).lat,
+                lng: updatedListing.coordinates?.lng ?? (updatedListing as any).lng,
                 hours: updatedListing.hours,
                 description: updatedListing.description,
                 images: updatedListing.images,
