@@ -4,3 +4,11 @@
 :root {
     --font-playfair: "Playfair Display", serif;
 }
+
+.leaflet-routing-container {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+}
