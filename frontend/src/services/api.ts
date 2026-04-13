@@ -37,7 +37,7 @@ export async function checkEmailExists(email: string): Promise<boolean> {
   return !!data;
 }
 
-const BASE_URL = import.meta.env.VITE_API_URL;
+const BASE_URL = import.meta.env.VITE_API_URL ?? ''; // ✅ fallback to empty string
 
 console.log('API Base URL:', BASE_URL, 'Mode:', import.meta.env.MODE);
 
@@ -53,6 +53,12 @@ async function getToken(): Promise<string> {
 // -- Shared fetch helper -------------------------------------------------------
 async function authFetch(path: string, options: RequestInit = {}): Promise<any> {
   const token = await getToken();
+
+  // ✅ Guard against missing API URL before calling .endsWith()
+  if (!BASE_URL) {
+    throw new Error('API URL is not configured. Please set VITE_API_URL in your .env file.');
+  }
+
   const baseUrl = BASE_URL.endsWith('/') ? BASE_URL.slice(0, -1) : BASE_URL;
   const res = await fetch(`${baseUrl}${path}`, {
     ...options,
