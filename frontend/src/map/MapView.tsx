@@ -16,7 +16,6 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerShadow,
 });
 
-// ── Blue dot for user's current location ─────────────────────────────────────
 const userLocationIcon = L.divIcon({
   className: "",
   html: `
@@ -32,7 +31,6 @@ const userLocationIcon = L.divIcon({
   iconAnchor: [8, 8],
 });
 
-// ── Default pin (standard Leaflet blue) ──────────────────────────────────────
 const defaultMarkerIcon = new L.Icon({
   iconRetinaUrl: markerIcon2x,
   iconUrl: markerIcon,
@@ -43,7 +41,6 @@ const defaultMarkerIcon = new L.Icon({
   shadowSize: [41, 41],
 });
 
-// ── Selected/highlighted pin (blue + glow shadow) ────────────────────────────
 const selectedMarkerIcon = L.divIcon({
   className: "",
   html: `
@@ -101,12 +98,11 @@ const MapView = ({
   useEffect(() => {
     if (mapRef.current && !mapInstanceRef.current) {
       const map = L.map(mapRef.current, {
-        zoomControl: false, // we'll re-add in a better position
+        zoomControl: false,
       }).setView([15.145, 120.589], 13);
 
       mapInstanceRef.current = map;
 
-      // Zoom control bottom-right (avoids sidebar overlap)
       L.control.zoom({ position: 'bottomright' }).addTo(map);
 
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -114,9 +110,16 @@ const MapView = ({
           '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
         maxZoom: 19,
       }).addTo(map);
+
+      // ── Inject CSS to permanently hide routing container ──────────────
+      const style = document.createElement('style');
+      style.id = 'lrm-hide';
+      style.textContent = `.leaflet-routing-container { display: none !important; }`;
+      document.head.appendChild(style);
     }
 
     return () => {
+      document.getElementById('lrm-hide')?.remove();
       if (routingControlRef.current && mapInstanceRef.current) {
         mapInstanceRef.current.removeControl(routingControlRef.current);
         routingControlRef.current = null;
@@ -152,12 +155,11 @@ const MapView = ({
     }
   }, [userLocation]);
 
-  // ── Render all listing markers (re-runs when listings array changes) ──────
+  // ── Render all listing markers ────────────────────────────────────────────
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map || listings.length === 0) return;
 
-    // Remove old markers
     markersRef.current.forEach((marker) => marker.remove());
     markersRef.current.clear();
 
@@ -167,8 +169,7 @@ const MapView = ({
       const isSelected = selectedListing?.id === listing.id;
       const icon = isSelected ? selectedMarkerIcon : defaultMarkerIcon;
 
-      const marker = L.marker([lat, lng], { icon })
-        .addTo(map);
+      const marker = L.marker([lat, lng], { icon }).addTo(map);
 
       marker.on("click", () => {
         onSelect(listing);
@@ -176,7 +177,7 @@ const MapView = ({
 
       markersRef.current.set(listing.id, marker);
     });
-  }, [listings]); // intentionally omit selectedListing here — handled below
+  }, [listings]);
 
   // ── Swap marker icons when selected listing changes ───────────────────────
   useEffect(() => {
@@ -227,29 +228,6 @@ const MapView = ({
       show: false,
       createMarker: () => null,
     }).addTo(map);
-
-    routing.on("routesfound", () => {
-      const container = routing.getContainer();
-      if (container) {
-        Object.assign(container.style, {
-          display: "none",
-          visibility: "hidden",
-          width: "0",
-          height: "0",
-          overflow: "hidden",
-          position: "absolute",
-          pointerEvents: "none",
-        });
-      }
-    });
-
-    setTimeout(() => {
-      const container = routing.getContainer?.();
-      if (container) {
-        container.style.display = "none";
-        container.style.visibility = "hidden";
-      }
-    }, 100);
 
     routingControlRef.current = routing;
 

@@ -6,6 +6,17 @@
   --font-playfair: "Playfair Display", serif;
 }
 
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* Hide leaflet routing machine panel */
+.leaflet-routing-container {
+  display: none !important;
+}
+
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }

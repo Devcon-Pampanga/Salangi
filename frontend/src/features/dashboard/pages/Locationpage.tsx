@@ -45,11 +45,9 @@ function Locationpage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState<FilterOptions>({ ratingRange: null, sortBy: 'default' });
 
-  // selectedListing drives both map highlight and sidebar visibility
   const [selectedListing, setSelectedListing] = useState<Listing | null>(
     incomingListing ?? null
   );
-  // sidebarOpen controls the animated slide-in/out
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(!!incomingListing);
 
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -184,7 +182,6 @@ function Locationpage() {
     ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
     : 0;
 
-  // ── Marker click: select listing and open sidebar ────────────────────────
   const handleMarkerSelect = (listing: Listing) => {
     setSelectedListing(listing);
     setSidebarOpen(true);
@@ -192,14 +189,11 @@ function Locationpage() {
     setSearchOpen(false);
   };
 
-  // ── Close sidebar (map-only mode) ────────────────────────────────────────
   const handleCloseSidebar = () => {
     setSidebarOpen(false);
-    // Small delay before clearing so slide-out animation plays fully
     setTimeout(() => setSelectedListing(null), 350);
   };
 
-  // ── Search ───────────────────────────────────────────────────────────────
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
   };
@@ -225,7 +219,10 @@ function Locationpage() {
     : [];
 
   return (
-    <div className="relative h-full w-full overflow-hidden bg-[#1A1A1A]">
+    <div
+      className="relative w-full overflow-hidden bg-[#1A1A1A]"
+      style={{ height: '100dvh' }}
+    >
 
       {/* ── Full-screen Map ─────────────────────────────────────────────── */}
       <div className="absolute inset-0 z-0">
@@ -238,7 +235,6 @@ function Locationpage() {
 
       {/* ── Floating top bar (back btn + search) ───────────────────────── */}
       <div className="absolute top-0 left-0 right-0 z-20 flex items-center gap-2 px-4 py-4 pointer-events-none">
-        {/* Back button */}
         <button
           onClick={() => navigate(-1)}
           className="pointer-events-auto flex items-center justify-center w-10 h-10 rounded-full bg-[#2D2D2D]/90 hover:bg-[#3D3D3D] backdrop-blur-sm transition-colors cursor-pointer shrink-0 shadow-lg"
@@ -246,7 +242,6 @@ function Locationpage() {
           <img src={search} width="18" alt="back" />
         </button>
 
-        {/* Search toggle (collapsed by default to keep map clean) */}
         <div
           className={`pointer-events-auto flex-1 transition-all duration-300 ${
             searchOpen ? 'opacity-100' : 'opacity-0 pointer-events-none w-0 overflow-hidden'
@@ -262,7 +257,6 @@ function Locationpage() {
           />
         </div>
 
-        {/* Search icon button */}
         {!searchOpen && (
           <button
             onClick={() => setSearchOpen(true)}
@@ -275,7 +269,6 @@ function Locationpage() {
           </button>
         )}
 
-        {/* Close search */}
         {searchOpen && (
           <button
             onClick={() => { setSearchOpen(false); setSearchQuery(''); }}
@@ -320,7 +313,7 @@ function Locationpage() {
         </div>
       )}
 
-      {/* ── "Tap a pin" hint — shown only when no listing is selected ──── */}
+      {/* ── "Tap a pin" hint ────────────────────────────────────────────── */}
       {!sidebarOpen && !isSearching && (
         <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
           <div className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-[#1A1A1A]/80 backdrop-blur-sm border border-zinc-700/40 shadow-xl animate-pulse-slow">
@@ -332,7 +325,7 @@ function Locationpage() {
         </div>
       )}
 
-      {/* ── Sidebar overlay backdrop (mobile) ──────────────────────────── */}
+      {/* ── Sidebar backdrop (mobile) ───────────────────────────────────── */}
       {sidebarOpen && (
         <div
           className="absolute inset-0 z-20 bg-black/30 md:hidden"
@@ -341,21 +334,14 @@ function Locationpage() {
       )}
 
       {/* ── Detail Sidebar ──────────────────────────────────────────────── */}
-      {/*
-        Desktop: slides in from the left (translateX)
-        Mobile:  slides up from the bottom
-      */}
       <div
         className={`
           absolute z-30
-          /* Mobile: bottom sheet */
           bottom-0 left-0 right-0 h-[82vh] rounded-t-2xl
-          /* Desktop: left sidebar */
           md:top-0 md:bottom-0 md:left-0 md:right-auto md:h-full md:w-[440px] md:rounded-none
           bg-[#1A1A1A] border-t border-zinc-800 md:border-t-0 md:border-r
           overflow-hidden flex flex-col
           transition-transform duration-350 ease-[cubic-bezier(0.32,0.72,0,1)]
-          /* Slide states */
           ${sidebarOpen
             ? 'translate-y-0 md:translate-x-0'
             : 'translate-y-full md:-translate-x-full'
@@ -368,7 +354,7 @@ function Locationpage() {
           <div className="w-10 h-1 rounded-full bg-zinc-600" />
         </div>
 
-        {/* Sidebar header with close button */}
+        {/* Sidebar header */}
         <div className="flex items-center justify-between px-4 py-3 shrink-0 border-b border-zinc-800/60 md:border-b-0 md:pt-4">
           <button
             onClick={handleCloseSidebar}
@@ -385,7 +371,6 @@ function Locationpage() {
           >
             ✕
           </button>
-          {/* Spacer to keep close btn right on mobile */}
           <div className="md:hidden" />
         </div>
 
