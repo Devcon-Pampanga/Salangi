@@ -16,20 +16,49 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerShadow,
 });
 
-// ── Blue dot icon for user's current location ─────────────────────────────────
+// ── Blue dot for user's current location ─────────────────────────────────────
 const userLocationIcon = L.divIcon({
   className: "",
   html: `
     <div style="
-      width: 16px; height: 16px;
-      background: #3B82F6;
-      border: 3px solid white;
-      border-radius: 50%;
-      box-shadow: 0 0 0 3px rgba(59,130,246,0.4);
+      width:16px;height:16px;
+      background:#3B82F6;
+      border:3px solid white;
+      border-radius:50%;
+      box-shadow:0 0 0 3px rgba(59,130,246,0.4);
     "></div>
   `,
   iconSize: [16, 16],
   iconAnchor: [8, 8],
+});
+
+// ── Default pin (standard Leaflet blue) ──────────────────────────────────────
+const defaultMarkerIcon = new L.Icon({
+  iconRetinaUrl: markerIcon2x,
+  iconUrl: markerIcon,
+  shadowUrl: markerShadow,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+});
+
+// ── Selected/highlighted pin (blue + glow shadow) ────────────────────────────
+const selectedMarkerIcon = L.divIcon({
+  className: "",
+  html: `
+    <div style="position:relative;width:25px;height:41px;filter:drop-shadow(0 0 6px rgba(59,130,246,0.8));">
+      <img
+        src="${markerIcon}"
+        width="25"
+        height="41"
+        style="display:block;"
+      />
+    </div>
+  `,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
 });
 
 interface MapViewProps {
@@ -54,49 +83,31 @@ const MapView = ({
   const routerLocation = useLocation();
   const selectedFromRoute: Listing | undefined = routerLocation.state?.listing;
 
-  // ── Fetch user location on mount ──────────────────────────────────────────
+  // ── Fetch user location once ──────────────────────────────────────────────
   useEffect(() => {
     if (!navigator.geolocation) return;
-
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        const coords = {
+        setUserLocation({
           lat: position.coords.latitude,
           lng: position.coords.longitude,
-        };
-        setUserLocation(coords);
-
-        setTimeout(() => {
-          const map = mapInstanceRef.current;
-          if (!map) return;
-
-          userMarkerRef.current?.remove();
-
-          const marker = L.marker([coords.lat, coords.lng], {
-            icon: userLocationIcon,
-            zIndexOffset: 1000,
-          })
-            .addTo(map)
-            .bindPopup(`<div style="text-align:center"><strong>📍 You are here</strong></div>`);
-
-          userMarkerRef.current = marker;
-
-          if (!selectedFromRoute) {
-            map.flyTo([coords.lat, coords.lng], 14, { animate: true, duration: 1 });
-          }
-        }, 300);
+        });
       },
-      (error) => {
-        console.warn("Location access denied:", error);
-      }
+      (error) => console.warn("Location access denied:", error)
     );
   }, []);
 
   // ── Initialize map once ───────────────────────────────────────────────────
   useEffect(() => {
     if (mapRef.current && !mapInstanceRef.current) {
-      const map = L.map(mapRef.current).setView([15.145, 120.589], 13);
+      const map = L.map(mapRef.current, {
+        zoomControl: false, // we'll re-add in a better position
+      }).setView([15.145, 120.589], 13);
+
       mapInstanceRef.current = map;
+
+      // Zoom control bottom-right (avoids sidebar overlap)
+      L.control.zoom({ position: 'bottomright' }).addTo(map);
 
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution:
@@ -117,7 +128,7 @@ const MapView = ({
     };
   }, []);
 
-  // ── Update user marker when userLocation state changes ────────────────────
+  // ── User location marker ──────────────────────────────────────────────────
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map || !userLocation) return;
@@ -133,7 +144,7 @@ const MapView = ({
 
     userMarkerRef.current = marker;
 
-    if (!selectedListing) {
+    if (!selectedListing && !selectedFromRoute) {
       map.flyTo([userLocation.lat, userLocation.lng], 14, {
         animate: true,
         duration: 1,
@@ -141,25 +152,23 @@ const MapView = ({
     }
   }, [userLocation]);
 
-  // ── Add all listing markers once listings are available ───────────────────
+  // ── Render all listing markers (re-runs when listings array changes) ──────
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map || listings.length === 0) return;
 
+    // Remove old markers
     markersRef.current.forEach((marker) => marker.remove());
     markersRef.current.clear();
 
     listings.forEach((listing) => {
       const { lat, lng } = listing.coordinates;
-      const marker = L.marker([lat, lng])
-        .addTo(map)
-        .bindPopup(`
-          <div style="min-width:140px">
-            <strong>${listing.name}</strong><br/>
-            <small>${listing.location}</small><br/>
-            <small>${listing.hours}</small>
-          </div>
-        `);
+
+      const isSelected = selectedListing?.id === listing.id;
+      const icon = isSelected ? selectedMarkerIcon : defaultMarkerIcon;
+
+      const marker = L.marker([lat, lng], { icon })
+        .addTo(map);
 
       marker.on("click", () => {
         onSelect(listing);
@@ -167,20 +176,27 @@ const MapView = ({
 
       markersRef.current.set(listing.id, marker);
     });
-  }, [listings]);
+  }, [listings]); // intentionally omit selectedListing here — handled below
 
-  // ── Pan to selected listing when it changes ───────────────────────────────
+  // ── Swap marker icons when selected listing changes ───────────────────────
+  useEffect(() => {
+    markersRef.current.forEach((marker, id) => {
+      marker.setIcon(
+        selectedListing?.id === id ? selectedMarkerIcon : defaultMarkerIcon
+      );
+    });
+  }, [selectedListing]);
+
+  // ── Pan & zoom to selected listing ───────────────────────────────────────
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map || !selectedListing) return;
 
     const { lat, lng } = selectedListing.coordinates;
-    const marker = markersRef.current.get(selectedListing.id);
-
-    map.flyTo([lat, lng], 16, { animate: true, duration: 1 });
-    marker?.openPopup();
+    map.flyTo([lat, lng], 16, { animate: true, duration: 0.8 });
   }, [selectedListing]);
 
+  // ── Routing to listing that came in via route state ───────────────────────
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map || !userLocation || !selectedFromRoute) return;
@@ -193,7 +209,6 @@ const MapView = ({
     }
 
     map.flyTo([lat, lng], 15, { animate: true, duration: 1 });
-    markersRef.current.get(selectedFromRoute.id)?.openPopup();
 
     const routing = (L as any).Routing.control({
       waypoints: [
@@ -216,13 +231,15 @@ const MapView = ({
     routing.on("routesfound", () => {
       const container = routing.getContainer();
       if (container) {
-        container.style.display = "none";
-        container.style.visibility = "hidden";
-        container.style.width = "0";
-        container.style.height = "0";
-        container.style.overflow = "hidden";
-        container.style.position = "absolute";
-        container.style.pointerEvents = "none";
+        Object.assign(container.style, {
+          display: "none",
+          visibility: "hidden",
+          width: "0",
+          height: "0",
+          overflow: "hidden",
+          position: "absolute",
+          pointerEvents: "none",
+        });
       }
     });
 

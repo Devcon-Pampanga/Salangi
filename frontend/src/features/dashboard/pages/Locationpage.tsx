@@ -38,18 +38,27 @@ const DEFAULT_LISTING: Listing = {
 function Locationpage() {
   const { state } = useLocation();
   const navigate = useNavigate();
-  const listing: Listing = state?.listing ?? DEFAULT_LISTING;
+  const incomingListing: Listing | undefined = state?.listing;
 
   const [listings, setListings] = useState<Listing[]>([]);
   const [averageRatings, setAverageRatings] = useState<Record<number, number>>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState<FilterOptions>({ ratingRange: null, sortBy: 'default' });
-  const [selectedListing, setSelectedListing] = useState<Listing>(listing);
+
+  // selectedListing drives both map highlight and sidebar visibility
+  const [selectedListing, setSelectedListing] = useState<Listing | null>(
+    incomingListing ?? null
+  );
+  // sidebarOpen controls the animated slide-in/out
+  const [sidebarOpen, setSidebarOpen] = useState<boolean>(!!incomingListing);
+
   const [reviews, setReviews] = useState<Review[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [savedIds, setSavedIds] = useState<number[]>([]);
   const [galleryImages, setGalleryImages] = useState<string[]>([]);
+  const [searchOpen, setSearchOpen] = useState(false);
 
+  // ── Load all listings & ratings ──────────────────────────────────────────
   useEffect(() => {
     Promise.all([getListings(), getAverageRatings()])
       .then(([listingsData, ratingsData]) => {
@@ -59,6 +68,7 @@ function Locationpage() {
       .catch(console.error);
   }, []);
 
+  // ── Load saved IDs ───────────────────────────────────────────────────────
   useEffect(() => {
     const fetchSaves = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -74,7 +84,10 @@ function Locationpage() {
     fetchSaves();
   }, []);
 
+  // ── Load gallery images when selected listing changes ────────────────────
   useEffect(() => {
+    if (!selectedListing) return;
+
     const fetchGalleryImages = async () => {
       const { data } = await supabase
         .from('gallery_images')
@@ -94,12 +107,15 @@ function Locationpage() {
         setGalleryImages(selectedListing.images ?? []);
       }
     };
-    fetchGalleryImages();
-  }, [selectedListing.id]);
 
+    fetchGalleryImages();
+  }, [selectedListing?.id]);
+
+  // ── Load reviews when selected listing changes ───────────────────────────
   useEffect(() => {
+    if (!selectedListing) return;
     fetchReviews(selectedListing.id);
-  }, [selectedListing.id]);
+  }, [selectedListing?.id]);
 
   const fetchReviews = async (listingId: number) => {
     setReviewsLoading(true);
@@ -110,17 +126,8 @@ function Locationpage() {
         .eq('listing_id', listingId)
         .order('created_at', { ascending: false });
 
-      if (reviewError) {
-        console.error('reviews error:', reviewError);
-        setReviewsLoading(false);
-        return;
-      }
-
-      if (!reviewData || reviewData.length === 0) {
-        setReviews([]);
-        setReviewsLoading(false);
-        return;
-      }
+      if (reviewError) { console.error('reviews error:', reviewError); return; }
+      if (!reviewData || reviewData.length === 0) { setReviews([]); return; }
 
       const userIds = [...new Set(reviewData.map((r: any) => r.user_id))];
       const { data: userData, error: userError } = await supabase
@@ -128,14 +135,10 @@ function Locationpage() {
         .select('user_id, first_name, last_name, profile_pic')
         .in('user_id', userIds);
 
-      if (userError) {
-        console.error('users error:', userError);
-      }
+      if (userError) console.error('users error:', userError);
 
       const userMap: Record<string, any> = {};
-      (userData ?? []).forEach((u: any) => {
-        userMap[u.user_id] = u;
-      });
+      (userData ?? []).forEach((u: any) => { userMap[u.user_id] = u; });
 
       const mapped: Review[] = reviewData.map((r: any) => {
         const u = userMap[r.user_id];
@@ -170,7 +173,7 @@ function Locationpage() {
     const isSaved = savedIds.includes(id);
     if (isSaved) {
       await supabase.from('saves').delete().eq('user_id', user.id).eq('listing_id', id);
-      setSavedIds(prev => prev.filter(savedId => savedId !== id));
+      setSavedIds(prev => prev.filter(sid => sid !== id));
     } else {
       await supabase.from('saves').insert({ user_id: user.id, listing_id: id });
       setSavedIds(prev => [...prev, id]);
@@ -181,6 +184,22 @@ function Locationpage() {
     ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
     : 0;
 
+  // ── Marker click: select listing and open sidebar ────────────────────────
+  const handleMarkerSelect = (listing: Listing) => {
+    setSelectedListing(listing);
+    setSidebarOpen(true);
+    setSearchQuery('');
+    setSearchOpen(false);
+  };
+
+  // ── Close sidebar (map-only mode) ────────────────────────────────────────
+  const handleCloseSidebar = () => {
+    setSidebarOpen(false);
+    // Small delay before clearing so slide-out animation plays fully
+    setTimeout(() => setSelectedListing(null), 350);
+  };
+
+  // ── Search ───────────────────────────────────────────────────────────────
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
   };
@@ -206,37 +225,33 @@ function Locationpage() {
     : [];
 
   return (
-    <div className="flex flex-col md:flex-row h-full w-full bg-[#1A1A1A] text-[#FBFAF8] overflow-hidden">
+    <div className="relative h-full w-full overflow-hidden bg-[#1A1A1A]">
 
-      {/* Mobile-only Search Bar (above Map) */}
-      <div className="md:hidden flex items-center gap-2 w-full px-4 py-4 shrink-0 order-1 border-b border-zinc-800/50 bg-[#1A1A1A] z-10">
-        <button
-          onClick={() => navigate(-1)}
-          className="flex items-center justify-center w-10 h-10 rounded-full bg-[#2D2D2D] hover:bg-[#3D3D3D] transition-colors cursor-pointer shrink-0"
-        >
-          <img src={search} width="18" alt="back" />
-        </button>
-        <SearchBar
-          containerClassName="flex-1"
-          value={searchQuery}
-          onChange={handleSearchChange}
-          placeholder="Search local spots..."
-          onFilterChange={setFilters}
-          filters={filters}
+      {/* ── Full-screen Map ─────────────────────────────────────────────── */}
+      <div className="absolute inset-0 z-0">
+        <MapView
+          listings={listings}
+          selectedListing={selectedListing}
+          onSelect={handleMarkerSelect}
         />
       </div>
 
-      {/* Main Left Column */}
-      <div className="w-full md:w-125 flex-1 md:flex-none md:h-full overflow-y-auto md:border-r border-zinc-800 flex flex-col items-center px-4 py-4 md:px-6 md:py-6 scrollbar-hide order-3 md:order-1 min-h-0">
+      {/* ── Floating top bar (back btn + search) ───────────────────────── */}
+      <div className="absolute top-0 left-0 right-0 z-20 flex items-center gap-2 px-4 py-4 pointer-events-none">
+        {/* Back button */}
+        <button
+          onClick={() => navigate(-1)}
+          className="pointer-events-auto flex items-center justify-center w-10 h-10 rounded-full bg-[#2D2D2D]/90 hover:bg-[#3D3D3D] backdrop-blur-sm transition-colors cursor-pointer shrink-0 shadow-lg"
+        >
+          <img src={search} width="18" alt="back" />
+        </button>
 
-        {/* Desktop-only Search bar */}
-        <div className="hidden md:flex items-center gap-2 w-full mb-4 shrink-0">
-          <button
-            onClick={() => navigate(-1)}
-            className="flex items-center justify-center w-10 h-10 rounded-full bg-[#2D2D2D] hover:bg-[#3D3D3D] transition-colors cursor-pointer shrink-0"
-          >
-            <img src={search} width="18" alt="back" />
-          </button>
+        {/* Search toggle (collapsed by default to keep map clean) */}
+        <div
+          className={`pointer-events-auto flex-1 transition-all duration-300 ${
+            searchOpen ? 'opacity-100' : 'opacity-0 pointer-events-none w-0 overflow-hidden'
+          }`}
+        >
           <SearchBar
             containerClassName="flex-1"
             value={searchQuery}
@@ -247,70 +262,160 @@ function Locationpage() {
           />
         </div>
 
-        {isSearching && (
-          <div className="w-full mb-4">
-            {searchResults.length > 0 ? (
-              <div className="flex flex-col gap-2">
-                {searchResults.map((item: Listing) => (
-                  <div
-                    key={item.id}
-                    onClick={() => { setSelectedListing(item); setSearchQuery(''); }}
-                    className="flex items-center gap-3 px-4 py-3 bg-[#2D2D2D] rounded-lg cursor-pointer hover:bg-[#3D3D3D] transition-colors"
-                  >
-                    <div className="flex-1">
-                      <p className="text-sm font-semibold text-[#FBFAF8]">{item.name}</p>
-                      <p className="text-xs text-[#FBFAF8]/50">{item.location}</p>
-                    </div>
-                    {averageRatings[item.id] != null && (
-                      <div className="flex items-center gap-1 shrink-0">
-                        <span className="text-[#FFE2A0] text-xs">★</span>
-                        <span className="text-[#FBFAF8]/50 text-xs">
-                          {averageRatings[item.id].toFixed(1)}
-                        </span>
-                      </div>
-                    )}
+        {/* Search icon button */}
+        {!searchOpen && (
+          <button
+            onClick={() => setSearchOpen(true)}
+            className="pointer-events-auto flex items-center gap-2 px-4 py-2 rounded-full bg-[#2D2D2D]/90 hover:bg-[#3D3D3D] backdrop-blur-sm transition-colors shadow-lg text-[#FBFAF8]/70 text-sm"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+            </svg>
+            <span>Search local spots…</span>
+          </button>
+        )}
+
+        {/* Close search */}
+        {searchOpen && (
+          <button
+            onClick={() => { setSearchOpen(false); setSearchQuery(''); }}
+            className="pointer-events-auto flex items-center justify-center w-10 h-10 rounded-full bg-[#2D2D2D]/90 hover:bg-[#3D3D3D] backdrop-blur-sm transition-colors cursor-pointer shrink-0 shadow-lg text-[#FBFAF8]"
+          >
+            ✕
+          </button>
+        )}
+      </div>
+
+      {/* ── Search results dropdown ─────────────────────────────────────── */}
+      {isSearching && (
+        <div className="absolute top-20 left-4 right-4 z-20 rounded-xl bg-[#1A1A1A]/95 backdrop-blur-sm border border-zinc-700/50 shadow-2xl max-h-72 overflow-y-auto">
+          {searchResults.length > 0 ? (
+            <div className="flex flex-col divide-y divide-zinc-800/50">
+              {searchResults.map((item: Listing) => (
+                <div
+                  key={item.id}
+                  onClick={() => handleMarkerSelect(item)}
+                  className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-[#2D2D2D] transition-colors"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-[#FBFAF8] truncate">{item.name}</p>
+                    <p className="text-xs text-[#FBFAF8]/50 truncate">{item.location}</p>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-6">
-                <p className="text-[#FBFAF8]/50 text-sm">No results found for "{searchQuery}"</p>
-              </div>
-            )}
+                  {averageRatings[item.id] != null && (
+                    <div className="flex items-center gap-1 shrink-0">
+                      <span className="text-[#FFE2A0] text-xs">★</span>
+                      <span className="text-[#FBFAF8]/50 text-xs">
+                        {averageRatings[item.id].toFixed(1)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-6">
+              <p className="text-[#FBFAF8]/50 text-sm">No results found for "{searchQuery}"</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── "Tap a pin" hint — shown only when no listing is selected ──── */}
+      {!sidebarOpen && !isSearching && (
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
+          <div className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-[#1A1A1A]/80 backdrop-blur-sm border border-zinc-700/40 shadow-xl animate-pulse-slow">
+            <span className="text-base">📍</span>
+            <span className="text-xs text-[#FBFAF8]/70 font-medium whitespace-nowrap">
+              Tap a pin to explore businesses
+            </span>
           </div>
-        )}
+        </div>
+      )}
 
-        {!isSearching && (
-          <DetailedBusinessCard
-            listingId={selectedListing.id}
-            title={selectedListing.name}
-            location={selectedListing.location}
-            hours={selectedListing.hours}
-            description={selectedListing.description}
-            images={galleryImages}
-            isVerified={selectedListing.verified}
-            phone={selectedListing.phone}
-            email={selectedListing.email}
-            facebook={selectedListing.facebook}
-            website={selectedListing.website}
-            rating={averageRating}
-            reviewsCount={reviews.length}
-            reviews={reviews}
-            reviewsLoading={reviewsLoading}
-            initialSaved={savedIds.includes(selectedListing.id)}
-            onToggleSave={toggleSave}
-            onReviewAdded={() => fetchReviews(selectedListing.id)}
-          />
-        )}
-      </div>
-
-      <div className="w-full h-75 md:h-full shrink-0 md:flex-1 relative order-2 md:order-2 border-b border-zinc-800 md:border-b-0 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.5)] md:shadow-none z-10">
-        <MapView
-          listings={isSearching ? searchResults : [selectedListing]}
-          selectedListing={selectedListing}
-          onSelect={(item) => { setSelectedListing(item); setSearchQuery(''); }}
+      {/* ── Sidebar overlay backdrop (mobile) ──────────────────────────── */}
+      {sidebarOpen && (
+        <div
+          className="absolute inset-0 z-20 bg-black/30 md:hidden"
+          onClick={handleCloseSidebar}
         />
+      )}
+
+      {/* ── Detail Sidebar ──────────────────────────────────────────────── */}
+      {/*
+        Desktop: slides in from the left (translateX)
+        Mobile:  slides up from the bottom
+      */}
+      <div
+        className={`
+          absolute z-30
+          /* Mobile: bottom sheet */
+          bottom-0 left-0 right-0 h-[82vh] rounded-t-2xl
+          /* Desktop: left sidebar */
+          md:top-0 md:bottom-0 md:left-0 md:right-auto md:h-full md:w-[440px] md:rounded-none
+          bg-[#1A1A1A] border-t border-zinc-800 md:border-t-0 md:border-r
+          overflow-hidden flex flex-col
+          transition-transform duration-350 ease-[cubic-bezier(0.32,0.72,0,1)]
+          /* Slide states */
+          ${sidebarOpen
+            ? 'translate-y-0 md:translate-x-0'
+            : 'translate-y-full md:-translate-x-full'
+          }
+        `}
+        style={{ willChange: 'transform' }}
+      >
+        {/* Drag handle (mobile only) */}
+        <div className="md:hidden flex justify-center pt-3 pb-1 shrink-0">
+          <div className="w-10 h-1 rounded-full bg-zinc-600" />
+        </div>
+
+        {/* Sidebar header with close button */}
+        <div className="flex items-center justify-between px-4 py-3 shrink-0 border-b border-zinc-800/60 md:border-b-0 md:pt-4">
+          <button
+            onClick={handleCloseSidebar}
+            className="hidden md:flex items-center gap-2 text-[#FBFAF8]/50 hover:text-[#FBFAF8] transition-colors text-sm"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M19 12H5M5 12l7-7M5 12l7 7"/>
+            </svg>
+            Back to map
+          </button>
+          <button
+            onClick={handleCloseSidebar}
+            className="md:hidden flex items-center justify-center w-8 h-8 rounded-full bg-[#2D2D2D] hover:bg-[#3D3D3D] transition-colors text-[#FBFAF8]/70 text-sm"
+          >
+            ✕
+          </button>
+          {/* Spacer to keep close btn right on mobile */}
+          <div className="md:hidden" />
+        </div>
+
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto scrollbar-hide px-4 py-4 md:px-6">
+          {selectedListing && (
+            <DetailedBusinessCard
+              listingId={selectedListing.id}
+              title={selectedListing.name}
+              location={selectedListing.location}
+              hours={selectedListing.hours}
+              description={selectedListing.description}
+              images={galleryImages}
+              isVerified={selectedListing.verified}
+              phone={selectedListing.phone}
+              email={selectedListing.email}
+              facebook={selectedListing.facebook}
+              website={selectedListing.website}
+              rating={averageRating}
+              reviewsCount={reviews.length}
+              reviews={reviews}
+              reviewsLoading={reviewsLoading}
+              initialSaved={savedIds.includes(selectedListing.id)}
+              onToggleSave={toggleSave}
+              onReviewAdded={() => fetchReviews(selectedListing.id)}
+            />
+          )}
+        </div>
       </div>
+
     </div>
   );
 }
