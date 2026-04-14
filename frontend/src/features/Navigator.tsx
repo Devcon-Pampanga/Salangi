@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import SettingsPage from './settings/pages/SettingsPage';
 import { ROUTES } from '../routes/paths';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/context/authContext';
 
 // icons
 import homeBtn from '@assets/icons/home-btn-default.svg';
@@ -59,6 +60,7 @@ const NavItem = ({ to, defaultIcon, activeIcon, alt, isEnd = false }: NavItemPro
 export function Navigator() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { session } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [scrollTo, setScrollTo] = useState<'upgrade' | null>(null);
@@ -94,26 +96,34 @@ export function Navigator() {
   });
 
   const refreshUser = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user?.email_confirmed_at) {
-      supabase.auth.signOut();
-      navigate('/sign-in');
-      return;
+    try {
+      const user = session?.user;
+      if (!user) return;
+
+      if (!user.email_confirmed_at) {
+        await supabase.auth.signOut();
+        navigate('/sign-in');
+        return;
+      }
+
+      const { data: profile, error } = await supabase
+        .from('users')
+        .select('first_name, last_name, email, profile_pic')
+        .eq('user_id', user.id)
+        .single();
+
+      if (error) throw error;
+
+      setDisplayName({
+        firstName: profile?.first_name || user.user_metadata?.first_name || '',
+        lastName:  profile?.last_name  || user.user_metadata?.last_name  || '',
+        email:     profile?.email      || user.email || '',
+        avatarUrl: profile?.profile_pic || null,
+      });
+    } catch (error) {
+      console.warn("Error refreshing user profile:", error);
     }
-
-    const { data: profile } = await supabase
-      .from('users')
-      .select('first_name, last_name, email, profile_pic')
-      .eq('user_id', user.id)
-      .single();
-
-    setDisplayName({
-      firstName: profile?.first_name || user.user_metadata?.first_name || '',
-      lastName:  profile?.last_name  || user.user_metadata?.last_name  || '',
-      email:     profile?.email      || user.email || '',
-      avatarUrl: profile?.profile_pic || null,
-    });
-  }, [navigate]);
+  }, [navigate, session]);
 
   useEffect(() => {
     refreshUser();

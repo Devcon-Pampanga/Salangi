@@ -1,11 +1,13 @@
 {
   "dependencies": {
     "@supabase/supabase-js": "^2.100.1",
+    "leaflet-routing-machine": "^3.2.12",
     "lucide-react": "^0.577.0",
     "react-router-dom": "^7.13.2"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.2.2",
+    "@types/leaflet-routing-machine": "^3.2.9",
     "@types/node": "^25.5.0",
     "@types/react-router-dom": "^5.3.3",
     "tailwindcss": "^4.2.2",

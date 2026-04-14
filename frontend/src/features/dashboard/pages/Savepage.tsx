@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/context/authContext';
 import search from '@assets/icons/search-btn-default.svg';
 
 import BusinessCard from '../components/BusinessCard';
@@ -11,6 +12,7 @@ import { getListings, getAverageRatings, CATEGORIES } from '../../Data/Listings'
 import type { Listing, Category } from '../../Data/Listings';
 
 function Savepage() {
+  const { session } = useAuth();
   const [listings, setListings]       = useState<Listing[]>([]);
   const [isLoading, setIsLoading]     = useState(true);
   const [activeCategory, setActiveCategory] = useState<Category>(CATEGORIES.ALL as Category);
@@ -21,37 +23,45 @@ function Savepage() {
 
   useEffect(() => {
     const fetchData = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      try {
+        const user = session?.user;
+        if (!user) return;
 
-      const [listingsData, ratingsData, savesResult] = await Promise.all([
-        getListings(),
-        getAverageRatings(),
-        supabase.from('saves').select('listing_id').eq('user_id', user.id)
-      ]);
+        const [listingsData, ratingsData, savesResult] = await Promise.all([
+          getListings(),
+          getAverageRatings(),
+          supabase.from('saves').select('listing_id').eq('user_id', user.id)
+        ]);
 
-      setListings(listingsData);
-      setAverageRatings(ratingsData);
-      if (!savesResult.error && savesResult.data) {
-        setSavedIds(savesResult.data.map((row: any) => row.listing_id));
+        setListings(listingsData);
+        setAverageRatings(ratingsData);
+        if (!savesResult.error && savesResult.data) {
+          setSavedIds(savesResult.data.map((row: any) => row.listing_id));
+        }
+        setIsLoading(false);
+      } catch (error) {
+        console.warn("Error fetching data:", error);
       }
-      setIsLoading(false);
     };
 
-    fetchData().catch(console.error);
-  }, []);
+    fetchData();
+  }, [session]);
 
   const toggleSave = async (id: number) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    try {
+      const user = session?.user;
+      if (!user) return;
 
-    const isSaved = savedIds.includes(id);
-    if (isSaved) {
-      await supabase.from('saves').delete().eq('user_id', user.id).eq('listing_id', id);
-      setSavedIds(prev => prev.filter(savedId => savedId !== id));
-    } else {
-      await supabase.from('saves').insert({ user_id: user.id, listing_id: id });
-      setSavedIds(prev => [...prev, id]);
+      const isSaved = savedIds.includes(id);
+      if (isSaved) {
+        await supabase.from('saves').delete().eq('user_id', user.id).eq('listing_id', id);
+        setSavedIds(prev => prev.filter(savedId => savedId !== id));
+      } else {
+        await supabase.from('saves').insert({ user_id: user.id, listing_id: id });
+        setSavedIds(prev => [...prev, id]);
+      }
+    } catch (error) {
+      console.warn("Error toggling save:", error);
     }
   };
 
