@@ -197,19 +197,24 @@ const MapView = ({
     map.flyTo([lat, lng], 16, { animate: true, duration: 0.8 });
   }, [selectedListing]);
 
-  // ── Routing to listing that came in via route state ───────────────────────
+  // ── Draw route whenever selectedListing or userLocation changes ───────────
+  // Covers both: navigating from route state AND clicking a marker on the map
   useEffect(() => {
     const map = mapInstanceRef.current;
-    if (!map || !userLocation || !selectedFromRoute) return;
 
-    const { lat, lng } = selectedFromRoute.coordinates;
+    // Resolve which listing to route to — marker click takes priority
+    const target = selectedListing ?? selectedFromRoute ?? null;
 
-    if (routingControlRef.current) {
+    // Remove any existing route first
+    if (routingControlRef.current && map) {
       map.removeControl(routingControlRef.current);
       routingControlRef.current = null;
     }
 
-    map.flyTo([lat, lng], 15, { animate: true, duration: 1 });
+    // Need both user location and a target to draw a route
+    if (!map || !userLocation || !target) return;
+
+    const { lat, lng } = target.coordinates;
 
     const routing = (L as any).Routing.control({
       waypoints: [
@@ -224,7 +229,7 @@ const MapView = ({
       },
       addWaypoints: false,
       draggableWaypoints: false,
-      fitSelectedRoutes: true,
+      fitSelectedRoutes: false,
       show: false,
       createMarker: () => null,
     }).addTo(map);
@@ -237,7 +242,7 @@ const MapView = ({
         routingControlRef.current = null;
       }
     };
-  }, [userLocation, selectedFromRoute]);
+  }, [userLocation, selectedListing, selectedFromRoute]);
 
   return <div ref={mapRef} style={{ width: "100%", height: "100%" }} />;
 };

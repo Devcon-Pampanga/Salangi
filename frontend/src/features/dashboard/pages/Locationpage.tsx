@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import search from '@assets/icons/search-back-btn.svg';
 import sampleImage from '@assets/png-files/imagesample.png';
@@ -325,20 +325,16 @@ function Locationpage() {
         </div>
       )}
 
-      {/* ── Sidebar backdrop (mobile) ───────────────────────────────────── */}
-      {sidebarOpen && (
-        <div
-          className="absolute inset-0 z-20 bg-black/30 md:hidden"
-          onClick={handleCloseSidebar}
-        />
-      )}
-
       {/* ── Detail Sidebar ──────────────────────────────────────────────── */}
+      {/*
+        Mobile: slides up from bottom, capped at 60vh so ~40vh of map stays visible
+        Desktop: slides in from the left, full height
+      */}
       <div
         className={`
           absolute z-30
-          bottom-0 left-0 right-0 h-[82vh] rounded-t-2xl
-          md:top-0 md:bottom-0 md:left-0 md:right-auto md:h-full md:w-[440px] md:rounded-none
+          bottom-0 left-0 right-0 h-[60vh] rounded-t-2xl
+          md:top-0 md:bottom-0 md:left-0 md:right-auto md:h-full md:w-[500px] md:rounded-none
           bg-[#1A1A1A] border-t border-zinc-800 md:border-t-0 md:border-r
           overflow-hidden flex flex-col
           transition-transform duration-350 ease-[cubic-bezier(0.32,0.72,0,1)]

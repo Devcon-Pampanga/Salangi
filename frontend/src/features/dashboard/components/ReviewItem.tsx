@@ -22,8 +22,8 @@ function ReviewItem({ user, initials, date, rating, comment, profilePic }: Revie
                         )}
                     </div>
                     <div className="flex flex-col">
-                        <span className="text-sm font-semibold">{user}</span>
-                        <span className="text-xs text-zinc-500">{date}</span>
+                        <span className="text-sm font-semibold text-[#FBFAF8]">{user}</span>
+                        <span className="text-xs text-zinc-400">{date}</span>
                     </div>
                 </div>
                 <div className="flex gap-0.5">
@@ -38,7 +38,7 @@ function ReviewItem({ user, initials, date, rating, comment, profilePic }: Revie
                     ))}
                 </div>
             </div>
-            <p className="text-base text-zinc-400 leading-relaxed pr-4">
+            <p className="text-sm text-[#FBFAF8]/70 leading-relaxed pr-4">
                 {comment}
             </p>
         </div>

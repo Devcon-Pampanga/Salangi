@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, Image as ImageIcon, X, ZoomIn } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase'; 
+import { createPortal } from 'react-dom';
 import locBtnSelected from '@assets/icons/map-btn-active.svg';
 import locBtn from '@assets/icons/direction-btn.svg';
 import verifiedIcon from '@assets/icons/verified-btn.svg';
@@ -50,8 +51,6 @@ interface DetailedBusinessCardProps {
   onReviewAdded?: () => void;
 }
 
-// ── Hours formatter ───────────────────────────────────────────────────────────
-
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 function formatHours(hours: string): string {
@@ -80,17 +79,9 @@ function formatHours(hours: string): string {
   return timePart ? `${dayString}, ${timePart}` : dayString;
 }
 
-// ── Dedup helper ──────────────────────────────────────────────────────────────
-
-/**
- * Removes duplicate URLs while preserving order.
- * Filters out any falsy values (null, undefined, empty string).
- */
 function dedupeImages(images: string[]): string[] {
   return [...new Set((images ?? []).filter(Boolean))];
 }
-
-// ── Lightbox ──────────────────────────────────────────────────────────────────
 
 interface LightboxProps {
   images: string[];
@@ -101,7 +92,6 @@ interface LightboxProps {
 }
 
 function Lightbox({ images, activeIndex, onClose, onPrev, onNext }: LightboxProps) {
-  // Close on Escape, navigate with arrow keys
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -117,7 +107,6 @@ function Lightbox({ images, activeIndex, onClose, onPrev, onNext }: LightboxProp
       className="fixed inset-0 bg-black/95 z-[100] flex items-center justify-center"
       onClick={onClose}
     >
-      {/* Close button */}
       <button
         onClick={onClose}
         className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-full border border-white/10 transition-colors z-10 cursor-pointer"
@@ -125,14 +114,12 @@ function Lightbox({ images, activeIndex, onClose, onPrev, onNext }: LightboxProp
         <X size={18} className="text-white" />
       </button>
 
-      {/* Counter */}
       {images.length > 1 && (
         <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-black/50 text-white text-xs px-3 py-1.5 rounded-full backdrop-blur-sm">
           {activeIndex + 1} / {images.length}
         </div>
       )}
 
-      {/* Prev button */}
       {images.length > 1 && (
         <button
           onClick={(e) => { e.stopPropagation(); onPrev(); }}
@@ -142,7 +129,6 @@ function Lightbox({ images, activeIndex, onClose, onPrev, onNext }: LightboxProp
         </button>
       )}
 
-      {/* Image */}
       <img
         src={images[activeIndex]}
         alt={`Image ${activeIndex + 1}`}
@@ -150,7 +136,6 @@ function Lightbox({ images, activeIndex, onClose, onPrev, onNext }: LightboxProp
         onClick={(e) => e.stopPropagation()}
       />
 
-      {/* Next button */}
       {images.length > 1 && (
         <button
           onClick={(e) => { e.stopPropagation(); onNext(); }}
@@ -160,7 +145,6 @@ function Lightbox({ images, activeIndex, onClose, onPrev, onNext }: LightboxProp
         </button>
       )}
 
-      {/* Dot indicators */}
       {images.length > 1 && (
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-1.5">
           {images.map((_, idx) => (
@@ -176,8 +160,6 @@ function Lightbox({ images, activeIndex, onClose, onPrev, onNext }: LightboxProp
     </div>
   );
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
 
 function DetailedBusinessCard({
   listingId,
@@ -202,14 +184,12 @@ function DetailedBusinessCard({
   onReviewAdded,
 }: DetailedBusinessCardProps) {
   const [isSaved, setIsSaved] = useState(initialSaved);
-  // ✅ FIX 1: Deduplicate images at the top level — single source of truth
   const allImages = dedupeImages(images);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAddingReview, setIsAddingReview] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
   const [reviewError, setReviewError] = useState<string | null>(null);
-  // ✅ FIX 2: Lightbox state — null means closed
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   const hasImages = allImages.length > 0;
@@ -231,7 +211,6 @@ function DetailedBusinessCard({
     setCurrentIndex((prev) => (prev === 0 ? allImages.length - 1 : prev - 1));
   };
 
-  // Lightbox navigation
   const lightboxNext = useCallback(() => {
     setLightboxIndex((prev) => prev === null ? null : (prev === allImages.length - 1 ? 0 : prev + 1));
   }, [allImages.length]);
@@ -300,19 +279,21 @@ function DetailedBusinessCard({
 
   return (
     <>
-      {/* ✅ Lightbox renders outside card flow, at root level */}
-      {lightboxIndex !== null && (
+      {lightboxIndex !== null && createPortal(
         <Lightbox
           images={allImages}
           activeIndex={lightboxIndex}
           onClose={() => setLightboxIndex(null)}
           onPrev={lightboxPrev}
           onNext={lightboxNext}
-        />
+        />,
+        document.body
       )}
 
+      {/* ✅ FIX 1: added max-w-120 and mx-auto to match deployed */}
       <div className="w-full max-w-120 bg-[#333333] rounded-xl overflow-hidden shrink-0 mb-10 shadow-2xl border border-zinc-800/50 mx-auto">
         <div className="relative flex flex-col">
+
           {/* Heart Icon */}
           <div className="absolute top-4 left-4 z-30">
             <button
@@ -323,11 +304,10 @@ function DetailedBusinessCard({
             </button>
           </div>
 
-          {/* Image Carousel */}
+          {/* ✅ FIX 2: changed h-80 to h-72 to match deployed */}
           <div className="relative w-full h-72 overflow-hidden bg-zinc-800 group">
             {hasImages ? (
               <>
-                {/* ✅ Clicking image opens lightbox at current index */}
                 <div
                   className="relative w-full h-full cursor-zoom-in"
                   onClick={() => setLightboxIndex(currentIndex)}
@@ -337,12 +317,45 @@ function DetailedBusinessCard({
                     className="w-full h-full object-cover transition-all duration-500 group-hover:scale-105"
                     alt={`${title} - ${currentIndex + 1}`}
                   />
-                  {/* Zoom hint overlay — bottom-right, away from carousel arrows and counter */}
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-end justify-end pb-10 pr-3">
                     <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 rounded-full p-2 pointer-events-none">
                       <ZoomIn size={15} className="text-white" />
                     </div>
                   </div>
+                </div>
+
+                {allImages.length > 1 && (
+                  <>
+                    <button
+                      onClick={prevImage}
+                      className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-[#222222]/50 hover:bg-[#222222]/80 backdrop-blur-sm rounded-full border border-white/5 opacity-0 group-hover:opacity-100 transition-opacity z-20 cursor-pointer"
+                    >
+                      <ChevronLeft size={16} className="text-white" />
+                    </button>
+                    <button
+                      onClick={nextImage}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-[#222222]/50 hover:bg-[#222222]/80 backdrop-blur-sm rounded-full border border-white/5 opacity-0 group-hover:opacity-100 transition-opacity z-20 cursor-pointer"
+                    >
+                      <ChevronRight size={16} className="text-white" />
+                    </button>
+                  </>
+                )}
+
+                {allImages.length > 1 && (
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
+                    {allImages.map((_, idx) => (
+                      <div
+                        key={idx}
+                        className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
+                          currentIndex === idx ? 'bg-[#FFE2A0] w-4' : 'bg-white/40'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                <div className="absolute top-3 right-3 bg-[#222222]/70 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-full z-20">
+                  {currentIndex + 1} / {allImages.length}
                 </div>
               </>
             ) : (
@@ -352,39 +365,6 @@ function DetailedBusinessCard({
                   <p className="text-[11px] uppercase tracking-[0.2em] font-bold mb-1">No Photos Found</p>
                   <p className="text-[10px] text-[#FBFAF8]/10 line-clamp-1">{title}</p>
                 </div>
-              </div>
-            )}
-            {hasImages && allImages.length > 1 && (
-              <>
-                <button
-                  onClick={prevImage}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-[#222222]/50 hover:bg-[#222222]/80 backdrop-blur-sm rounded-full border border-white/5 opacity-0 group-hover:opacity-100 transition-opacity z-20 cursor-pointer"
-                >
-                  <ChevronLeft size={16} className="text-white" />
-                </button>
-                <button
-                  onClick={nextImage}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-[#222222]/50 hover:bg-[#222222]/80 backdrop-blur-sm rounded-full border border-white/5 opacity-0 group-hover:opacity-100 transition-opacity z-20 cursor-pointer"
-                >
-                  <ChevronRight size={16} className="text-white" />
-                </button>
-              </>
-            )}
-            {hasImages && allImages.length > 1 && (
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
-                {allImages.map((_, idx) => (
-                  <div
-                    key={idx}
-                    className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
-                      currentIndex === idx ? 'bg-[#FFE2A0] w-4' : 'bg-white/40'
-                    }`}
-                  />
-                ))}
-              </div>
-            )}
-            {hasImages && allImages.length > 1 && (
-              <div className="absolute top-3 right-3 bg-[#222222]/70 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-full z-20">
-                {currentIndex + 1} / {allImages.length}
               </div>
             )}
           </div>
@@ -421,31 +401,39 @@ function DetailedBusinessCard({
             {/* Contact */}
             <div className="flex flex-col gap-1 pb-6 border-b border-zinc-600/50">
               {phone && (
-                <div onClick={() => handleCopy(phone, 'phone')}
-                  className="relative flex items-center gap-4 text-sm text-[#FBFAF8]/80 hover:text-[#FBFAF8] px-3 py-2.5 rounded-xl border border-transparent hover:border-[#FFE2A0] hover:bg-[#FFE2A0]/5 transition-all duration-300 cursor-pointer group">
+                <div
+                  onClick={() => handleCopy(phone, 'phone')}
+                  className="relative flex items-center gap-4 text-sm text-[#FBFAF8]/80 hover:text-[#FBFAF8] px-3 py-2.5 rounded-xl border border-transparent hover:border-[#FFE2A0] hover:bg-[#FFE2A0]/5 transition-all duration-300 cursor-pointer group"
+                >
                   <img src={callIcon} width="16" className="opacity-70 group-hover:opacity-100" alt="call" />
                   <span>{phone}</span>
                   {copyFeedback === 'phone' && <span className="absolute right-4 text-[10px] text-[#FFE2A0] font-bold">Copied!</span>}
                 </div>
               )}
               {email && (
-                <div onClick={() => handleCopy(email, 'email')}
-                  className="relative flex items-center gap-4 text-sm text-[#FBFAF8]/80 hover:text-[#FBFAF8] px-3 py-2.5 rounded-xl border border-transparent hover:border-[#FFE2A0] hover:bg-[#FFE2A0]/5 transition-all duration-300 cursor-pointer group">
+                <div
+                  onClick={() => handleCopy(email, 'email')}
+                  className="relative flex items-center gap-4 text-sm text-[#FBFAF8]/80 hover:text-[#FBFAF8] px-3 py-2.5 rounded-xl border border-transparent hover:border-[#FFE2A0] hover:bg-[#FFE2A0]/5 transition-all duration-300 cursor-pointer group"
+                >
                   <img src={emailIcon} width="16" className="opacity-70 group-hover:opacity-100" alt="email" />
                   <span>{email}</span>
                   {copyFeedback === 'email' && <span className="absolute right-4 text-[10px] text-[#FFE2A0] font-bold">Copied!</span>}
                 </div>
               )}
               {facebook && (
-                <div onClick={() => window.open(facebook.startsWith('http') ? facebook : `https://${facebook}`, '_blank')}
-                  className="relative flex items-center gap-4 text-sm text-[#FBFAF8]/80 hover:text-[#FBFAF8] px-3 py-2.5 rounded-xl border border-transparent hover:border-[#FFE2A0] hover:bg-[#FFE2A0]/5 transition-all duration-300 cursor-pointer group">
+                <div
+                  onClick={() => window.open(facebook.startsWith('http') ? facebook : `https://${facebook}`, '_blank')}
+                  className="relative flex items-center gap-4 text-sm text-[#FBFAF8]/80 hover:text-[#FBFAF8] px-3 py-2.5 rounded-xl border border-transparent hover:border-[#FFE2A0] hover:bg-[#FFE2A0]/5 transition-all duration-300 cursor-pointer group"
+                >
                   <img src={facebookIcon} width="16" className="opacity-70 group-hover:opacity-100" alt="fb" />
                   <span>{facebook}</span>
                 </div>
               )}
               {website && (
-                <div onClick={() => window.open(website.startsWith('http') ? website : `https://${website}`, '_blank')}
-                  className="relative flex items-center gap-4 text-sm text-[#FBFAF8]/80 hover:text-[#FBFAF8] px-3 py-2.5 rounded-xl border border-transparent hover:border-[#FFE2A0] hover:bg-[#FFE2A0]/5 transition-all duration-300 cursor-pointer group">
+                <div
+                  onClick={() => window.open(website.startsWith('http') ? website : `https://${website}`, '_blank')}
+                  className="relative flex items-center gap-4 text-sm text-[#FBFAF8]/80 hover:text-[#FBFAF8] px-3 py-2.5 rounded-xl border border-transparent hover:border-[#FFE2A0] hover:bg-[#FFE2A0]/5 transition-all duration-300 cursor-pointer group"
+                >
                   <img src={websiteIcon} width="16" className="opacity-70 group-hover:opacity-100" alt="web" />
                   <span>{website}</span>
                 </div>
