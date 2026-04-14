@@ -16,7 +16,6 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerShadow,
 });
 
-// ── Blue dot icon for user's current location ─────────────────────────────────
 const userLocationIcon = L.divIcon({
   className: "",
   html: `
@@ -50,6 +49,7 @@ const MapView = ({
   const routingControlRef = useRef<any>(null);
 
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [mapReady, setMapReady] = useState(false);
 
   const routerLocation = useLocation();
   const selectedFromRoute: Listing | undefined = routerLocation.state?.listing;
@@ -65,26 +65,6 @@ const MapView = ({
           lng: position.coords.longitude,
         };
         setUserLocation(coords);
-
-        setTimeout(() => {
-          const map = mapInstanceRef.current;
-          if (!map) return;
-
-          userMarkerRef.current?.remove();
-
-          const marker = L.marker([coords.lat, coords.lng], {
-            icon: userLocationIcon,
-            zIndexOffset: 1000,
-          })
-            .addTo(map)
-            .bindPopup(`<div style="text-align:center"><strong>📍 You are here</strong></div>`);
-
-          userMarkerRef.current = marker;
-
-          if (!selectedFromRoute) {
-            map.flyTo([coords.lat, coords.lng], 14, { animate: true, duration: 1 });
-          }
-        }, 300);
       },
       (error) => {
         console.warn("Location access denied:", error);
@@ -103,6 +83,8 @@ const MapView = ({
           '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
         maxZoom: 19,
       }).addTo(map);
+
+      setMapReady(true);
     }
 
     return () => {
@@ -114,13 +96,14 @@ const MapView = ({
       mapInstanceRef.current = null;
       markersRef.current.clear();
       userMarkerRef.current = null;
+      setMapReady(false);
     };
   }, []);
 
-  // ── Update user marker when userLocation state changes ────────────────────
+  // ── Update user marker when userLocation OR mapReady changes ─────────────
   useEffect(() => {
     const map = mapInstanceRef.current;
-    if (!map || !userLocation) return;
+    if (!map || !userLocation || !mapReady) return;
 
     userMarkerRef.current?.remove();
 
@@ -139,7 +122,7 @@ const MapView = ({
         duration: 1,
       });
     }
-  }, [userLocation]);
+  }, [userLocation, mapReady]);
 
   // ── Add all listing markers once listings are available ───────────────────
   useEffect(() => {
@@ -181,6 +164,7 @@ const MapView = ({
     marker?.openPopup();
   }, [selectedListing]);
 
+  // ── Draw route from user to selected listing (from route state) ───────────
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map || !userLocation || !selectedFromRoute) return;
