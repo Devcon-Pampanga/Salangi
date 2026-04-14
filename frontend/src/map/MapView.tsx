@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet-routing-machine";
 import { Listing } from "../features/Data/Listings";
 
+// Leaflet default icon fix for React/Webpack environments
 import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
@@ -16,6 +17,9 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerShadow,
 });
 
+// ─── Icons ────────────────────────────────────────────────────────────────────
+
+// Custom blue dot to represent the user's live location
 const userLocationIcon = L.divIcon({
   className: "",
   html: `
@@ -58,11 +62,7 @@ const selectedMarkerIcon = L.divIcon({
   popupAnchor: [1, -34],
 });
 
-interface MapViewProps {
-  listings?: Listing[];
-  selectedListing?: Listing | null;
-  onSelect?: (listing: Listing) => void;
-}
+// ─── Helpers (Math, Formatting & Safety) ──────────────────────────────────────
 
 const isValidCoord = (coord: any): coord is number => 
   typeof coord === 'number' && !isNaN(coord) && isFinite(coord);
@@ -79,6 +79,156 @@ const isMapVisible = (map: L.Map | null) => {
   return !!(container.offsetWidth || container.offsetHeight || container.getClientRects().length);
 };
 
+/**
+ * Haversine formula: calculates the straight-line distance (in meters) between 
+ * two coordinates on the Earth's surface.
+ */
+function haversineDistance(
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number }
+): number {
+  const R = 6371000; // Earth's radius in meters
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const sinDLat = Math.sin(dLat / 2);
+  const sinDLng = Math.sin(dLng / 2);
+  const aVal =
+    sinDLat * sinDLat +
+    Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * sinDLng * sinDLng;
+  return R * 2 * Math.atan2(Math.sqrt(aVal), Math.sqrt(1 - aVal));
+}
+
+function findClosestPointIndex(
+  pos: { lat: number; lng: number },
+  coords: L.LatLng[]
+): number {
+  let minDist = Infinity;
+  let minIdx = 0;
+  for (let i = 0; i < coords.length; i++) {
+    const dist = haversineDistance(pos, { lat: coords[i].lat, lng: coords[i].lng });
+    if (dist < minDist) {
+      minDist = dist;
+      minIdx = i;
+    }
+  }
+  return minIdx;
+}
+
+function computeRemainingDistance(coords: L.LatLng[], startIndex: number): number {
+  let total = 0;
+  for (let i = startIndex; i < coords.length - 1; i++) {
+    total += haversineDistance(
+      { lat: coords[i].lat, lng: coords[i].lng },
+      { lat: coords[i + 1].lat, lng: coords[i + 1].lng }
+    );
+  }
+  return total;
+}
+
+function formatDistance(meters: number): string {
+  if (meters < 1000) return `${Math.round(meters)} m`;
+  return `${(meters / 1000).toFixed(1)} km`;
+}
+
+function formatETA(seconds: number): string {
+  const totalMins = Math.round(seconds / 60);
+  if (totalMins < 60) return `${totalMins} min${totalMins !== 1 ? "s" : ""} away`;
+  const hrs = Math.floor(totalMins / 60);
+  const mins = totalMins % 60;
+  return mins > 0 ? `${hrs} hr ${mins} min${mins !== 1 ? "s" : ""}` : `${hrs} hr`;
+}
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const DEVIATION_THRESHOLD = 25; // If user strays >25m off path, recalculate
+const POSITION_THROTTLE_MS = 1500; // Throttle GPS updates
+
+// ─── Responsive HUD styles injected once ──────────────────────────────────────
+
+const HUD_STYLES = `
+  .mapview-hud {
+    position: absolute;
+    bottom: max(24px, env(safe-area-inset-bottom, 24px));
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    display: flex;
+    align-items: stretch;
+    background: rgba(15, 23, 42, 0.92);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.07);
+    overflow: hidden;
+    font-family: 'SF Pro Display', 'Segoe UI', sans-serif;
+    width: calc(100% - 32px);
+    max-width: 360px;
+  }
+  .mapview-hud__block {
+    padding: 14px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    flex: 1;
+    min-width: 0;
+  }
+  .mapview-hud__block--left {
+    border-right: 1px solid rgba(255,255,255,0.08);
+  }
+  .mapview-hud__label {
+    font-size: clamp(9px, 2.5vw, 11px);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: #64748B;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .mapview-hud__value {
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+  .mapview-hud__value--eta {
+    font-size: clamp(13px, 3.5vw, 15px);
+    color: #FFE2A0;
+  }
+  .mapview-hud__value--distance {
+    font-size: clamp(13px, 3.5vw, 15px);
+    color: #F1F5F9;
+  }
+  .mapview-hud__divider {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: #334155;
+    align-self: center;
+    flex-shrink: 0;
+    margin: 0 2px;
+  }
+  .leaflet-control-attribution {
+    font-size: 10px !important;
+    max-width: calc(100vw - 16px) !important;
+  }
+  .leaflet-top.leaflet-left {
+    top: max(10px, env(safe-area-inset-top, 10px));
+    left: max(10px, env(safe-area-inset-left, 10px));
+  }
+  .leaflet-top.leaflet-right {
+    top: max(10px, env(safe-area-inset-top, 10px));
+    right: max(10px, env(safe-area-inset-right, 10px));
+  }
+`;
+
+interface MapViewProps {
+  listings?: Listing[];
+  selectedListing?: Listing | null;
+  onSelect?: (listing: Listing) => void;
+}
+
 const MapView = ({
   listings = [],
   selectedListing = null,
@@ -90,50 +240,59 @@ const MapView = ({
   const userMarkerRef = useRef<L.Marker | null>(null);
   const routingControlRef = useRef<any>(null);
 
+  const remainingPolylineRef = useRef<L.Polyline | null>(null);
+  const completedPolylineRef = useRef<L.Polyline | null>(null);
+
+  const routeCoordsRef = useRef<L.LatLng[]>([]);
+  const totalRouteDurationRef = useRef<number>(0);
+  const totalRouteDistanceRef = useRef<number>(0);
+
+  const watchIdRef = useRef<number | null>(null);
+  const lastUpdateRef = useRef<number>(0);
+  const isNavigatingRef = useRef<boolean>(false);
+
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [navInfo, setNavInfo] = useState<{ distanceRemaining: string; eta: string } | null>(null);
 
   const routerLocation = useLocation();
   const selectedFromRoute: Listing | undefined = routerLocation.state?.listing;
 
-  // ── Fetch user location once ──────────────────────────────────────────────
+  // ── Inject HUD styles ──────────────────────────────────────────────────────
   useEffect(() => {
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
-        if (isValidCoord(lat) && isValidCoord(lng)) {
-          setUserLocation({ lat, lng });
-        }
-      },
-      (error) => console.warn("Location access denied:", error)
-    );
+    const id = "mapview-hud-styles";
+    if (!document.getElementById(id)) {
+      const style = document.createElement("style");
+      style.id = id;
+      style.textContent = HUD_STYLES;
+      document.head.appendChild(style);
+    }
+    return () => {
+      document.getElementById(id)?.remove();
+    };
   }, []);
 
-  // ── Initialize map once ───────────────────────────────────────────────────
+  // ── Initialization ──────────────────────────────────────────────────────────
   useEffect(() => {
     if (mapRef.current && !mapInstanceRef.current) {
       const map = L.map(mapRef.current, {
         zoomControl: false,
       }).setView([15.145, 120.589], 13);
-
       mapInstanceRef.current = map;
 
       L.control.zoom({ position: 'bottomright' }).addTo(map);
 
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution:
-          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        attribution: '&copy; OpenStreetMap contributors',
         maxZoom: 19,
       }).addTo(map);
 
-      // ── Inject CSS to permanently hide routing container ──────────────
-      const style = document.createElement('style');
-      style.id = 'lrm-hide';
-      style.textContent = `.leaflet-routing-container { display: none !important; }`;
-      document.head.appendChild(style);
+      // Inject CSS to hide routing panel
+      const styling = document.createElement('style');
+      styling.id = 'lrm-hide-panel';
+      styling.textContent = `.leaflet-routing-container { display: none !important; }`;
+      document.head.appendChild(styling);
 
-      // Handle visibility/resize changes
+      // Visibility guards
       const resizeObserver = new ResizeObserver(() => {
         map.invalidateSize();
       });
@@ -141,57 +300,208 @@ const MapView = ({
 
       return () => {
         resizeObserver.disconnect();
-        document.getElementById('lrm-hide')?.remove();
+        document.getElementById('lrm-hide-panel')?.remove();
+        if (watchIdRef.current !== null) {
+          navigator.geolocation.clearWatch(watchIdRef.current);
+          watchIdRef.current = null;
+        }
         if (routingControlRef.current && mapInstanceRef.current) {
           mapInstanceRef.current.removeControl(routingControlRef.current);
           routingControlRef.current = null;
         }
+        remainingPolylineRef.current?.remove();
+        completedPolylineRef.current?.remove();
         mapInstanceRef.current?.remove();
         mapInstanceRef.current = null;
-        markersRef.current.clear();
-        userMarkerRef.current = null;
       };
     }
   }, []);
 
-  // ── User location marker ──────────────────────────────────────────────────
+  const updateRouteProgress = useCallback(
+    (pos: { lat: number; lng: number }, currentSpeed: number | null) => {
+      const map = mapInstanceRef.current;
+      const coords = routeCoordsRef.current;
+      if (!map || coords.length === 0) return;
+
+      const closestIdx = findClosestPointIndex(pos, coords);
+
+      // Draw Completed Path (Gray)
+      const completedCoords = coords.slice(0, closestIdx + 1);
+      if (completedPolylineRef.current) {
+        completedPolylineRef.current.setLatLngs(completedCoords);
+      } else {
+        completedPolylineRef.current = L.polyline(completedCoords, {
+          color: "#9CA3AF", weight: 4, opacity: 0.6, dashArray: "6 6",
+        }).addTo(map);
+      }
+
+      // Draw Remaining Path (Blue)
+      const remainingCoords = coords.slice(closestIdx);
+      if (remainingPolylineRef.current) {
+        remainingPolylineRef.current.setLatLngs(remainingCoords);
+      } else {
+        remainingPolylineRef.current = L.polyline(remainingCoords, {
+          color: "#3B82F6", weight: 5, opacity: 0.9,
+        }).addTo(map);
+      }
+
+      const remainingMeters = computeRemainingDistance(coords, closestIdx);
+      let remainingSeconds = 0;
+      if (currentSpeed && currentSpeed > 0.5) {
+        remainingSeconds = remainingMeters / currentSpeed;
+      } else {
+        const avgSpeed = (totalRouteDistanceRef.current > 0 && totalRouteDurationRef.current > 0)
+          ? totalRouteDistanceRef.current / totalRouteDurationRef.current : 1;
+        remainingSeconds = remainingMeters / avgSpeed;
+      }
+
+      setNavInfo({
+        distanceRemaining: formatDistance(remainingMeters),
+        eta: formatETA(remainingSeconds),
+      });
+    },
+    []
+  );
+
+  const buildRoute = useCallback(
+    (from: { lat: number; lng: number }, to: { lat: number; lng: number }) => {
+      const map = mapInstanceRef.current;
+      if (!map) return;
+
+      if (routingControlRef.current) {
+        map.removeControl(routingControlRef.current);
+        routingControlRef.current = null;
+      }
+      remainingPolylineRef.current?.remove();
+      completedPolylineRef.current?.remove();
+      routeCoordsRef.current = [];
+
+      const routing = (L as any).Routing.control({
+        waypoints: [L.latLng(from.lat, from.lng), L.latLng(to.lat, to.lng)],
+        router: (L as any).Routing.osrmv1({
+          serviceUrl: "https://router.project-osrm.org/route/v1",
+          profile: "bike", 
+        }),
+        routeWhileDragging: false,
+        lineOptions: {
+          styles: [{ color: "transparent", weight: 0 }],
+          extendToWaypoints: false,
+          missingRouteTolerance: 0,
+        },
+        addWaypoints: false,
+        draggableWaypoints: false,
+        fitSelectedRoutes: false,
+        show: false,
+        createMarker: () => null,
+      }).addTo(map);
+
+      routing.on("routesfound", (e: any) => {
+        const route = e.routes[0];
+        if (!route) return;
+
+        routeCoordsRef.current = route.coordinates as L.LatLng[];
+        totalRouteDurationRef.current = route.summary.totalTime; 
+        totalRouteDistanceRef.current = route.summary.totalDistance;
+
+        remainingPolylineRef.current?.remove();
+        remainingPolylineRef.current = L.polyline(routeCoordsRef.current, {
+          color: "#3B82F6", weight: 5, opacity: 0.9,
+        }).addTo(map);
+
+        setNavInfo({
+          distanceRemaining: formatDistance(totalRouteDistanceRef.current),
+          eta: formatETA(totalRouteDurationRef.current),
+        });
+
+        isNavigatingRef.current = true;
+      });
+
+      routingControlRef.current = routing;
+    },
+    []
+  );
+
+  // ── GPS Tracking ────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+
+    if (watchIdRef.current !== null) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+    }
+
+    const id = navigator.geolocation.watchPosition(
+      (position) => {
+        const now = Date.now();
+        if (now - lastUpdateRef.current < POSITION_THROTTLE_MS) return;
+        lastUpdateRef.current = now;
+
+        const rawLat = position.coords.latitude;
+        const rawLng = position.coords.longitude;
+        const liveSpeed = position.coords.speed;
+        
+        const coords = validateLatLng(rawLat, rawLng);
+        if (!coords) return;
+
+        const currentPos = { lat: coords[0], lng: coords[1] };
+        setUserLocation(currentPos);
+
+        const map = mapInstanceRef.current;
+        if (!map) return;
+
+        if (userMarkerRef.current) {
+          userMarkerRef.current.setLatLng(currentPos);
+        } else {
+          userMarkerRef.current = L.marker(currentPos, {
+            icon: userLocationIcon, zIndexOffset: 1000,
+          })
+            .addTo(map)
+            .bindPopup('<div style="text-align:center"><strong>📍 You are here</strong></div>');
+        }
+
+        if (isNavigatingRef.current && routeCoordsRef.current.length > 0) {
+          updateRouteProgress(currentPos, liveSpeed);
+
+          const closestIdx = findClosestPointIndex(currentPos, routeCoordsRef.current);
+          const distToRoute = haversineDistance(currentPos, {
+            lat: routeCoordsRef.current[closestIdx].lat,
+            lng: routeCoordsRef.current[closestIdx].lng,
+          });
+
+          if (distToRoute > DEVIATION_THRESHOLD && selectedFromRoute) {
+            buildRoute(currentPos, selectedFromRoute.coordinates);
+          }
+        }
+      },
+      (error) => console.warn("Location watch error:", error),
+      { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 }
+    );
+
+    watchIdRef.current = id;
+
+    return () => {
+      navigator.geolocation.clearWatch(id);
+      watchIdRef.current = null;
+    };
+  }, [selectedFromRoute, buildRoute, updateRouteProgress]);
+
+  // ── Initial Pan ─────────────────────────────────────────────────────────────
   useEffect(() => {
     try {
       const map = mapInstanceRef.current;
-      if (!map || !userLocation) return;
-      
-      const coords = validateLatLng(userLocation.lat, userLocation.lng);
-      if (!coords) return;
-
-      userMarkerRef.current?.remove();
-
-      const marker = L.marker(coords, {
-        icon: userLocationIcon,
-        zIndexOffset: 1000,
-      })
-        .addTo(map)
-        .bindPopup(`<div style="text-align:center"><strong>📍 You are here</strong></div>`);
-
-      userMarkerRef.current = marker;
-
-      if (!selectedListing && !selectedFromRoute && isMapVisible(map)) {
-        map.flyTo(coords, 14, {
-          animate: true,
-          duration: 1,
-        });
+      if (!map || !userLocation || !isMapVisible(map)) return;
+      if (!selectedListing && !selectedFromRoute) {
+        map.flyTo([userLocation.lat, userLocation.lng], 14, { animate: true, duration: 1 });
       }
-    } catch (err) {
-      console.error("Error in MapView user location effect:", err);
-    }
+    } catch (e) { console.error(e); }
   }, [userLocation, selectedListing, selectedFromRoute]);
 
-  // ── Render all listing markers ────────────────────────────────────────────
+  // ── Markers Loop ────────────────────────────────────────────────────────────
   useEffect(() => {
     try {
       const map = mapInstanceRef.current;
       if (!map || listings.length === 0) return;
 
-      markersRef.current.forEach((marker) => marker.remove());
+      markersRef.current.forEach((m) => m.remove());
       markersRef.current.clear();
 
       listings.forEach((listing) => {
@@ -202,98 +512,74 @@ const MapView = ({
         const icon = isSelected ? selectedMarkerIcon : defaultMarkerIcon;
 
         const marker = L.marker(coords, { icon }).addTo(map);
-
-        marker.on("click", () => {
-          onSelect(listing);
-        });
-
+        marker.on("click", () => onSelect(listing));
         markersRef.current.set(listing.id, marker);
       });
-    } catch (err) {
-      console.error("Error in MapView listings effect:", err);
-    }
+    } catch (e) { console.error(e); }
   }, [listings]);
 
-  // ── Swap marker icons when selected listing changes ───────────────────────
+  // ── Marker Icon Swap ────────────────────────────────────────────────────────
   useEffect(() => {
     markersRef.current.forEach((marker, id) => {
-      marker.setIcon(
-        selectedListing?.id === id ? selectedMarkerIcon : defaultMarkerIcon
-      );
+      marker.setIcon(selectedListing?.id === id ? selectedMarkerIcon : defaultMarkerIcon);
     });
   }, [selectedListing]);
 
-  // ── Pan & zoom to selected listing ───────────────────────────────────────
+  // ── Fly To Selection ────────────────────────────────────────────────────────
   useEffect(() => {
     try {
       const map = mapInstanceRef.current;
-      if (!map || !selectedListing) return;
-
+      if (!map || !selectedListing || !isMapVisible(map)) return;
       const coords = validateLatLng(selectedListing.coordinates.lat, selectedListing.coordinates.lng);
-      if (coords && isMapVisible(map)) {
-        map.flyTo(coords, 16, { animate: true, duration: 0.8 });
-      }
-    } catch (err) {
-      console.error("Error in MapView selected listing effect:", err);
-    }
+      if (coords) map.flyTo(coords, 16, { animate: true, duration: 0.8 });
+    } catch (e) { console.error(e); }
   }, [selectedListing]);
 
-  // ── Draw route whenever selectedListing or userLocation changes ───────────
-  // Covers both: navigating from route state AND clicking a marker on the map
+  // ── Routing Trigger ─────────────────────────────────────────────────────────
   useEffect(() => {
     const map = mapInstanceRef.current;
+    if (!map || !selectedFromRoute || !userLocation) return;
 
-    // Resolve which listing to route to — marker click takes priority
-    const target = selectedListing ?? selectedFromRoute ?? null;
+    const dest = selectedFromRoute.coordinates;
+    const destCoords = validateLatLng(dest.lat, dest.lng);
+    if (!destCoords) return;
 
-    // Remove any existing route first
-    if (routingControlRef.current && map) {
-      map.removeControl(routingControlRef.current);
-      routingControlRef.current = null;
+    if (isMapVisible(map)) {
+      map.flyTo(destCoords, 15, { animate: true, duration: 1 });
+      markersRef.current.get(selectedFromRoute.id)?.openPopup();
     }
 
-    // Need both user location and a target to draw a route
-    if (!map || !userLocation || !target) return;
-
-    try {
-      const { lat, lng } = target.coordinates;
-      const userCoords = validateLatLng(userLocation.lat, userLocation.lng);
-      const targetCoords = validateLatLng(lat, lng);
-      
-      if (!userCoords || !targetCoords) return;
-
-      const routing = (L as any).Routing.control({
-        waypoints: [
-          L.latLng(userCoords[0], userCoords[1]),
-          L.latLng(targetCoords[0], targetCoords[1]),
-        ],
-        routeWhileDragging: false,
-        lineOptions: {
-          styles: [{ color: "#3B82F6", weight: 5 }],
-          extendToWaypoints: true,
-          missingRouteTolerance: 0,
-        },
-        addWaypoints: false,
-        draggableWaypoints: false,
-        fitSelectedRoutes: false,
-        show: false,
-        createMarker: () => null,
-      }).addTo(map);
-
-      routingControlRef.current = routing;
-    } catch (err) {
-      console.error("Error in MapView routing effect:", err);
-    }
+    buildRoute(userLocation, { lat: destCoords[0], lng: destCoords[1] });
 
     return () => {
       if (routingControlRef.current && mapInstanceRef.current) {
         mapInstanceRef.current.removeControl(routingControlRef.current);
-        routingControlRef.current = null;
       }
+      remainingPolylineRef.current?.remove();
+      completedPolylineRef.current?.remove();
+      isNavigatingRef.current = false;
+      setNavInfo(null);
     };
-  }, [userLocation, selectedListing, selectedFromRoute]);
+  }, [userLocation, selectedFromRoute, buildRoute]);
 
-  return <div ref={mapRef} style={{ width: "100%", height: "100%" }} />;
+  return (
+    <div style={{ position: "relative", width: "100%", height: "100dvh", overscrollBehavior: "none" }}>
+      <div ref={mapRef} style={{ width: "100%", height: "100%", WebkitTouchCallout: "none" }} />
+      {navInfo && (
+        <div className="mapview-hud">
+          <div className="mapview-hud__block mapview-hud__block--left">
+            <span className="mapview-hud__label">ETA</span>
+            <span className="mapview-hud__value mapview-hud__value--eta">{navInfo.eta}</span>
+          </div>
+          <div className="mapview-hud__divider" />
+          <div className="mapview-hud__block">
+            <span className="mapview-hud__label">Distance</span>
+            <span className="mapview-hud__value mapview-hud__value--distance">{navInfo.distanceRemaining}</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 };
 
 export default MapView;
