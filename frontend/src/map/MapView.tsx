@@ -5,6 +5,7 @@ import "leaflet/dist/leaflet.css";
 import "leaflet-routing-machine";
 import { Listing } from "../features/Data/Listings";
 
+// Leaflet default icon fix for React/Webpack environments
 import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
@@ -18,6 +19,7 @@ L.Icon.Default.mergeOptions({
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
+// Custom blue dot to represent the user's live location
 const userLocationIcon = L.divIcon({
   className: "",
   html: `
@@ -55,7 +57,7 @@ const selectedMarkerIcon = L.divIcon({
   popupAnchor: [1, -34],
 });
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Helpers (Math, Formatting & Safety) ──────────────────────────────────────
 
 const isValidCoord = (coord: any): coord is number =>
   typeof coord === "number" && !isNaN(coord) && isFinite(coord);
@@ -72,11 +74,15 @@ const isMapVisible = (map: L.Map | null) => {
   return !!(container.offsetWidth || container.offsetHeight || container.getClientRects().length);
 };
 
+/**
+ * Haversine formula: calculates the straight-line distance (in meters) between
+ * two coordinates on the Earth's surface.
+ */
 function haversineDistance(
   a: { lat: number; lng: number },
   b: { lat: number; lng: number }
 ): number {
-  const R = 6371000;
+  const R = 6371000; // Earth's radius in meters
   const toRad = (deg: number) => (deg * Math.PI) / 180;
   const dLat = toRad(b.lat - a.lat);
   const dLng = toRad(b.lng - a.lng);
@@ -96,7 +102,10 @@ function findClosestPointIndex(
   let minIdx = 0;
   for (let i = 0; i < coords.length; i++) {
     const dist = haversineDistance(pos, { lat: coords[i].lat, lng: coords[i].lng });
-    if (dist < minDist) { minDist = dist; minIdx = i; }
+    if (dist < minDist) {
+      minDist = dist;
+      minIdx = i;
+    }
   }
   return minIdx;
 }
@@ -127,10 +136,10 @@ function formatETA(seconds: number): string {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const DEVIATION_THRESHOLD = 25;
-const POSITION_THROTTLE_MS = 1500;
+const DEVIATION_THRESHOLD = 25; // If user strays >25m off path, recalculate
+const POSITION_THROTTLE_MS = 1500; // Throttle GPS updates
 
-// ─── HUD Styles — desktop only ────────────────────────────────────────────────
+// ─── Responsive HUD styles injected once ──────────────────────────────────────
 
 const HUD_STYLES = `
   .mapview-hud {
@@ -139,7 +148,7 @@ const HUD_STYLES = `
     left: 50%;
     transform: translateX(-50%);
     z-index: 1000;
-    display: none;
+    display: flex;
     align-items: stretch;
     background: rgba(15, 23, 42, 0.92);
     backdrop-filter: blur(12px);
@@ -151,9 +160,6 @@ const HUD_STYLES = `
     width: calc(100% - 32px);
     max-width: 360px;
   }
-  @media (min-width: 768px) {
-    .mapview-hud { display: flex; }
-  }
   .mapview-hud__block {
     padding: 14px 20px;
     display: flex;
@@ -163,7 +169,9 @@ const HUD_STYLES = `
     flex: 1;
     min-width: 0;
   }
-  .mapview-hud__block--left { border-right: 1px solid rgba(255,255,255,0.08); }
+  .mapview-hud__block--left {
+    border-right: 1px solid rgba(255,255,255,0.08);
+  }
   .mapview-hud__label {
     font-size: clamp(9px, 2.5vw, 11px);
     font-weight: 600;
@@ -179,13 +187,27 @@ const HUD_STYLES = `
     text-overflow: ellipsis;
     max-width: 100%;
   }
-  .mapview-hud__value--eta { font-size: clamp(13px, 3.5vw, 15px); color: #FFE2A0; }
-  .mapview-hud__value--distance { font-size: clamp(13px, 3.5vw, 15px); color: #F1F5F9; }
-  .mapview-hud__divider {
-    width: 4px; height: 4px; border-radius: 50%;
-    background: #334155; align-self: center; flex-shrink: 0; margin: 0 2px;
+  .mapview-hud__value--eta {
+    font-size: clamp(13px, 3.5vw, 15px);
+    color: #FFE2A0;
   }
-  .leaflet-control-attribution { font-size: 10px !important; max-width: calc(100vw - 16px) !important; }
+  .mapview-hud__value--distance {
+    font-size: clamp(13px, 3.5vw, 15px);
+    color: #F1F5F9;
+  }
+  .mapview-hud__divider {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: #334155;
+    align-self: center;
+    flex-shrink: 0;
+    margin: 0 2px;
+  }
+  .leaflet-control-attribution {
+    font-size: 10px !important;
+    max-width: calc(100vw - 16px) !important;
+  }
   .leaflet-top.leaflet-left {
     top: max(10px, env(safe-area-inset-top, 10px));
     left: max(10px, env(safe-area-inset-left, 10px));
@@ -251,32 +273,40 @@ const MapView = ({
       style.textContent = HUD_STYLES;
       document.head.appendChild(style);
     }
-    return () => { document.getElementById(id)?.remove(); };
+    return () => {
+      document.getElementById(id)?.remove();
+    };
   }, []);
 
   // ── Initialization ──────────────────────────────────────────────────────────
   useEffect(() => {
     if (mapRef.current && !mapInstanceRef.current) {
-      const map = L.map(mapRef.current, { zoomControl: false }).setView([15.145, 120.589], 13);
+      const map = L.map(mapRef.current, {
+        zoomControl: false,
+      }).setView([15.145, 120.589], 13);
       mapInstanceRef.current = map;
 
       L.control.zoom({ position: "bottomright" }).addTo(map);
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: "&copy; OpenStreetMap contributors",
+        attribution: '&copy; OpenStreetMap contributors',
         maxZoom: 19,
       }).addTo(map);
 
-      const styling = document.createElement("style");
-      styling.id = "lrm-hide-panel";
+      // Inject CSS to hide routing panel
+      const styling = document.createElement('style');
+      styling.id = 'lrm-hide-panel';
       styling.textContent = `.leaflet-routing-container { display: none !important; }`;
       document.head.appendChild(styling);
 
-      const resizeObserver = new ResizeObserver(() => { map.invalidateSize(); });
+      // Visibility guards
+      const resizeObserver = new ResizeObserver(() => {
+        map.invalidateSize();
+      });
       resizeObserver.observe(mapRef.current);
 
       return () => {
         resizeObserver.disconnect();
-        document.getElementById("lrm-hide-panel")?.remove();
+        document.getElementById('lrm-hide-panel')?.remove();
         if (watchIdRef.current !== null) {
           navigator.geolocation.clearWatch(watchIdRef.current);
           watchIdRef.current = null;
@@ -301,6 +331,7 @@ const MapView = ({
 
       const closestIdx = findClosestPointIndex(pos, coords);
 
+      // Draw Completed Path (Gray)
       const completedCoords = coords.slice(0, closestIdx + 1);
       if (completedPolylineRef.current) {
         completedPolylineRef.current.setLatLngs(completedCoords);
@@ -310,6 +341,7 @@ const MapView = ({
         }).addTo(map);
       }
 
+      // Draw Remaining Path (Blue)
       const remainingCoords = coords.slice(closestIdx);
       if (remainingPolylineRef.current) {
         remainingPolylineRef.current.setLatLngs(remainingCoords);
@@ -324,9 +356,8 @@ const MapView = ({
       if (currentSpeed && currentSpeed > 0.5) {
         remainingSeconds = remainingMeters / currentSpeed;
       } else {
-        const avgSpeed =
-          totalRouteDistanceRef.current > 0 && totalRouteDurationRef.current > 0
-            ? totalRouteDistanceRef.current / totalRouteDurationRef.current : 1;
+        const avgSpeed = (totalRouteDistanceRef.current > 0 && totalRouteDurationRef.current > 0)
+          ? totalRouteDistanceRef.current / totalRouteDurationRef.current : 1;
         remainingSeconds = remainingMeters / avgSpeed;
       }
 
@@ -542,7 +573,6 @@ const MapView = ({
   return (
     <div style={{ position: "relative", width: "100%", height: "100dvh", overscrollBehavior: "none" }}>
       <div ref={mapRef} style={{ width: "100%", height: "100%", WebkitTouchCallout: "none" }} />
-      {/* Desktop-only HUD — hidden on mobile via CSS */}
       {navInfo && (
         <div className="mapview-hud">
           <div className="mapview-hud__block mapview-hud__block--left">
