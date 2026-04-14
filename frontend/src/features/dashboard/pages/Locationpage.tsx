@@ -10,6 +10,7 @@ import MapView from '../../../map/MapView';
 import type { Listing } from '../../Data/Listings';
 import { getListings, getAverageRatings } from '../../Data/Listings';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/context/authContext';
 
 interface Review {
   id: number;
@@ -38,6 +39,7 @@ const DEFAULT_LISTING: Listing = {
 function Locationpage() {
   const { state } = useLocation();
   const navigate = useNavigate();
+  const { session } = useAuth();
   const incomingListing: Listing | undefined = state?.listing;
 
   const [listings, setListings] = useState<Listing[]>([]);
@@ -69,18 +71,22 @@ function Locationpage() {
   // ── Load saved IDs ───────────────────────────────────────────────────────
   useEffect(() => {
     const fetchSaves = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data, error } = await supabase
-        .from('saves')
-        .select('listing_id')
-        .eq('user_id', user.id);
-      if (!error && data) {
-        setSavedIds(data.map((row: any) => row.listing_id));
+      try {
+        const user = session?.user;
+        if (!user) return;
+        const { data, error } = await supabase
+          .from('saves')
+          .select('listing_id')
+          .eq('user_id', user.id);
+        if (!error && data) {
+          setSavedIds(data.map((row: any) => row.listing_id));
+        }
+      } catch (error) {
+        console.warn("Error fetching saves:", error);
       }
     };
     fetchSaves();
-  }, []);
+  }, [session]);
 
   // ── Load gallery images when selected listing changes ────────────────────
   useEffect(() => {
@@ -166,15 +172,19 @@ function Locationpage() {
   };
 
   const toggleSave = async (id: number) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const isSaved = savedIds.includes(id);
-    if (isSaved) {
-      await supabase.from('saves').delete().eq('user_id', user.id).eq('listing_id', id);
-      setSavedIds(prev => prev.filter(sid => sid !== id));
-    } else {
-      await supabase.from('saves').insert({ user_id: user.id, listing_id: id });
-      setSavedIds(prev => [...prev, id]);
+    try {
+      const user = session?.user;
+      if (!user) return;
+      const isSaved = savedIds.includes(id);
+      if (isSaved) {
+        await supabase.from('saves').delete().eq('user_id', user.id).eq('listing_id', id);
+        setSavedIds(prev => prev.filter(sid => sid !== id));
+      } else {
+        await supabase.from('saves').insert({ user_id: user.id, listing_id: id });
+        setSavedIds(prev => [...prev, id]);
+      }
+    } catch (error) {
+      console.warn("Error toggling save:", error);
     }
   };
 

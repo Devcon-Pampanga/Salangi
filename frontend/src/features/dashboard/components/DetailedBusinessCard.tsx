@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, Image as ImageIcon, X, ZoomIn } from 'lucide-react';
 import { supabase } from '@/lib/supabase'; 
+import { useAuth } from '@/context/authContext';
 import { createPortal } from 'react-dom';
 import locBtnSelected from '@assets/icons/map-btn-active.svg';
 import locBtn from '@assets/icons/direction-btn.svg';
@@ -183,6 +184,7 @@ function DetailedBusinessCard({
   onToggleSave,
   onReviewAdded,
 }: DetailedBusinessCardProps) {
+  const { session } = useAuth();
   const [isSaved, setIsSaved] = useState(initialSaved);
   const allImages = dedupeImages(images);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -225,14 +227,18 @@ function DetailedBusinessCard({
       onToggleSave(listingId);
       setIsSaved(prev => !prev);
     } else {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      if (isSaved) {
-        await supabase.from('saves').delete().eq('user_id', user.id).eq('listing_id', listingId);
-      } else {
-        await supabase.from('saves').insert({ user_id: user.id, listing_id: listingId });
+      try {
+        const user = session?.user;
+        if (!user) return;
+        if (isSaved) {
+          await supabase.from('saves').delete().eq('user_id', user.id).eq('listing_id', listingId);
+        } else {
+          await supabase.from('saves').insert({ user_id: user.id, listing_id: listingId });
+        }
+        setIsSaved(prev => !prev);
+      } catch (error) {
+        console.warn("Error toggling save:", error);
       }
-      setIsSaved(prev => !prev);
     }
   };
 
@@ -249,7 +255,7 @@ function DetailedBusinessCard({
     setSubmitting(true);
     setReviewError(null);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = session?.user;
       if (!user) {
         setReviewError('You must be logged in to leave a review.');
         setSubmitting(false);
