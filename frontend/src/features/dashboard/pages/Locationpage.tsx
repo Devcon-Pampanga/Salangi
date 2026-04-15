@@ -270,7 +270,7 @@ function Locationpage() {
     >
 
       {/* ── Full-screen Map ─────────────────────────────────────────────── */}
-      <div className="absolute inset-0 z-0">
+      <div className={`absolute inset-0 z-0 ${sidebarOpen ? 'md:left-[500px]' : 'md:left-0'}`}>
         <MapView
           listings={listings}
           selectedListing={selectedListing}
@@ -280,7 +280,7 @@ function Locationpage() {
       </div>
 
       {/* ── Floating top bar ────────────────────────────────────────────── */}
-      <div className="absolute top-0 left-0 right-0 z-20 flex items-center gap-2 px-4 py-4 pointer-events-none">
+      <div className={`absolute top-0 left-0 right-0 z-40 flex items-center gap-2 px-4 py-4 pointer-events-none ${sidebarOpen ? 'md:left-[500px]' : 'md:left-0'}`}>
         <button
           onClick={() => navigate(-1)}
           className="pointer-events-auto flex items-center justify-center w-10 h-10 rounded-full bg-[#2D2D2D]/90 hover:bg-[#3D3D3D] backdrop-blur-sm transition-colors cursor-pointer shrink-0 shadow-lg"
@@ -341,7 +341,7 @@ function Locationpage() {
 
       {/* ── Search results dropdown ─────────────────────────────────────── */}
       {isSearching && (
-        <div className="absolute top-20 left-4 right-4 z-20 rounded-xl bg-[#1A1A1A]/95 backdrop-blur-sm border border-zinc-700/50 shadow-2xl max-h-72 overflow-y-auto">
+        <div className={`absolute top-20 left-4 right-4 z-20 ${sidebarOpen ? 'md:left-[516px]' : 'md:left-4'} rounded-xl bg-[#1A1A1A]/95 backdrop-blur-sm border border-zinc-700/50 shadow-2xl max-h-72 overflow-y-auto`}>
           {searchResults.length > 0 ? (
             <div className="flex flex-col divide-y divide-zinc-800/50">
               {searchResults.map((item: Listing) => (
@@ -375,7 +375,7 @@ function Locationpage() {
 
       {/* ── "Tap a pin" hint ────────────────────────────────────────────── */}
       {!sidebarOpen && !isSearching && (
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
+        <div className={`absolute bottom-8 left-1/2 -translate-x-1/2 z-10 pointer-events-none ${sidebarOpen ? 'md:left-[calc(50%+250px)]' : 'md:left-1/2'}`}>
           <div className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-[#1A1A1A]/80 backdrop-blur-sm border border-zinc-700/40 shadow-xl animate-pulse-slow">
             <span className="text-base">📍</span>
             <span className="text-xs text-[#FBFAF8]/70 font-medium whitespace-nowrap">
@@ -408,6 +408,7 @@ function Locationpage() {
           md:top-0 md:bottom-0 md:left-0 md:right-auto md:h-full md:w-[500px] md:rounded-none
           bg-[#1A1A1A] border-t border-zinc-800 md:border-t-0 md:border-r
           overflow-hidden flex flex-col
+          ${!sidebarOpen ? 'md:hidden' : ''}
         `}
         style={{
           willChange: 'transform',
