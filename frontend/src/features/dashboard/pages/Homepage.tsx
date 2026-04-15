@@ -318,7 +318,7 @@ function Homepage() {
         </div>
 
         {/* ── RIGHT COLUMN ── */}
-        <div className="hidden md:flex flex-col flex-none md:flex-1 w-full overflow-visible min-w-0 relative z-50 order-1 md:order-2 space-y-4 md:space-y-0">
+       <div className="hidden md:flex flex-col flex-none md:flex-1 w-full overflow-visible min-w-0 min-h-0 relative z-50 order-1 md:order-2 space-y-4 md:space-y-0">
           <div className="flex flex-col md:flex-row items-stretch md:items-center justify-end gap-3 shrink-0">
             <SearchBar
               placeholder="Explore local spots"
@@ -337,7 +337,7 @@ function Homepage() {
             </button>
           </div>
 
-          <div className="hidden md:block w-full h-75 md:h-auto md:flex-1 md:mt-2">
+          <div className="hidden md:block w-full h-75 md:h-auto md:flex-1 md:mt-2 md:min-h-0">
             <div className="w-full h-full rounded-2xl overflow-hidden">
               <MapView
                 listings={filteredListings}

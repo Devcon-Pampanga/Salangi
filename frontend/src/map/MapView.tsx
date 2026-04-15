@@ -571,7 +571,7 @@ const MapView = ({
   }, [userLocation, selectedListing, selectedFromRoute, buildRoute]);
 
   return (
-    <div style={{ position: "relative", width: "100%", height: "100dvh", overscrollBehavior: "none" }}>
+    <div style={{ position: "relative", width: "100%", height: "100%", overscrollBehavior: "none" }}>
       <div ref={mapRef} style={{ width: "100%", height: "100%", WebkitTouchCallout: "none" }} />
       {navInfo && (
         <div className="mapview-hud">
