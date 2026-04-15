@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import search from '@assets/icons/search-back-btn.svg';
 import sampleImage from '@assets/png-files/imagesample.png';
@@ -7,6 +7,7 @@ import DetailedBusinessCard from '../components/DetailedBusinessCard';
 import SearchBar from '../components/SearchBar';
 import type { FilterOptions } from '../components/SearchBar';
 import MapView from '../../../map/MapView';
+import type { NavInfo } from '../../../map/MapView';
 import type { Listing } from '../../Data/Listings';
 import { getListings, getAverageRatings } from '../../Data/Listings';
 import { supabase } from '@/lib/supabase';
@@ -57,6 +58,13 @@ function Locationpage() {
   const [savedIds, setSavedIds] = useState<number[]>([]);
   const [galleryImages, setGalleryImages] = useState<string[]>([]);
   const [searchOpen, setSearchOpen] = useState(false);
+
+  const [navInfo, setNavInfo] = useState<NavInfo | null>(null);
+
+  // ── Drag state ───────────────────────────────────────────────────────────
+  const [dragOffset, setDragOffset] = useState(0);
+  const dragStartY = useRef(0);
+  const isDragging = useRef(false);
 
   // ── Load all listings & ratings ──────────────────────────────────────────
   useEffect(() => {
@@ -195,17 +203,44 @@ function Locationpage() {
   const handleMarkerSelect = (listing: Listing) => {
     setSelectedListing(listing);
     setSidebarOpen(true);
+    setDragOffset(0);
     setSearchQuery('');
     setSearchOpen(false);
   };
 
   const handleCloseSidebar = () => {
     setSidebarOpen(false);
+    setDragOffset(0);
     setTimeout(() => setSelectedListing(null), 350);
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
+  };
+
+  // ── Drag handlers ────────────────────────────────────────────────────────
+  const handleDragStart = (e: React.TouchEvent) => {
+    isDragging.current = true;
+    dragStartY.current = e.touches[0].clientY;
+    setDragOffset(0);
+  };
+
+  const handleDragMove = (e: React.TouchEvent) => {
+    if (!isDragging.current) return;
+    const delta = e.touches[0].clientY - dragStartY.current;
+    if (delta > 0) setDragOffset(delta); // only allow dragging down
+  };
+
+  const handleDragEnd = () => {
+    isDragging.current = false;
+    if (dragOffset > 80) {
+      // dragged far enough — close the card but keep the route
+      setSidebarOpen(false);
+      setTimeout(() => setDragOffset(0), 350);
+    } else {
+      // snap back up
+      setDragOffset(0);
+    }
   };
 
   const isSearching = searchQuery.trim().length > 0;
@@ -240,10 +275,11 @@ function Locationpage() {
           listings={listings}
           selectedListing={selectedListing}
           onSelect={handleMarkerSelect}
+          onNavInfo={setNavInfo}
         />
       </div>
 
-      {/* ── Floating top bar (back btn + search) ───────────────────────── */}
+      {/* ── Floating top bar ────────────────────────────────────────────── */}
       <div className="absolute top-0 left-0 right-0 z-20 flex items-center gap-2 px-4 py-4 pointer-events-none">
         <button
           onClick={() => navigate(-1)}
@@ -267,6 +303,20 @@ function Locationpage() {
           />
         </div>
 
+        {/* Mobile nav HUD pill */}
+        {!searchOpen && navInfo && (
+          <div className="md:hidden pointer-events-auto flex items-stretch bg-[#0F172A]/90 backdrop-blur-md rounded-full shadow-lg overflow-hidden border border-white/10 shrink-0">
+            <div className="flex flex-col items-center justify-center px-3 py-1.5 border-r border-white/10">
+              <span className="text-[9px] font-semibold tracking-widest text-slate-500 uppercase leading-none mb-0.5">ETA</span>
+              <span className="text-xs font-bold text-[#FFE2A0] leading-none">{navInfo.eta}</span>
+            </div>
+            <div className="flex flex-col items-center justify-center px-3 py-1.5">
+              <span className="text-[9px] font-semibold tracking-widest text-slate-500 uppercase leading-none mb-0.5">Dist</span>
+              <span className="text-xs font-bold text-[#F1F5F9] leading-none">{navInfo.distanceRemaining}</span>
+            </div>
+          </div>
+        )}
+
         {!searchOpen && (
           <button
             onClick={() => setSearchOpen(true)}
@@ -275,7 +325,7 @@ function Locationpage() {
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
             </svg>
-            <span>Search local spots…</span>
+            <span className="hidden sm:inline">Search local spots…</span>
           </button>
         )}
 
@@ -335,11 +385,22 @@ function Locationpage() {
         </div>
       )}
 
+      {/* ── Re-open card button — shown when card is dismissed but route is active ── */}
+      {!sidebarOpen && selectedListing && navInfo && (
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 md:hidden">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-[#1A1A1A]/90 backdrop-blur-sm border border-zinc-700/40 shadow-xl text-[#FBFAF8]/80 text-xs font-medium"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M18 15l-6-6-6 6"/>
+            </svg>
+            View {selectedListing.name}
+          </button>
+        </div>
+      )}
+
       {/* ── Detail Sidebar ──────────────────────────────────────────────── */}
-      {/*
-        Mobile: slides up from bottom, capped at 60vh so ~40vh of map stays visible
-        Desktop: slides in from the left, full height
-      */}
       <div
         className={`
           absolute z-30
@@ -347,17 +408,26 @@ function Locationpage() {
           md:top-0 md:bottom-0 md:left-0 md:right-auto md:h-full md:w-[500px] md:rounded-none
           bg-[#1A1A1A] border-t border-zinc-800 md:border-t-0 md:border-r
           overflow-hidden flex flex-col
-          transition-transform duration-350 ease-[cubic-bezier(0.32,0.72,0,1)]
-          ${sidebarOpen
-            ? 'translate-y-0 md:translate-x-0'
-            : 'translate-y-full md:-translate-x-full'
-          }
         `}
-        style={{ willChange: 'transform' }}
+        style={{
+          willChange: 'transform',
+          transform: sidebarOpen
+            ? `translateY(${dragOffset}px)`
+            : 'translateY(100%)',
+          // no transition while actively dragging so it follows your finger
+          transition: isDragging.current
+            ? 'none'
+            : 'transform 350ms cubic-bezier(0.32,0.72,0,1)',
+        }}
       >
         {/* Drag handle (mobile only) */}
-        <div className="md:hidden flex justify-center pt-3 pb-1 shrink-0">
-          <div className="w-10 h-1 rounded-full bg-zinc-600" />
+        <div
+          className="md:hidden flex justify-center pt-3 pb-2 shrink-0 cursor-grab active:cursor-grabbing touch-none select-none"
+          onTouchStart={handleDragStart}
+          onTouchMove={handleDragMove}
+          onTouchEnd={handleDragEnd}
+        >
+          <div className="w-10 h-1 rounded-full bg-zinc-500" />
         </div>
 
         {/* Sidebar header */}

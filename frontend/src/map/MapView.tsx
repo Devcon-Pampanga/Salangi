@@ -49,12 +49,7 @@ const selectedMarkerIcon = L.divIcon({
   className: "",
   html: `
     <div style="position:relative;width:25px;height:41px;filter:drop-shadow(0 0 6px rgba(59,130,246,0.8));">
-      <img
-        src="${markerIcon}"
-        width="25"
-        height="41"
-        style="display:block;"
-      />
+      <img src="${markerIcon}" width="25" height="41" style="display:block;" />
     </div>
   `,
   iconSize: [25, 41],
@@ -64,8 +59,8 @@ const selectedMarkerIcon = L.divIcon({
 
 // ─── Helpers (Math, Formatting & Safety) ──────────────────────────────────────
 
-const isValidCoord = (coord: any): coord is number => 
-  typeof coord === 'number' && !isNaN(coord) && isFinite(coord);
+const isValidCoord = (coord: any): coord is number =>
+  typeof coord === "number" && !isNaN(coord) && isFinite(coord);
 
 const validateLatLng = (lat: any, lng: any): [number, number] | null => {
   if (isValidCoord(lat) && isValidCoord(lng)) return [lat, lng];
@@ -80,7 +75,7 @@ const isMapVisible = (map: L.Map | null) => {
 };
 
 /**
- * Haversine formula: calculates the straight-line distance (in meters) between 
+ * Haversine formula: calculates the straight-line distance (in meters) between
  * two coordinates on the Earth's surface.
  */
 function haversineDistance(
@@ -223,16 +218,23 @@ const HUD_STYLES = `
   }
 `;
 
+export interface NavInfo {
+  distanceRemaining: string;
+  eta: string;
+}
+
 interface MapViewProps {
   listings?: Listing[];
   selectedListing?: Listing | null;
   onSelect?: (listing: Listing) => void;
+  onNavInfo?: (info: NavInfo | null) => void;
 }
 
 const MapView = ({
   listings = [],
   selectedListing = null,
   onSelect = () => {},
+  onNavInfo,
 }: MapViewProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
@@ -252,10 +254,15 @@ const MapView = ({
   const isNavigatingRef = useRef<boolean>(false);
 
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [navInfo, setNavInfo] = useState<{ distanceRemaining: string; eta: string } | null>(null);
+  const [navInfo, setNavInfo] = useState<NavInfo | null>(null);
 
   const routerLocation = useLocation();
   const selectedFromRoute: Listing | undefined = routerLocation.state?.listing;
+
+  // Bubble navInfo up to parent
+  useEffect(() => {
+    onNavInfo?.(navInfo);
+  }, [navInfo, onNavInfo]);
 
   // ── Inject HUD styles ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -279,8 +286,7 @@ const MapView = ({
       }).setView([15.145, 120.589], 13);
       mapInstanceRef.current = map;
 
-      L.control.zoom({ position: 'bottomright' }).addTo(map);
-
+      L.control.zoom({ position: "bottomright" }).addTo(map);
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution: '&copy; OpenStreetMap contributors',
         maxZoom: 19,
@@ -380,7 +386,7 @@ const MapView = ({
         waypoints: [L.latLng(from.lat, from.lng), L.latLng(to.lat, to.lng)],
         router: (L as any).Routing.osrmv1({
           serviceUrl: "https://router.project-osrm.org/route/v1",
-          profile: "bike", 
+          profile: "bike",
         }),
         routeWhileDragging: false,
         lineOptions: {
@@ -400,7 +406,7 @@ const MapView = ({
         if (!route) return;
 
         routeCoordsRef.current = route.coordinates as L.LatLng[];
-        totalRouteDurationRef.current = route.summary.totalTime; 
+        totalRouteDurationRef.current = route.summary.totalTime;
         totalRouteDistanceRef.current = route.summary.totalDistance;
 
         remainingPolylineRef.current?.remove();
@@ -438,7 +444,7 @@ const MapView = ({
         const rawLat = position.coords.latitude;
         const rawLng = position.coords.longitude;
         const liveSpeed = position.coords.speed;
-        
+
         const coords = validateLatLng(rawLat, rawLng);
         if (!coords) return;
 
@@ -458,6 +464,8 @@ const MapView = ({
             .bindPopup('<div style="text-align:center"><strong>📍 You are here</strong></div>');
         }
 
+        const activeTarget = selectedListing || selectedFromRoute;
+
         if (isNavigatingRef.current && routeCoordsRef.current.length > 0) {
           updateRouteProgress(currentPos, liveSpeed);
 
@@ -467,8 +475,8 @@ const MapView = ({
             lng: routeCoordsRef.current[closestIdx].lng,
           });
 
-          if (distToRoute > DEVIATION_THRESHOLD && selectedFromRoute) {
-            buildRoute(currentPos, selectedFromRoute.coordinates);
+          if (distToRoute > DEVIATION_THRESHOLD && activeTarget) {
+            buildRoute(currentPos, activeTarget.coordinates);
           }
         }
       },
@@ -477,12 +485,11 @@ const MapView = ({
     );
 
     watchIdRef.current = id;
-
     return () => {
       navigator.geolocation.clearWatch(id);
       watchIdRef.current = null;
     };
-  }, [selectedFromRoute, buildRoute, updateRouteProgress]);
+  }, [selectedListing, selectedFromRoute, buildRoute, updateRouteProgress]);
 
   // ── Initial Pan ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -538,15 +545,16 @@ const MapView = ({
   // ── Routing Trigger ─────────────────────────────────────────────────────────
   useEffect(() => {
     const map = mapInstanceRef.current;
-    if (!map || !selectedFromRoute || !userLocation) return;
+    const target = selectedListing || selectedFromRoute;
+    if (!map || !target || !userLocation) return;
 
-    const dest = selectedFromRoute.coordinates;
+    const dest = target.coordinates;
     const destCoords = validateLatLng(dest.lat, dest.lng);
     if (!destCoords) return;
 
     if (isMapVisible(map)) {
       map.flyTo(destCoords, 15, { animate: true, duration: 1 });
-      markersRef.current.get(selectedFromRoute.id)?.openPopup();
+      markersRef.current.get(target.id)?.openPopup();
     }
 
     buildRoute(userLocation, { lat: destCoords[0], lng: destCoords[1] });
@@ -560,7 +568,7 @@ const MapView = ({
       isNavigatingRef.current = false;
       setNavInfo(null);
     };
-  }, [userLocation, selectedFromRoute, buildRoute]);
+  }, [userLocation, selectedListing, selectedFromRoute, buildRoute]);
 
   return (
     <div style={{ position: "relative", width: "100%", height: "100dvh", overscrollBehavior: "none" }}>
