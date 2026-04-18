@@ -15,6 +15,7 @@ import facebookIcon from '@assets/icons/fb-icon.svg';
 import websiteIcon from '@assets/icons/web-icon.svg';
 import starIcon from '@assets/icons/star-icon.svg';
 import commentIcon from '@assets/icons/review-btn-default.svg';
+import { isOpenNow } from '@/utils/isOpenNow';
 
 import ReviewItem from './ReviewItem';
 import ReviewForm from './ReviewForm';
@@ -200,6 +201,7 @@ function DetailedBusinessCard({
   const [isOwner, setIsOwner] = useState(false);
 
   const hasImages = allImages.length > 0;
+  const open = isOpenNow(hours);
 
   const sortedReviews = [...reviews].sort((a, b) => {
     if (sortBy === 'helpful') {
@@ -432,6 +434,16 @@ function DetailedBusinessCard({
               <div className="flex items-center gap-2">
                 <img src={timeIcon} width="14" alt="hours" className="opacity-70" />
                 <span className="text-[#FBFAF8]/50 text-xs font-medium">{formatHours(hours)}</span>
+                {/* ── Open / Closed badge ── */}
+                {hours && (
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                    open
+                      ? 'bg-green-500/20 text-green-400'
+                      : 'bg-red-500/20 text-red-400'
+                  }`}>
+                    {open ? 'Open' : 'Closed'}
+                  </span>
+                )}
               </div>
             </div>
 
