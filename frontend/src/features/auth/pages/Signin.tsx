@@ -3,6 +3,7 @@ import { Eye, EyeOff } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { ROUTES } from '../../../routes/paths';
+import BetaBadge from '@/components/BetaBadge';
 
 //bg
 import bg from '@assets/images/bg.png';
@@ -97,8 +98,10 @@ function Signin() {
 
       {/* Header with Actions and Logo on the right */}
       <div className="absolute top-0 left-0 right-0 px-4 lg:px-8 py-6 flex items-center justify-end gap-4 lg:gap-6 z-50">
-        
-        <img src={salangiLogo} alt="Salangi Logo" className="w-10 h-10 lg:w-16 lg:h-16 shrink-0" />
+        <div className="flex items-center gap-2">
+          <img src={salangiLogo} alt="Salangi Logo" className="w-10 h-10 lg:w-16 lg:h-16 shrink-0" />
+          <BetaBadge />
+        </div>
       </div>
 
       {/* Brighter concentrated top glow for all screen sizes */}
