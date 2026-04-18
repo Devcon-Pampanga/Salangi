@@ -13,6 +13,8 @@ export interface RatingRange {
 export interface FilterOptions {
   ratingRange: RatingRange | null;
   sortBy: 'default' | 'az' | 'za';
+  openNow: boolean;
+  nearMe: boolean;
 }
 
 interface SearchBarProps {
@@ -60,12 +62,18 @@ const SearchBar = ({
   const [isFocused, setIsFocused] = useState(false);
   const [showFilter, setShowFilter] = useState(false);
   const [dropdownPos, setDropdownPos] = useState({ top: 0, right: 0 });
+  const [nearMeLoading, setNearMeLoading] = useState(false);
   const filterBtnRef = useRef<HTMLButtonElement>(null);
   const filterRef = useRef<HTMLDivElement>(null);
 
   const currentSearchIcon = isHovered && !searchIcon ? searchIconHover : (searchIcon || searchIconDefault);
   const currentFilterIcon = isHovered ? filterIconHover : filterIconDefault;
-  const isFilterActive = filters && (filters.ratingRange !== null || filters.sortBy !== 'default');
+  const isFilterActive = filters && (
+    filters.ratingRange !== null ||
+    filters.sortBy !== 'default' ||
+    filters.openNow ||
+    filters.nearMe
+  );
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -93,20 +101,45 @@ const SearchBar = ({
 
   const handleRatingFilter = (range: RatingRange) => {
     onFilterChange?.({
+      ...filters!,
       ratingRange: isRangeActive(range, filters?.ratingRange) ? null : range,
-      sortBy: filters?.sortBy ?? 'default',
     });
   };
 
   const handleSortBy = (sort: 'az' | 'za') => {
     onFilterChange?.({
-      ratingRange: filters?.ratingRange ?? null,
+      ...filters!,
       sortBy: filters?.sortBy === sort ? 'default' : sort,
     });
   };
 
+  const handleOpenNow = () => {
+    onFilterChange?.({
+      ...filters!,
+      openNow: !filters?.openNow,
+    });
+  };
+
+  const handleNearMe = () => {
+    if (filters?.nearMe) {
+      onFilterChange?.({ ...filters!, nearMe: false });
+      return;
+    }
+    setNearMeLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      () => {
+        onFilterChange?.({ ...filters!, nearMe: true });
+        setNearMeLoading(false);
+      },
+      () => {
+        alert('Unable to get your location. Please allow location access.');
+        setNearMeLoading(false);
+      }
+    );
+  };
+
   const handleClearFilters = () => {
-    onFilterChange?.({ ratingRange: null, sortBy: 'default' });
+    onFilterChange?.({ ratingRange: null, sortBy: 'default', openNow: false, nearMe: false });
     setShowFilter(false);
   };
 
@@ -131,6 +164,48 @@ const SearchBar = ({
       </div>
 
       <div className="p-4 flex flex-col gap-5">
+
+        {/* Quick Filters */}
+        <div>
+          <p className="text-[10px] text-[#FBFAF8]/40 uppercase tracking-widest mb-3">Quick Filters</p>
+          <div className="flex flex-col gap-2">
+
+            {/* Open Now */}
+            <button
+              onClick={handleOpenNow}
+              className={`w-full py-2.5 px-3 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer border flex items-center justify-between ${
+                filters?.openNow
+                  ? 'bg-green-500/10 border-green-500/60 text-green-400'
+                  : 'bg-transparent border-zinc-700 text-[#FBFAF8]/70 hover:border-green-500/40 hover:bg-green-500/5 hover:text-green-400'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <span className={`w-2 h-2 rounded-full ${filters?.openNow ? 'bg-green-400' : 'bg-zinc-600'}`} />
+                Open Now
+              </div>
+              {filters?.openNow && <span className="text-[10px]">✓</span>}
+            </button>
+
+            {/* Near Me */}
+            <button
+              onClick={handleNearMe}
+              disabled={nearMeLoading}
+              className={`w-full py-2.5 px-3 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer border flex items-center justify-between disabled:opacity-50 ${
+                filters?.nearMe
+                  ? 'bg-[#FFE2A0]/10 border-[#FFE2A0]/60 text-[#FFE2A0]'
+                  : 'bg-transparent border-zinc-700 text-[#FBFAF8]/70 hover:border-[#FFE2A0]/40 hover:bg-[#FFE2A0]/5 hover:text-[#FFE2A0]'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <span>📍</span>
+                {nearMeLoading ? 'Getting location...' : 'Near Me'}
+              </div>
+              {filters?.nearMe && <span className="text-[10px]">✓</span>}
+            </button>
+
+          </div>
+        </div>
+
         {/* Rating Range */}
         <div>
           <p className="text-[10px] text-[#FBFAF8]/40 uppercase tracking-widest mb-3">Rating Range</p>
