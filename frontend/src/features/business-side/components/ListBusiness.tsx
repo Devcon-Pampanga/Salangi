@@ -597,9 +597,6 @@ function ListBusiness() {
             <div className="border-t border-[#373737] pt-5">
               <p className="text-xs text-[#FFE2A0]/70 font-semibold uppercase tracking-wider mb-1">Contact & Social (optional)</p>
               {/* Privacy notice */}
-              <p className="text-[10px] text-amber-400/70 mb-4 flex items-center gap-1.5">
-                🔒 Phone and email are private — only visible to admins for verification purposes.
-              </p>
               <div className="flex flex-col gap-4">
                 <div className="flex items-center gap-3">
                   <div className="w-8 flex justify-center"><img src={phoneIcon} alt="phone" className="w-5 h-5" /></div>
