@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, Image as ImageIcon, Star, X, ZoomIn } from '
 import type { Listing } from '../../Data/Listings';
 import { ROUTES } from '../../../routes/paths';
 import { supabase } from '@/lib/supabase';
+import { isOpenNow } from '@/utils/isOpenNow';
 
 import locBtnSelected from '@assets/icons/map-btn-active.svg';
 import locBtn from '@assets/icons/map-btn-default.svg';
@@ -25,8 +26,6 @@ interface BusinessCardProps {
   onViewAnalytics?: () => void;
   rating?: number;
 }
-
-// ── Hours formatter ───────────────────────────────────────────────────────────
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -56,17 +55,9 @@ function formatHours(hours: string): string {
   return timePart ? `${dayString}, ${timePart}` : dayString;
 }
 
-// ── Dedup helper ──────────────────────────────────────────────────────────────
-
-/**
- * Removes duplicate URLs while preserving order.
- * Filters out any falsy values (null, undefined, empty string).
- */
 function dedupeImages(images: string[]): string[] {
   return [...new Set((images ?? []).filter(Boolean))];
 }
-
-// ── Lightbox ──────────────────────────────────────────────────────────────────
 
 interface LightboxProps {
   images: string[];
@@ -147,8 +138,6 @@ function Lightbox({ images, activeIndex, onClose, onPrev, onNext }: LightboxProp
   );
 }
 
-// ── No Image Placeholder ──────────────────────────────────────────────────────
-
 function NoImagePlaceholder({ name }: { name: string }) {
   return (
     <div className="w-full h-full flex flex-col items-center justify-center bg-[#2a2a2a] gap-3 text-[#FBFAF8]/20 group-hover:bg-[#2d2d2d] transition-colors">
@@ -160,8 +149,6 @@ function NoImagePlaceholder({ name }: { name: string }) {
     </div>
   );
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
 
 function BusinessCard({ 
   listing, 
@@ -177,9 +164,10 @@ function BusinessCard({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [imgError, setImgError] = useState(false);
   const [galleryImages, setGalleryImages] = useState<string[]>([]);
-  // ✅ Lightbox state
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const navigate = useNavigate();
+
+  const open = isOpenNow(listing.hours);
 
   useEffect(() => {
     const fetchGallery = async () => {
@@ -189,9 +177,6 @@ function BusinessCard({
         .eq('listing_id', listing.id)
         .order('added_date', { ascending: false });
 
-      // ✅ FIX: Build image list from gallery + listing.images, then dedupe.
-      // We do NOT manually prepend listing.images[0] — instead we merge all
-      // sources and let dedupeImages() eliminate any overlap.
       const galleryUrls = data?.map((row: any) => row.url) ?? [];
       const merged = [...(listing.images ?? []), ...galleryUrls];
       setGalleryImages(dedupeImages(merged));
@@ -276,7 +261,6 @@ function BusinessCard({
 
           <div className="relative w-full h-80 overflow-hidden bg-zinc-800">
             {hasImages && !imgError ? (
-              // ✅ Click image area opens lightbox; stopPropagation prevents card selection
               <div
                 className="relative w-full h-full cursor-zoom-in"
                 onClick={(e) => { e.stopPropagation(); setLightboxIndex(currentIndex); }}
@@ -288,7 +272,6 @@ function BusinessCard({
                   alt={`${listing.name} - ${currentIndex + 1}`}
                   onError={() => setImgError(true)}
                 />
-                {/* Zoom hint — bottom-right, away from carousel arrows and counter */}
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-end justify-end pb-10 pr-3 pointer-events-none">
                   <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 rounded-full p-2">
                     <ZoomIn size={15} className="text-white" />
@@ -377,6 +360,16 @@ function BusinessCard({
             <div className="flex items-center gap-2">
               <img src={time} width="14" alt="hours" className="opacity-70" />
               <span className="text-[#FBFAF8]/50 text-xs font-medium">{formatHours(listing.hours)}</span>
+              {/* ── Open / Closed badge ── */}
+              {listing.hours && (
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                  open
+                    ? 'bg-green-500/20 text-green-400'
+                    : 'bg-red-500/20 text-red-400'
+                }`}>
+                  {open ? 'Open' : 'Closed'}
+                </span>
+              )}
             </div>
           </div>
 

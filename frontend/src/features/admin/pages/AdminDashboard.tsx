@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { ROUTES } from '../../../routes/paths';
 import { useAdminGuard } from '../../../hooks/useAdminGuard';
+import BetaBadge from '@/components/BetaBadge';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
@@ -998,9 +999,12 @@ function AdminDashboard() {
       {/* Header */}
       <div className="bg-[#333333] border-b border-zinc-800/50 px-5 sm:px-10 py-5 flex items-center justify-between sticky top-0 z-40 backdrop-blur-sm">
         <div>
-          <h1 className="font-['Playfair_Display'] text-xl sm:text-2xl font-bold text-[#FFE2A0] tracking-wide">
-            Salangi Admin
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="font-['Playfair_Display'] text-xl sm:text-2xl font-bold text-[#FFE2A0] tracking-wide">
+              Salangi Admin
+            </h1>
+            <BetaBadge />
+          </div>
           <p className="text-[#FBFAF8]/40 text-[10px] sm:text-xs mt-0.5">Approval Dashboard</p>
         </div>
         <button

@@ -15,6 +15,7 @@ import facebookIcon from '@assets/icons/fb-icon.svg';
 import websiteIcon from '@assets/icons/web-icon.svg';
 import starIcon from '@assets/icons/star-icon.svg';
 import commentIcon from '@assets/icons/review-btn-default.svg';
+import { isOpenNow } from '@/utils/isOpenNow';
 
 import ReviewItem from './ReviewItem';
 import ReviewForm from './ReviewForm';
@@ -26,6 +27,9 @@ interface Review {
   date: string;
   rating: number;
   comment: string;
+  helpfulCount: number;
+  ownerReply?: string | null;
+  ownerRepliedAt?: string | null;
   profilePic?: string;
 }
 
@@ -193,14 +197,45 @@ function DetailedBusinessCard({
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
   const [reviewError, setReviewError] = useState<string | null>(null);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [sortBy, setSortBy] = useState<'helpful' | 'recent' | 'rating'>('helpful');
+  const [isOwner, setIsOwner] = useState(false);
 
   const hasImages = allImages.length > 0;
+  const open = isOpenNow(hours);
+
+  const sortedReviews = [...reviews].sort((a, b) => {
+    if (sortBy === 'helpful') {
+      if (b.helpfulCount !== a.helpfulCount) return b.helpfulCount - a.helpfulCount;
+      return new Date(b.date).getTime() - new Date(a.date).getTime();
+    }
+    if (sortBy === 'recent') return new Date(b.date).getTime() - new Date(a.date).getTime();
+    if (sortBy === 'rating') {
+      if (b.rating !== a.rating) return b.rating - a.rating;
+      return new Date(b.date).getTime() - new Date(a.date).getTime();
+    }
+    return 0;
+  });
 
   useEffect(() => {
     supabase.from('listing_interactions').insert({
       listing_id: listingId,
       type: 'view',
     });
+  }, [listingId]);
+
+  useEffect(() => {
+    const checkOwnership = async () => {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) return;
+      const { data } = await supabase
+        .from('listings')
+        .select('id')
+        .eq('id', listingId)
+        .eq('user_id', authUser.id)
+        .maybeSingle();
+      setIsOwner(!!data);
+    };
+    checkOwnership();
   }, [listingId]);
 
   const nextImage = (e: React.MouseEvent) => {
@@ -296,7 +331,6 @@ function DetailedBusinessCard({
         document.body
       )}
 
-      {/* ✅ FIX 1: added max-w-120 and mx-auto to match deployed */}
       <div className="w-full max-w-120 bg-[#333333] rounded-xl overflow-hidden shrink-0 mb-10 shadow-2xl border border-zinc-800/50 mx-auto">
         <div className="relative flex flex-col">
 
@@ -310,7 +344,6 @@ function DetailedBusinessCard({
             </button>
           </div>
 
-          {/* ✅ FIX 2: changed h-80 to h-72 to match deployed */}
           <div className="relative w-full h-72 overflow-hidden bg-zinc-800 group">
             {hasImages ? (
               <>
@@ -401,6 +434,16 @@ function DetailedBusinessCard({
               <div className="flex items-center gap-2">
                 <img src={timeIcon} width="14" alt="hours" className="opacity-70" />
                 <span className="text-[#FBFAF8]/50 text-xs font-medium">{formatHours(hours)}</span>
+                {/* ── Open / Closed badge ── */}
+                {hours && (
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                    open
+                      ? 'bg-green-500/20 text-green-400'
+                      : 'bg-red-500/20 text-red-400'
+                  }`}>
+                    {open ? 'Open' : 'Closed'}
+                  </span>
+                )}
               </div>
             </div>
 
@@ -469,17 +512,46 @@ function DetailedBusinessCard({
               </div>
             </div>
 
-            {/* Review List */}
+            {/* Sort bar + Review List */}
             {reviewsLoading ? (
               <p className="text-sm text-zinc-500 animate-pulse">Loading reviews...</p>
             ) : reviews.length === 0 ? (
               <p className="text-sm text-zinc-500">No reviews yet. Be the first!</p>
             ) : (
-              <div className="space-y-12 mt-4">
-                {reviews.map((review) => (
-                  <ReviewItem key={review.id} {...review} />
-                ))}
-              </div>
+              <>
+                {reviews.length > 1 && (
+                  <div className="flex items-center gap-2 mb-6 flex-wrap">
+                    <span className="text-xs text-zinc-500">Sort by</span>
+                    {(['helpful', 'recent', 'rating'] as const).map((option) => (
+                      <button
+                        key={option}
+                        onClick={() => setSortBy(option)}
+                        className={`text-xs px-3 py-1.5 rounded-full border transition-all cursor-pointer
+                          ${sortBy === option
+                            ? 'bg-[#FFE2A0]/10 border-[#FFE2A0]/50 text-[#FFE2A0]'
+                            : 'border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200'
+                          }`}
+                      >
+                        {option === 'helpful' ? 'Most helpful' : option === 'recent' ? 'Most recent' : 'Top rated'}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <div className="space-y-12">
+                  {sortedReviews.map((review) => (
+                    <ReviewItem
+                      key={review.id}
+                      {...review}
+                      reviewId={review.id}
+                      helpfulCount={review.helpfulCount}
+                      ownerReply={review.ownerReply}
+                      isOwner={isOwner}
+                      onVote={onReviewAdded}
+                      onReplyAdded={onReviewAdded}
+                    />
+                  ))}
+                </div>
+              </>
             )}
 
             {/* Review Form / Button */}

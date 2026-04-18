@@ -20,6 +20,9 @@ interface Review {
   date: string;
   rating: number;
   comment: string;
+  helpfulCount: number;
+  ownerReply?: string | null;
+  ownerRepliedAt?: string | null;
   profilePic?: string;
 }
 
@@ -134,10 +137,9 @@ function Locationpage() {
     try {
       const { data: reviewData, error: reviewError } = await supabase
         .from('reviews')
-        .select('id, listing_id, user_id, rating, comment, created_at')
+        .select('id, listing_id, user_id, rating, comment, created_at, helpful_count, owner_reply, owner_replied_at')
         .eq('listing_id', listingId)
         .order('created_at', { ascending: false });
-
       if (reviewError) { console.error('reviews error:', reviewError); return; }
       if (!reviewData || reviewData.length === 0) { setReviews([]); return; }
 
@@ -167,6 +169,9 @@ function Locationpage() {
           }),
           rating: r.rating,
           comment: r.comment,
+          helpfulCount: r.helpful_count ?? 0,
+           ownerReply: r.owner_reply ?? null,  
+          ownerRepliedAt: r.owner_replied_at ?? null,
           profilePic: u?.profile_pic ?? null,
         };
       });
