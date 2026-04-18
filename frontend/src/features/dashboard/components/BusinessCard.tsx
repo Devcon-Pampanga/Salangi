@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Image as ImageIcon, Star, X, ZoomIn } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Image as ImageIcon, Star, X, ZoomIn, Share2 } from 'lucide-react';
 import type { Listing } from '../../Data/Listings';
 import { ROUTES } from '../../../routes/paths';
 import { supabase } from '@/lib/supabase';
@@ -58,12 +58,67 @@ function formatHours(hours: string): string {
 
 // ── Dedup helper ──────────────────────────────────────────────────────────────
 
-/**
- * Removes duplicate URLs while preserving order.
- * Filters out any falsy values (null, undefined, empty string).
- */
 function dedupeImages(images: string[]): string[] {
   return [...new Set((images ?? []).filter(Boolean))];
+}
+
+// ── Swipe hook ────────────────────────────────────────────────────────────────
+
+function useSwipe(
+  onSwipeLeft: () => void,
+  onSwipeRight: () => void,
+  threshold = 50,
+) {
+  const ref = useRef<HTMLDivElement>(null);
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
+  const [dragOffset, setDragOffset] = useState(0);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const onTouchStart = (e: TouchEvent) => {
+      touchStartX.current = e.touches[0].clientX;
+      touchStartY.current = e.touches[0].clientY;
+      setDragOffset(0);
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (touchStartX.current === null || touchStartY.current === null) return;
+      const dx = e.touches[0].clientX - touchStartX.current;
+      const dy = e.touches[0].clientY - touchStartY.current;
+      if (Math.abs(dx) > Math.abs(dy)) {
+        const clamped = Math.sign(dx) * Math.min(Math.abs(dx) * 0.6, 80);
+        setDragOffset(clamped);
+      }
+    };
+
+    const onTouchEnd = (e: TouchEvent) => {
+      if (touchStartX.current === null || touchStartY.current === null) return;
+      const dx = e.changedTouches[0].clientX - touchStartX.current;
+      const dy = e.changedTouches[0].clientY - touchStartY.current;
+      setDragOffset(0);
+      if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > threshold) {
+        if (dx < 0) onSwipeLeft();
+        else onSwipeRight();
+      }
+      touchStartX.current = null;
+      touchStartY.current = null;
+    };
+
+    el.addEventListener('touchstart', onTouchStart, { passive: true });
+    el.addEventListener('touchmove', onTouchMove, { passive: true });
+    el.addEventListener('touchend', onTouchEnd, { passive: true });
+
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart);
+      el.removeEventListener('touchmove', onTouchMove);
+      el.removeEventListener('touchend', onTouchEnd);
+    };
+  }, [onSwipeLeft, onSwipeRight, threshold]);
+
+  return { ref, dragOffset };
 }
 
 // ── Lightbox ──────────────────────────────────────────────────────────────────
@@ -87,9 +142,11 @@ function Lightbox({ images, activeIndex, onClose, onPrev, onNext }: LightboxProp
     return () => window.removeEventListener('keydown', handleKey);
   }, [onClose, onPrev, onNext]);
 
+  const { ref: lightboxSwipeRef, dragOffset: lightboxDrag } = useSwipe(onNext, onPrev);
+
   return createPortal(
     <div
-      className="fixed inset-0 bg-black/95 z-[99999] flex items-center justify-center"
+      className="fixed inset-0 bg-black/95 z-99999 flex items-center justify-center"
       onClick={onClose}
     >
       <button
@@ -114,12 +171,21 @@ function Lightbox({ images, activeIndex, onClose, onPrev, onNext }: LightboxProp
         </button>
       )}
 
-      <img
-        src={images[activeIndex]}
-        alt={`Image ${activeIndex + 1}`}
-        className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg shadow-2xl"
+      <div
+        ref={lightboxSwipeRef}
+        className="max-w-[90vw] max-h-[90vh]"
+        style={{
+          transform: `translateX(${lightboxDrag}px)`,
+          transition: lightboxDrag === 0 ? 'transform 0.25s ease' : 'none',
+        }}
         onClick={(e) => e.stopPropagation()}
-      />
+      >
+        <img
+          src={images[activeIndex]}
+          alt={`Image ${activeIndex + 1}`}
+          className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg shadow-2xl"
+        />
+      </div>
 
       {images.length > 1 && (
         <button
@@ -177,8 +243,9 @@ function BusinessCard({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [imgError, setImgError] = useState(false);
   const [galleryImages, setGalleryImages] = useState<string[]>([]);
-  // ✅ Lightbox state
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  // ── Added state: copy feedback tooltip ──
+  const [copyFeedback, setCopyFeedback] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -189,9 +256,6 @@ function BusinessCard({
         .eq('listing_id', listing.id)
         .order('added_date', { ascending: false });
 
-      // ✅ FIX: Build image list from gallery + listing.images, then dedupe.
-      // We do NOT manually prepend listing.images[0] — instead we merge all
-      // sources and let dedupeImages() eliminate any overlap.
       const galleryUrls = data?.map((row: any) => row.url) ?? [];
       const merged = [...(listing.images ?? []), ...galleryUrls];
       setGalleryImages(dedupeImages(merged));
@@ -201,17 +265,20 @@ function BusinessCard({
 
   const hasImages = galleryImages.length > 0;
 
-  const nextImage = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const goNext = useCallback(() => {
     setImgError(false);
     setCurrentIndex((prev) => (prev === galleryImages.length - 1 ? 0 : prev + 1));
-  };
+  }, [galleryImages.length]);
 
-  const prevImage = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const goPrev = useCallback(() => {
     setImgError(false);
     setCurrentIndex((prev) => (prev === 0 ? galleryImages.length - 1 : prev - 1));
-  };
+  }, [galleryImages.length]);
+
+  const nextImage = (e: React.MouseEvent) => { e.stopPropagation(); goNext(); };
+  const prevImage = (e: React.MouseEvent) => { e.stopPropagation(); goPrev(); };
+
+  const { ref: swipeRef, dragOffset } = useSwipe(goNext, goPrev);
 
   const lightboxNext = useCallback(() => {
     setLightboxIndex((prev) => prev === null ? null : (prev === galleryImages.length - 1 ? 0 : prev + 1));
@@ -240,6 +307,42 @@ function BusinessCard({
     navigate(ROUTES.LOCATION, { state: { listing } });
   };
 
+  // ── Added handler: share listing ──────────────────────────────────────────
+  const handleShare = useCallback(async (e: React.MouseEvent) => {
+    e.stopPropagation();
+
+    const shareUrl = `${window.location.origin}/home-page?listingId=${listing.id}`;
+    const shareData = {
+      title: listing.name,
+      text: listing.description,
+      url: shareUrl,
+    };
+
+    // Track the interaction regardless of share method
+    await supabase.from('listing_interactions').insert({
+      listing_id: listing.id,
+      type: 'share',
+    });
+
+    if (navigator.share && navigator.canShare?.(shareData)) {
+      // Mobile: use native Web Share API
+      try {
+        await navigator.share(shareData);
+      } catch {
+        // User cancelled the share sheet — not an error worth surfacing
+      }
+    } else {
+      // Desktop: copy to clipboard + show tooltip feedback
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        setCopyFeedback(true);
+        setTimeout(() => setCopyFeedback(false), 2000);
+      } catch {
+        console.warn('Clipboard write failed:', shareUrl);
+      }
+    }
+  }, [listing.id, listing.name, listing.description]);
+
   return (
     <>
       {lightboxIndex !== null && (
@@ -255,7 +358,7 @@ function BusinessCard({
       <div
         id={`listing-card-${listing.id}`}
         onClick={handleCardClick}
-        className={`w-full max-w-120 min-h-[550px] bg-[#333333] rounded-xl cursor-pointer overflow-hidden flex flex-col shrink-0 transition-all duration-200 border border-zinc-800/50 ${
+        className={`w-full max-w-120 min-h-550px bg-[#333333] rounded-xl cursor-pointer overflow-hidden flex flex-col shrink-0 transition-all duration-200 border border-zinc-800/50 ${
           isSelected
             ? 'ring-2 ring-[#FFE2A0] shadow-xl shadow-[#FFE2A0]/5'
             : 'hover:bg-[#3d3d3d] hover:shadow-2xl hover:shadow-black/50'
@@ -276,19 +379,36 @@ function BusinessCard({
 
           <div className="relative w-full h-80 overflow-hidden bg-zinc-800">
             {hasImages && !imgError ? (
-              // ✅ Click image area opens lightbox; stopPropagation prevents card selection
               <div
-                className="relative w-full h-full cursor-zoom-in"
+                ref={swipeRef}
+                className="relative w-full h-full cursor-zoom-in select-none"
                 onClick={(e) => { e.stopPropagation(); setLightboxIndex(currentIndex); }}
               >
                 <img
                   key={galleryImages[currentIndex]}
                   src={galleryImages[currentIndex]}
                   className="w-full h-full object-cover transition-all duration-500 group-hover:scale-105"
+                  style={{
+                    transform: `translateX(${dragOffset}px) ${dragOffset !== 0 ? 'scale(0.98)' : ''}`,
+                    transition: dragOffset === 0 ? 'transform 0.3s ease' : 'none',
+                  }}
                   alt={`${listing.name} - ${currentIndex + 1}`}
                   onError={() => setImgError(true)}
+                  draggable={false}
                 />
-                {/* Zoom hint — bottom-right, away from carousel arrows and counter */}
+                {dragOffset !== 0 && (
+                  <div
+                    className="absolute inset-0 flex items-center pointer-events-none"
+                    style={{ justifyContent: dragOffset < 0 ? 'flex-end' : 'flex-start' }}
+                  >
+                    <div className={`mx-3 w-8 h-8 flex items-center justify-center bg-black/50 rounded-full transition-opacity ${Math.abs(dragOffset) > 20 ? 'opacity-100' : 'opacity-0'}`}>
+                      {dragOffset < 0
+                        ? <ChevronRight size={16} className="text-white" />
+                        : <ChevronLeft size={16} className="text-white" />
+                      }
+                    </div>
+                  </div>
+                )}
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-end justify-end pb-10 pr-3 pointer-events-none">
                   <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 rounded-full p-2">
                     <ZoomIn size={15} className="text-white" />
@@ -380,10 +500,11 @@ function BusinessCard({
             </div>
           </div>
 
+          {/* ── Updated JSX: action buttons ── */}
           <div className="flex gap-3 mt-auto">
             {isBusinessSide ? (
               <div className="flex gap-3 w-full">
-                <button 
+                <button
                   onClick={(e) => {
                     e.stopPropagation();
                     onEdit?.(listing);
@@ -392,7 +513,7 @@ function BusinessCard({
                 >
                   Edit Listing
                 </button>
-                <button 
+                <button
                   onClick={(e) => {
                     e.stopPropagation();
                     onViewAnalytics?.();
@@ -403,14 +524,32 @@ function BusinessCard({
                 </button>
               </div>
             ) : (
-              <div className="w-full flex justify-end">
+              <div className="w-full flex gap-3">
+                {/* Show in maps button */}
                 <button
                   onClick={handleShowInMaps}
-                  className="flex items-center justify-center gap-2 px-6 py-3.5 bg-[#FFE2A0] text-[#222222] text-xs font-bold rounded-xl hover:bg-[#ffe8b5] transition-all active:scale-95 cursor-pointer shadow-lg"
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3.5 bg-[#FFE2A0] text-[#222222] text-xs font-bold rounded-xl hover:bg-[#ffe8b5] transition-all active:scale-95 cursor-pointer shadow-lg"
                 >
                   <img src={locBtn} width="14" alt="show" />
                   <span>Show in maps</span>
                 </button>
+
+                {/* Share button with copy feedback tooltip */}
+                <div className="relative">
+                  <button
+                    onClick={handleShare}
+                    className="flex items-center justify-center gap-2 px-4 py-3.5 bg-[#454545] text-[#FBFAF8] text-xs font-bold rounded-xl hover:bg-[#525252] transition-all active:scale-95 cursor-pointer shadow-lg border border-white/5"
+                  >
+                    <Share2 size={14} />
+                    <span>Share</span>
+                  </button>
+
+                  {copyFeedback && (
+                    <div className="absolute -top-9 left-1/2 -translate-x-1/2 bg-[#222222] text-[#FFE2A0] text-[10px] font-bold px-3 py-1.5 rounded-lg border border-[#FFE2A0]/20 whitespace-nowrap shadow-xl pointer-events-none">
+                      Link copied!
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
