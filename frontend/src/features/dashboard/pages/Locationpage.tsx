@@ -12,6 +12,7 @@ import type { Listing } from '../../Data/Listings';
 import { getListings, getAverageRatings } from '../../Data/Listings';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/authContext';
+import { isOpenNow } from '@/utils/isOpenNow';
 
 interface Review {
   id: number;
@@ -20,6 +21,9 @@ interface Review {
   date: string;
   rating: number;
   comment: string;
+  helpfulCount: number;
+  ownerReply?: string | null;
+  ownerRepliedAt?: string | null;
   profilePic?: string;
 }
 
@@ -37,6 +41,19 @@ const DEFAULT_LISTING: Listing = {
   facebook: 'facebook.com/hrpacofficial',
 };
 
+const DEFAULT_NEAR_ME_KM = 5;
+
+function getDistanceKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 function Locationpage() {
   const { state } = useLocation();
   const navigate = useNavigate();
@@ -46,7 +63,17 @@ function Locationpage() {
   const [listings, setListings] = useState<Listing[]>([]);
   const [averageRatings, setAverageRatings] = useState<Record<number, number>>({});
   const [searchQuery, setSearchQuery] = useState('');
-  const [filters, setFilters] = useState<FilterOptions>({ ratingRange: null, sortBy: 'default' });
+
+  // ✅ FIX 1: Added openNow and nearMe to initial state (were missing before)
+  const [filters, setFilters] = useState<FilterOptions>({
+    ratingRange: null,
+    sortBy: 'default',
+    openNow: false,
+    nearMe: false,
+  });
+
+  // ✅ FIX 2: Added userCoords state (was missing entirely)
+  const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   const [selectedListing, setSelectedListing] = useState<Listing | null>(
     incomingListing ?? null
@@ -65,6 +92,17 @@ function Locationpage() {
   const [dragOffset, setDragOffset] = useState(0);
   const dragStartY = useRef(0);
   const isDragging = useRef(false);
+
+  // ✅ FIX 3: Added geolocation effect for nearMe (was missing entirely)
+  useEffect(() => {
+    if (filters.nearMe && !userCoords) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => setUserCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        () => {}
+      );
+    }
+    if (!filters.nearMe) setUserCoords(null);
+  }, [filters.nearMe]);
 
   // ── Load all listings & ratings ──────────────────────────────────────────
   useEffect(() => {
@@ -134,10 +172,9 @@ function Locationpage() {
     try {
       const { data: reviewData, error: reviewError } = await supabase
         .from('reviews')
-        .select('id, listing_id, user_id, rating, comment, created_at')
+        .select('id, listing_id, user_id, rating, comment, created_at, helpful_count, owner_reply, owner_replied_at')
         .eq('listing_id', listingId)
         .order('created_at', { ascending: false });
-
       if (reviewError) { console.error('reviews error:', reviewError); return; }
       if (!reviewData || reviewData.length === 0) { setReviews([]); return; }
 
@@ -167,6 +204,9 @@ function Locationpage() {
           }),
           rating: r.rating,
           comment: r.comment,
+          helpfulCount: r.helpful_count ?? 0,
+          ownerReply: r.owner_reply ?? null,
+          ownerRepliedAt: r.owner_replied_at ?? null,
           profilePic: u?.profile_pic ?? null,
         };
       });
@@ -228,23 +268,22 @@ function Locationpage() {
   const handleDragMove = (e: React.TouchEvent) => {
     if (!isDragging.current) return;
     const delta = e.touches[0].clientY - dragStartY.current;
-    if (delta > 0) setDragOffset(delta); // only allow dragging down
+    if (delta > 0) setDragOffset(delta);
   };
 
   const handleDragEnd = () => {
     isDragging.current = false;
     if (dragOffset > 80) {
-      // dragged far enough — close the card but keep the route
       setSidebarOpen(false);
       setTimeout(() => setDragOffset(0), 350);
     } else {
-      // snap back up
       setDragOffset(0);
     }
   };
 
   const isSearching = searchQuery.trim().length > 0;
 
+  // ✅ FIX 4: searchResults now applies ALL filters (openNow, nearMe, rating, sort)
   const searchResults = isSearching
     ? listings
         .filter((item: Listing) =>
@@ -253,8 +292,13 @@ function Locationpage() {
         )
         .filter((item: Listing) => {
           const rating = averageRatings[item.id] ?? 0;
-          return filters.ratingRange === null ||
+          const matchesRating = filters.ratingRange === null ||
             (rating >= filters.ratingRange.min && rating <= filters.ratingRange.max);
+          const matchesOpenNow = !filters.openNow || isOpenNow(item.hours);
+          const matchesNearMe = !filters.nearMe || !userCoords ||
+            (item.coordinates &&
+              getDistanceKm(userCoords.lat, userCoords.lng, item.coordinates.lat, item.coordinates.lng) <= DEFAULT_NEAR_ME_KM);
+          return matchesRating && matchesOpenNow && matchesNearMe;
         })
         .sort((a, b) => {
           if (filters.sortBy === 'az') return a.name.localeCompare(b.name);
@@ -385,7 +429,7 @@ function Locationpage() {
         </div>
       )}
 
-      {/* ── Re-open card button — shown when card is dismissed but route is active ── */}
+      {/* ── Re-open card button ──────────────────────────────────────────── */}
       {!sidebarOpen && selectedListing && navInfo && (
         <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 md:hidden">
           <button
@@ -415,7 +459,6 @@ function Locationpage() {
           transform: sidebarOpen
             ? `translateY(${dragOffset}px)`
             : 'translateY(100%)',
-          // no transition while actively dragging so it follows your finger
           transition: isDragging.current
             ? 'none'
             : 'transform 350ms cubic-bezier(0.32,0.72,0,1)',
