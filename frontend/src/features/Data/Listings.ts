@@ -156,3 +156,60 @@ export async function getAverageRatings(): Promise<Record<number, number>> {
 
   return averages;
 }
+
+// ── Surprise Me ───────────────────────────────────────────────────────────────
+
+export async function getSurpriseListing(
+  userId: string | null
+): Promise<Listing | null> {
+
+  const { data: listingsData, error: listingsError } = await supabase
+    .from('listings')
+    .select('*')
+    .eq('verified', true);
+
+  if (listingsError || !listingsData || listingsData.length === 0) return null;
+
+  const allListings: Listing[] = listingsData.map(mapRow);
+
+  let savedIds: number[] = [];
+  if (userId) {
+    const { data: savesData } = await supabase
+      .from('saves')
+      .select('listing_id')
+      .eq('user_id', userId);
+    if (savesData) {
+      savedIds = savesData.map((row: any) => row.listing_id);
+    }
+  }
+
+  const unsaved = allListings.filter(l => !savedIds.includes(l.id));
+  const pool = unsaved.length > 0 ? unsaved : allListings;
+
+  const poolIds = pool.map(l => l.id);
+  const { data: reviewsData } = await supabase
+    .from('reviews')
+    .select('listing_id, rating')
+    .in('listing_id', poolIds);
+
+  const ratingsMap: Record<number, number[]> = {};
+  (reviewsData ?? []).forEach((row: any) => {
+    if (!ratingsMap[row.listing_id]) ratingsMap[row.listing_id] = [];
+    ratingsMap[row.listing_id].push(row.rating);
+  });
+
+  const avgRating = (id: number): number => {
+    const ratings = ratingsMap[id];
+    if (!ratings || ratings.length === 0) return 0;
+    return ratings.reduce((a, b) => a + b, 0) / ratings.length;
+  };
+
+   const weighted = pool.flatMap(l => {
+    const rating = avgRating(l.id);
+    const weight = rating >= 4.0 ? 3 : rating >= 3.0 ? 2 : 1;
+    return Array(weight).fill(l);
+  });
+
+  const pick = weighted[Math.floor(Math.random() * weighted.length)];
+  return pick ?? null;
+}
