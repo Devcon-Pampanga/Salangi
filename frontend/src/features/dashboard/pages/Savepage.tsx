@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/authContext';
 import search from '@assets/icons/search-btn-default.svg';
+import { isOpenNow } from '@/utils/isOpenNow';
 
 import BusinessCard from '../components/BusinessCard';
 import CategoryFilters from '../components/CategoryFilters';
@@ -11,6 +12,19 @@ import type { FilterOptions } from '../components/SearchBar';
 import { getListings, getAverageRatings, CATEGORIES } from '../../Data/Listings';
 import type { Listing, Category } from '../../Data/Listings';
 
+const DEFAULT_NEAR_ME_KM = 1.5; // ✅ FIX 1: removed stray 's'
+
+function getDistanceKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 function Savepage() {
   const { session } = useAuth();
   const [listings, setListings]       = useState<Listing[]>([]);
@@ -19,20 +33,29 @@ function Savepage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [savedIds, setSavedIds]       = useState<number[]>([]);
   const [averageRatings, setAverageRatings] = useState<Record<number, number>>({});
-  const [filters, setFilters]         = useState<FilterOptions>({ ratingRange: null, sortBy: 'default' });
+  const [filters, setFilters]         = useState<FilterOptions>({ ratingRange: null, sortBy: 'default', openNow: false, nearMe: false });
+  const [userCoords, setUserCoords]   = useState<{ lat: number; lng: number } | null>(null);
+
+  useEffect(() => {
+    if (filters.nearMe && !userCoords) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => setUserCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        () => {}
+      );
+    }
+    if (!filters.nearMe) setUserCoords(null);
+  }, [filters.nearMe]);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const user = session?.user;
         if (!user) return;
-
         const [listingsData, ratingsData, savesResult] = await Promise.all([
           getListings(),
           getAverageRatings(),
           supabase.from('saves').select('listing_id').eq('user_id', user.id)
         ]);
-
         setListings(listingsData);
         setAverageRatings(ratingsData);
         if (!savesResult.error && savesResult.data) {
@@ -43,7 +66,6 @@ function Savepage() {
         console.warn("Error fetching data:", error);
       }
     };
-
     fetchData();
   }, [session]);
 
@@ -51,7 +73,6 @@ function Savepage() {
     try {
       const user = session?.user;
       if (!user) return;
-
       const isSaved = savedIds.includes(id);
       if (isSaved) {
         await supabase.from('saves').delete().eq('user_id', user.id).eq('listing_id', id);
@@ -73,27 +94,24 @@ function Savepage() {
       const rating = averageRatings[spot.id] ?? 0;
       const matchesRating = filters.ratingRange === null ||
         (rating >= filters.ratingRange.min && rating <= filters.ratingRange.max);
-      return isSaved && matchesCategory && matchesSearch && matchesRating;
+      const matchesOpenNow = !filters.openNow || isOpenNow(spot.hours);
+      const matchesNearMe = !filters.nearMe ||
+        (!!userCoords && !!spot.coordinates && // ✅ FIX 2: 'item' → 'spot'
+          getDistanceKm(userCoords.lat, userCoords.lng, spot.coordinates.lat, spot.coordinates.lng) <= DEFAULT_NEAR_ME_KM);
+      return isSaved && matchesCategory && matchesSearch && matchesRating && matchesOpenNow && matchesNearMe;
     });
 
-    if (filters.sortBy === 'az') {
-      result = [...result].sort((a, b) => a.name.localeCompare(b.name));
-    } else if (filters.sortBy === 'za') {
-      result = [...result].sort((a, b) => b.name.localeCompare(a.name));
-    }
+    if (filters.sortBy === 'az') result = [...result].sort((a, b) => a.name.localeCompare(b.name));
+    else if (filters.sortBy === 'za') result = [...result].sort((a, b) => b.name.localeCompare(a.name));
 
     return result;
-  }, [listings, activeCategory, searchQuery, savedIds, filters, averageRatings]);
+  }, [listings, activeCategory, searchQuery, savedIds, filters, averageRatings, userCoords]);
 
   return (
     <div className="flex h-screen w-full bg-[#1A1A1A] text-[#F8FAF8] overflow-hidden font-sans">
       <main className="flex-1 relative flex flex-col overflow-hidden px-4 md:px-10 pt-6 md:pt-10">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 md:mb-8 z-10 gap-4 w-full shrink-0">
-          <CategoryFilters
-            activeCategory={activeCategory}
-            onCategoryChange={setActiveCategory}
-            className="order-2 md:order-1"
-          />
+          <CategoryFilters activeCategory={activeCategory} onCategoryChange={setActiveCategory} className="order-2 md:order-1" />
           <SearchBar
             glass
             searchIcon={search}
@@ -129,9 +147,7 @@ function Savepage() {
             <div className="flex flex-col items-center justify-center h-full text-center opacity-40">
               <div className="mb-4 text-6xl">✨</div>
               <h3 className="text-xl font-semibold mb-2">No saved spots</h3>
-              <p className="max-w-xs text-sm">
-                Locations you save while browsing will appear here for quick access.
-              </p>
+              <p className="max-w-xs text-sm">Locations you save while browsing will appear here for quick access.</p>
             </div>
           )}
         </div>
