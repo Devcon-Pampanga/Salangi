@@ -10,14 +10,27 @@ interface ReviewItemProps {
   comment: string;
   reviewId: number;
   helpfulCount: number;
+  ownerReply?: string | null;
+  isOwner?: boolean;
   profilePic?: string;
   onVote?: () => void;
+  onReplyAdded?: () => void;
 }
 
-function ReviewItem({ user, initials, date, rating, comment, reviewId, helpfulCount, profilePic, onVote }: ReviewItemProps) {
+function ReviewItem({ user, initials, date, rating, comment, reviewId, helpfulCount, ownerReply, isOwner = false, profilePic, onVote, onReplyAdded }: ReviewItemProps) {
   const [voted, setVoted] = useState(false);
   const [count, setCount] = useState(helpfulCount ?? 0);
   const [loading, setLoading] = useState(false);
+  const [showReplyBox, setShowReplyBox] = useState(false);
+  const [replyText, setReplyText] = useState(ownerReply ?? '');
+  const [currentReply, setCurrentReply] = useState(ownerReply ?? '');
+  const [submittingReply, setSubmittingReply] = useState(false);
+
+  // Sync currentReply if parent re-fetches and passes a new ownerReply
+  useEffect(() => {
+    setCurrentReply(ownerReply ?? '');
+    setReplyText(ownerReply ?? '');
+  }, [ownerReply]);
 
   useEffect(() => {
     const checkVote = async () => {
@@ -34,32 +47,59 @@ function ReviewItem({ user, initials, date, rating, comment, reviewId, helpfulCo
   }, [reviewId]);
 
   const handleVote = async () => {
-  const { data: { user: authUser } } = await supabase.auth.getUser();
-  if (!authUser || loading) return;
-  setLoading(true);
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser || loading) return;
+    setLoading(true);
+    if (voted) {
+      const { error } = await supabase
+        .from('review_helpful_votes')
+        .delete()
+        .match({ review_id: reviewId, user_id: authUser.id });
+      if (!error) { setCount(c => Math.max(0, c - 1)); setVoted(false); onVote?.(); }
+    } else {
+      const { error } = await supabase
+        .from('review_helpful_votes')
+        .insert({ review_id: reviewId, user_id: authUser.id });
+      if (!error) { setCount(c => c + 1); setVoted(true); onVote?.(); }
+    }
+    setLoading(false);
+  };
 
-  if (voted) {
-    const { error } = await supabase
-      .from('review_helpful_votes')
-      .delete()
-      .match({ review_id: reviewId, user_id: authUser.id });
+  const handleSubmitReply = async () => {
+    if (!replyText.trim()) return;
+    setSubmittingReply(true);
+    const { error, data } = await supabase
+      .from('reviews')
+      .update({
+        owner_reply: replyText.trim(),
+        owner_replied_at: new Date().toISOString(),
+      })
+      .eq('id', Number(reviewId))
+      .select();
+
+    console.log('Reply result:', data, error);
+
     if (!error) {
-      setCount(c => Math.max(0, c - 1));
-      setVoted(false);
-      onVote?.(); // re-fetch reviews
+      setCurrentReply(replyText.trim());
+      setShowReplyBox(false);
+      onReplyAdded?.();
+    } else {
+      console.error('Reply failed:', error);
     }
-  } else {
+    setSubmittingReply(false);
+  };
+
+  const handleDeleteReply = async () => {
     const { error } = await supabase
-      .from('review_helpful_votes')
-      .insert({ review_id: reviewId, user_id: authUser.id });
+      .from('reviews')
+      .update({ owner_reply: null, owner_replied_at: null })
+      .eq('id', Number(reviewId));
     if (!error) {
-      setCount(c => c + 1);
-      setVoted(true);
-      onVote?.(); // re-fetch reviews
+      setCurrentReply('');
+      setReplyText('');
+      onReplyAdded?.();
     }
-  }
-  setLoading(false);
-};
+  };
 
   return (
     <div className="flex flex-col gap-3">
@@ -79,19 +119,15 @@ function ReviewItem({ user, initials, date, rating, comment, reviewId, helpfulCo
         </div>
         <div className="flex gap-0.5">
           {[...Array(5)].map((_, i) => (
-            <img
-              key={i}
-              src={starIcon}
-              width="9"
-              alt="review star"
-              className={i < rating ? 'opacity-100' : 'opacity-30'}
-            />
+            <img key={i} src={starIcon} width="9" alt="review star"
+              className={i < rating ? 'opacity-100' : 'opacity-30'} />
           ))}
         </div>
       </div>
 
       <p className="text-sm text-[#FBFAF8]/70 leading-relaxed pr-4">{comment}</p>
 
+      {/* Helpful vote */}
       <div className="flex items-center gap-2 pt-1">
         <span className="text-xs text-zinc-500">Helpful?</span>
         <button
@@ -109,7 +145,70 @@ function ReviewItem({ user, initials, date, rating, comment, reviewId, helpfulCo
           </svg>
           <span>{count}</span>
         </button>
+
+        {/* Owner reply button — shown when there's no existing reply */}
+        {isOwner && !currentReply && (
+          <button
+            onClick={() => setShowReplyBox(v => !v)}
+            className="ml-auto text-xs px-3 py-1 rounded-full border border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200 transition-all cursor-pointer"
+          >
+            {showReplyBox ? 'Cancel' : 'Reply'}
+          </button>
+        )}
       </div>
+
+      {/* Owner reply box */}
+      {showReplyBox && isOwner && (
+        <div className="ml-4 mt-1 flex flex-col gap-2">
+          <textarea
+            value={replyText}
+            onChange={e => setReplyText(e.target.value)}
+            placeholder="Write your response as the business owner..."
+            className="w-full h-24 p-3 bg-[#1A1A1A] text-[#FBFAF8] rounded-lg border border-zinc-700 focus:border-[#FFE2A0] outline-none resize-none text-sm transition-colors"
+          />
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={() => setShowReplyBox(false)}
+              className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer px-3 py-1"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSubmitReply}
+              disabled={submittingReply || !replyText.trim()}
+              className="text-xs bg-[#FFE2A0] text-[#373737] font-bold px-4 py-1.5 rounded-lg hover:brightness-110 transition-all disabled:opacity-50 cursor-pointer"
+            >
+              {submittingReply ? 'Posting...' : 'Post reply'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Existing owner reply display */}
+      {currentReply && (
+        <div className="ml-4 mt-1 p-3 bg-[#1A1A1A] rounded-lg border-l-2 border-[#FFE2A0]/50">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs font-semibold text-[#FFE2A0]">Owner response</span>
+            {isOwner && (
+              <div className="flex gap-2">
+                <button
+                  onClick={() => { setReplyText(currentReply); setShowReplyBox(true); }}
+                  className="text-[10px] text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={handleDeleteReply}
+                  className="text-[10px] text-red-500/70 hover:text-red-400 transition-colors cursor-pointer"
+                >
+                  Delete
+                </button>
+              </div>
+            )}
+          </div>
+          <p className="text-sm text-[#FBFAF8]/70 leading-relaxed">{currentReply}</p>
+        </div>
+      )}
     </div>
   );
 }

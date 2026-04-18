@@ -27,6 +27,8 @@ interface Review {
   rating: number;
   comment: string;
   helpfulCount: number;
+  ownerReply?: string | null;
+  ownerRepliedAt?: string | null;
   profilePic?: string;
 }
 
@@ -195,13 +197,20 @@ function DetailedBusinessCard({
   const [reviewError, setReviewError] = useState<string | null>(null);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [sortBy, setSortBy] = useState<'helpful' | 'recent' | 'rating'>('helpful');
+  const [isOwner, setIsOwner] = useState(false);
 
   const hasImages = allImages.length > 0;
 
   const sortedReviews = [...reviews].sort((a, b) => {
-    if (sortBy === 'helpful') return b.helpfulCount - a.helpfulCount;
+    if (sortBy === 'helpful') {
+      if (b.helpfulCount !== a.helpfulCount) return b.helpfulCount - a.helpfulCount;
+      return new Date(b.date).getTime() - new Date(a.date).getTime();
+    }
     if (sortBy === 'recent') return new Date(b.date).getTime() - new Date(a.date).getTime();
-    if (sortBy === 'rating') return b.rating - a.rating;
+    if (sortBy === 'rating') {
+      if (b.rating !== a.rating) return b.rating - a.rating;
+      return new Date(b.date).getTime() - new Date(a.date).getTime();
+    }
     return 0;
   });
 
@@ -210,6 +219,21 @@ function DetailedBusinessCard({
       listing_id: listingId,
       type: 'view',
     });
+  }, [listingId]);
+
+  useEffect(() => {
+    const checkOwnership = async () => {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) return;
+      const { data } = await supabase
+        .from('listings')
+        .select('id')
+        .eq('id', listingId)
+        .eq('user_id', authUser.id)
+        .maybeSingle();
+      setIsOwner(!!data);
+    };
+    checkOwnership();
   }, [listingId]);
 
   const nextImage = (e: React.MouseEvent) => {
@@ -508,7 +532,10 @@ function DetailedBusinessCard({
                       {...review}
                       reviewId={review.id}
                       helpfulCount={review.helpfulCount}
-                      onVote={onReviewAdded} // add this
+                      ownerReply={review.ownerReply}
+                      isOwner={isOwner}
+                      onVote={onReviewAdded}
+                      onReplyAdded={onReviewAdded}
                     />
                   ))}
                 </div>
