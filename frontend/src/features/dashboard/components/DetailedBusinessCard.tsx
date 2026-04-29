@@ -30,6 +30,7 @@ interface Review {
   ownerReply?: string | null;
   ownerRepliedAt?: string | null;
   profilePic?: string;
+  images?: string[]; // ← ADDED
 }
 
 interface DetailedBusinessCardProps {
@@ -284,7 +285,8 @@ function DetailedBusinessCard({
     window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
   };
 
-  const handleAddReview = async (rating: number, comment: string) => {
+  // ← UPDATED: now accepts images[] and saves them to the reviews row
+  const handleAddReview = async (rating: number, comment: string, images: string[]) => {
     setSubmitting(true);
     setReviewError(null);
     try {
@@ -299,6 +301,7 @@ function DetailedBusinessCard({
         user_id: user.id,
         rating,
         comment,
+        images, // ← ADDED
       });
       if (error) throw error;
       setIsAddingReview(false);
@@ -530,6 +533,7 @@ function DetailedBusinessCard({
                     <ReviewItem
                       key={review.id}
                       {...review}
+                      images={review.images ?? []}
                       reviewId={review.id}
                       helpfulCount={review.helpfulCount}
                       ownerReply={review.ownerReply}
@@ -547,6 +551,7 @@ function DetailedBusinessCard({
               {reviewError && <p className="text-red-400 text-sm mb-3">{reviewError}</p>}
               {isAddingReview ? (
                 <ReviewForm
+                  businessId={listingId}
                   onSubmit={handleAddReview}
                   onCancel={() => { setIsAddingReview(false); setReviewError(null); }}
                   submitting={submitting}

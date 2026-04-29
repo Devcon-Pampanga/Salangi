@@ -24,6 +24,7 @@ interface Review {
   ownerReply?: string | null;
   ownerRepliedAt?: string | null;
   profilePic?: string;
+  images?: string[];
 }
 
 const DEFAULT_LISTING: Listing = {
@@ -137,7 +138,7 @@ function Locationpage() {
     try {
       const { data: reviewData, error: reviewError } = await supabase
         .from('reviews')
-        .select('id, listing_id, user_id, rating, comment, created_at, helpful_count, owner_reply, owner_replied_at')
+        .select('id, listing_id, user_id, rating, comment, created_at, helpful_count, owner_reply, owner_replied_at, images') 
         .eq('listing_id', listingId)
         .order('created_at', { ascending: false });
       if (reviewError) { console.error('reviews error:', reviewError); return; }
@@ -173,6 +174,7 @@ function Locationpage() {
            ownerReply: r.owner_reply ?? null,  
           ownerRepliedAt: r.owner_replied_at ?? null,
           profilePic: u?.profile_pic ?? null,
+           images: r.images ?? [],
         };
       });
 
