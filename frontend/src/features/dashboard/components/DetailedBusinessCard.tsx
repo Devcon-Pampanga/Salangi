@@ -26,7 +26,11 @@ interface Review {
   date: string;
   rating: number;
   comment: string;
+  helpfulCount: number;
+  ownerReply?: string | null;
+  ownerRepliedAt?: string | null;
   profilePic?: string;
+  images?: string[]; // ← ADDED
 }
 
 interface DetailedBusinessCardProps {
@@ -193,14 +197,44 @@ function DetailedBusinessCard({
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
   const [reviewError, setReviewError] = useState<string | null>(null);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [sortBy, setSortBy] = useState<'helpful' | 'recent' | 'rating'>('helpful');
+  const [isOwner, setIsOwner] = useState(false);
 
   const hasImages = allImages.length > 0;
+
+  const sortedReviews = [...reviews].sort((a, b) => {
+    if (sortBy === 'helpful') {
+      if (b.helpfulCount !== a.helpfulCount) return b.helpfulCount - a.helpfulCount;
+      return new Date(b.date).getTime() - new Date(a.date).getTime();
+    }
+    if (sortBy === 'recent') return new Date(b.date).getTime() - new Date(a.date).getTime();
+    if (sortBy === 'rating') {
+      if (b.rating !== a.rating) return b.rating - a.rating;
+      return new Date(b.date).getTime() - new Date(a.date).getTime();
+    }
+    return 0;
+  });
 
   useEffect(() => {
     supabase.from('listing_interactions').insert({
       listing_id: listingId,
       type: 'view',
     });
+  }, [listingId]);
+
+  useEffect(() => {
+    const checkOwnership = async () => {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) return;
+      const { data } = await supabase
+        .from('listings')
+        .select('id')
+        .eq('id', listingId)
+        .eq('user_id', authUser.id)
+        .maybeSingle();
+      setIsOwner(!!data);
+    };
+    checkOwnership();
   }, [listingId]);
 
   const nextImage = (e: React.MouseEvent) => {
@@ -251,7 +285,8 @@ function DetailedBusinessCard({
     window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
   };
 
-  const handleAddReview = async (rating: number, comment: string) => {
+  // ← UPDATED: now accepts images[] and saves them to the reviews row
+  const handleAddReview = async (rating: number, comment: string, images: string[]) => {
     setSubmitting(true);
     setReviewError(null);
     try {
@@ -266,6 +301,7 @@ function DetailedBusinessCard({
         user_id: user.id,
         rating,
         comment,
+        images, // ← ADDED
       });
       if (error) throw error;
       setIsAddingReview(false);
@@ -296,7 +332,6 @@ function DetailedBusinessCard({
         document.body
       )}
 
-      {/* ✅ FIX 1: added max-w-120 and mx-auto to match deployed */}
       <div className="w-full max-w-120 bg-[#333333] rounded-xl overflow-hidden shrink-0 mb-10 shadow-2xl border border-zinc-800/50 mx-auto">
         <div className="relative flex flex-col">
 
@@ -310,7 +345,6 @@ function DetailedBusinessCard({
             </button>
           </div>
 
-          {/* ✅ FIX 2: changed h-80 to h-72 to match deployed */}
           <div className="relative w-full h-72 overflow-hidden bg-zinc-800 group">
             {hasImages ? (
               <>
@@ -469,17 +503,47 @@ function DetailedBusinessCard({
               </div>
             </div>
 
-            {/* Review List */}
+            {/* Sort bar + Review List */}
             {reviewsLoading ? (
               <p className="text-sm text-zinc-500 animate-pulse">Loading reviews...</p>
             ) : reviews.length === 0 ? (
               <p className="text-sm text-zinc-500">No reviews yet. Be the first!</p>
             ) : (
-              <div className="space-y-12 mt-4">
-                {reviews.map((review) => (
-                  <ReviewItem key={review.id} {...review} />
-                ))}
-              </div>
+              <>
+                {reviews.length > 1 && (
+                  <div className="flex items-center gap-2 mb-6 flex-wrap">
+                    <span className="text-xs text-zinc-500">Sort by</span>
+                    {(['helpful', 'recent', 'rating'] as const).map((option) => (
+                      <button
+                        key={option}
+                        onClick={() => setSortBy(option)}
+                        className={`text-xs px-3 py-1.5 rounded-full border transition-all cursor-pointer
+                          ${sortBy === option
+                            ? 'bg-[#FFE2A0]/10 border-[#FFE2A0]/50 text-[#FFE2A0]'
+                            : 'border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200'
+                          }`}
+                      >
+                        {option === 'helpful' ? 'Most helpful' : option === 'recent' ? 'Most recent' : 'Top rated'}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <div className="space-y-12">
+                  {sortedReviews.map((review) => (
+                    <ReviewItem
+                      key={review.id}
+                      {...review}
+                      images={review.images ?? []}
+                      reviewId={review.id}
+                      helpfulCount={review.helpfulCount}
+                      ownerReply={review.ownerReply}
+                      isOwner={isOwner}
+                      onVote={onReviewAdded}
+                      onReplyAdded={onReviewAdded}
+                    />
+                  ))}
+                </div>
+              </>
             )}
 
             {/* Review Form / Button */}
@@ -487,6 +551,7 @@ function DetailedBusinessCard({
               {reviewError && <p className="text-red-400 text-sm mb-3">{reviewError}</p>}
               {isAddingReview ? (
                 <ReviewForm
+                  businessId={listingId}
                   onSubmit={handleAddReview}
                   onCancel={() => { setIsAddingReview(false); setReviewError(null); }}
                   submitting={submitting}

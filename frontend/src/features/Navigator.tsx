@@ -6,6 +6,7 @@ import SettingsPage from './settings/pages/SettingsPage';
 import { ROUTES } from '../routes/paths';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/authContext';
+import BetaBadge from '@/components/BetaBadge';
 
 // icons
 import homeBtn from '@assets/icons/home-btn-default.svg';
@@ -162,6 +163,7 @@ export function Navigator() {
 
       {/* Sidebar / Bottom Nav */}
       <div className="bg-[#373737] w-full h-18 md:w-20 md:h-full p-2 md:p-3 flex flex-row md:flex-col justify-between items-center shrink-0 relative z-50">
+        
         <div className="hidden md:block">
           <button
             onClick={() => navigate('/home-page')}
@@ -169,6 +171,7 @@ export function Navigator() {
           >
             <img src={salangiLogo} alt="Salangi" className="w-20 h-20 object-contain" />
           </button>
+          <BetaBadge />
         </div>
 
         <div className="flex flex-row md:flex-col items-center justify-center gap-6 md:gap-8 w-full md:w-auto px-4 md:px-0">
@@ -241,6 +244,7 @@ export function Navigator() {
 
           <AvatarButton onClick={() => setIsMenuOpen(!isMenuOpen)} />
         </div>
+
       </div>
 
       <main className="flex-1 bg-[#1E1E1E] overflow-hidden">
