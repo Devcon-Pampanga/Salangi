@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { ROUTES } from '../../../routes/paths';
@@ -40,9 +40,11 @@ function Homepage() {
   };
 
   // ── Handle Google OAuth redirect ──────────────────────────────────────────
+   const oauthHandled = useRef(false);
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
+      if (event === 'SIGNED_IN' && session?.user && !oauthHandled.current) {
+        oauthHandled.current = true;
         const user = session.user;
         const meta = user.user_metadata;
 
