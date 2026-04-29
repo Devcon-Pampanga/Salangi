@@ -100,7 +100,8 @@ export function Navigator() {
       const user = session?.user;
       if (!user) return;
 
-      if (!user.email_confirmed_at) {
+       const isGoogleUser = user.app_metadata?.provider === 'google';
+      if (!isGoogleUser && !user.email_confirmed_at) {
         await supabase.auth.signOut();
         navigate('/sign-in');
         return;
@@ -129,12 +130,12 @@ export function Navigator() {
     refreshUser();
   }, [refreshUser]);
 
-  const initials = displayName.firstName && displayName.lastName
-    ? `${displayName.firstName[0]}${displayName.lastName[0]}`.toUpperCase()
+   const initials = displayName.firstName
+    ? `${displayName.firstName[0]}${displayName.lastName?.[0] ?? ''}`.toUpperCase()
     : '?';
 
-  const fullName = displayName.firstName && displayName.lastName
-    ? `${displayName.firstName} ${displayName.lastName}`
+  const fullName = displayName.firstName
+    ? `${displayName.firstName}${displayName.lastName ? ' ' + displayName.lastName : ''}`
     : 'Guest';
 
   const handleLogout = async () => {
@@ -150,10 +151,19 @@ export function Navigator() {
       className={`h-11 w-11 md:h-14 md:w-14 bg-[#2E2E2E] rounded-lg cursor-pointer flex items-center justify-center overflow-hidden transition-all hover:bg-[#222222] ${className}`}
     >
       {displayName.avatarUrl ? (
-        <img src={displayName.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
-      ) : (
-        <p className="font-['Playfair-Display'] text-[#FFE2A0] text-xl">{initials}</p>
-      )}
+        <img
+          src={displayName.avatarUrl}
+          alt="avatar"
+          className="w-full h-full object-cover"
+          onError={(e) => {
+            (e.target as HTMLImageElement).style.display = 'none';
+            (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+          }}
+        />
+      ) : null}
+      <p className={`font-['Playfair-Display'] text-[#FFE2A0] text-xl ${displayName.avatarUrl ? 'hidden' : ''}`}>
+        {initials}
+      </p>
     </button>
   );
 

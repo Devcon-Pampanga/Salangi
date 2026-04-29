@@ -17,8 +17,7 @@ function Signin() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const handleSignIn = async () => {
     setError('');
@@ -66,6 +65,21 @@ function Signin() {
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    setError('');
+    setGoogleLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: `${window.location.origin}/home-page` },
+      });
+      if (error) throw error;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Google sign-in failed');
+      setGoogleLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen relative flex items-center justify-center lg:justify-start overflow-x-hidden overflow-y-auto bg-[#222222]">
       {/* Background Image - Desktop Only */}
@@ -97,7 +111,6 @@ function Signin() {
 
       {/* Header with Actions and Logo on the right */}
       <div className="absolute top-0 left-0 right-0 px-4 lg:px-8 py-6 flex items-center justify-end gap-4 lg:gap-6 z-50">
-        
         <img src={salangiLogo} alt="Salangi Logo" className="w-10 h-10 lg:w-16 lg:h-16 shrink-0" />
       </div>
 
@@ -174,13 +187,35 @@ function Signin() {
               </div>
 
               {/* Action Section */}
-              <div className="pt-4 space-y-6">
+              <div className="pt-4 space-y-4">
                 <button
                   onClick={handleSignIn}
                   disabled={loading}
                   className="w-full py-4 bg-[#FFE2A0] hover:bg-[#fcd789] active:bg-[#f5cc70] rounded-xl cursor-pointer font-bold text-[#222222] text-base transition-all shadow-lg shadow-amber-950/20 disabled:opacity-60 disabled:cursor-not-allowed hover:scale-[1.01] active:scale-[0.99]"
                 >
                   {loading ? 'Signing in...' : 'Sign in'}
+                </button>
+
+                {/* Divider */}
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 h-px bg-white/10" />
+                  <span className="text-[#FBFAF8]/40 text-xs">or</span>
+                  <div className="flex-1 h-px bg-white/10" />
+                </div>
+
+                {/* Google Sign In */}
+                <button
+                  onClick={handleGoogleSignIn}
+                  disabled={googleLoading}
+                  className="w-full py-4 bg-[#2E2E2E]/80 hover:bg-[#3a3a3a] active:bg-[#444] rounded-xl cursor-pointer font-bold text-[#FBFAF8] text-base transition-all border border-white/10 flex items-center justify-center gap-3 disabled:opacity-60 disabled:cursor-not-allowed hover:scale-[1.01] active:scale-[0.99]"
+                >
+                  <svg width="18" height="18" viewBox="0 0 48 48">
+                    <path fill="#FFC107" d="M43.6 20H24v8h11.3C33.7 33.1 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.8 1.1 7.9 3l5.7-5.7C34.1 6.5 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20c11 0 19.7-8 19.7-20 0-1.3-.1-2.7-.1-4z"/>
+                    <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.5 15.1 18.9 12 24 12c3 0 5.8 1.1 7.9 3l5.7-5.7C34.1 6.5 29.3 4 24 4 16.3 4 9.7 8.4 6.3 14.7z"/>
+                    <path fill="#4CAF50" d="M24 44c5.2 0 9.9-1.9 13.5-5l-6.2-5.2C29.4 35.6 26.8 36 24 36c-5.2 0-9.6-2.9-11.3-7l-6.5 5C9.5 39.4 16.3 44 24 44z"/>
+                    <path fill="#1976D2" d="M43.6 20H24v8h11.3c-.8 2.3-2.3 4.2-4.2 5.6l6.2 5.2C41 35.2 44 30 44 24c0-1.3-.1-2.7-.4-4z"/>
+                  </svg>
+                  {googleLoading ? 'Redirecting...' : 'Continue with Google'}
                 </button>
 
                 <p className="text-[#FBFAF8]/60 text-left text-sm">
