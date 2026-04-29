@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { ROUTES } from '../../../routes/paths';
@@ -38,6 +38,39 @@ function Homepage() {
     await supabase.auth.signOut();
     navigate(ROUTES.SIGN_IN);
   };
+
+  // ── Handle Google OAuth redirect ──────────────────────────────────────────
+   const oauthHandled = useRef(false);
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user && !oauthHandled.current) {
+        oauthHandled.current = true;
+        const user = session.user;
+        const meta = user.user_metadata;
+
+        // Write to localStorage so the rest of the app can read it
+        localStorage.setItem('user', JSON.stringify({
+          user_id:     user.id,
+          first_name:  meta?.first_name ?? meta?.full_name?.split(' ')[0] ?? '',
+          last_name:   meta?.last_name  ?? meta?.full_name?.split(' ')[1] ?? '',
+          email:       user.email,
+          profile_pic: meta?.avatar_url ?? null,
+        }));
+
+        // Upsert into users table so new Google users get a row
+        await supabase.from('users').upsert({
+          user_id:     user.id,
+          first_name:  meta?.first_name ?? meta?.full_name?.split(' ')[0] ?? '',
+          last_name:   meta?.last_name  ?? meta?.full_name?.split(' ')[1] ?? '',
+          email:       user.email,
+          profile_pic: meta?.avatar_url ?? null,
+          is_admin:    false,
+        }, { onConflict: 'user_id', ignoreDuplicates: false });
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   // ── Smart redirect: go to dashboard if user already has a listing ──
   const handleListBusinessClick = async () => {

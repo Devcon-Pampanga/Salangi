@@ -347,9 +347,21 @@ const SettingsPage = ({ onClose, scrollTo }: SettingsPageProps) => {
                   <div className="relative shrink-0">
                     <div className="w-16 h-16 rounded-full overflow-hidden bg-[#FFE2A0] flex items-center justify-center ring-2 ring-zinc-700 group-hover:ring-[#FFE2A0]/40 transition-all">
                       {avatarUrl
-                        ? <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
-                        : <User size={26} className="text-[#1A1A1A]" />
+                        ? <img
+                            src={avatarUrl}
+                            alt="avatar"
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = 'none';
+                            }}
+                          />
+                        : null
                       }
+                      {(!avatarUrl) && (
+                        <span className="text-[#1A1A1A] text-xl font-bold">
+                          {firstName?.[0]?.toUpperCase() ?? ''}{lastName?.[0]?.toUpperCase() ?? ''}
+                        </span>
+                      )}
                     </div>
                     <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-[#FFE2A0] rounded-full flex items-center justify-center shadow">
                       <Camera size={11} className="text-[#1A1A1A]" />
