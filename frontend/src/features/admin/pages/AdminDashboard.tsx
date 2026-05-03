@@ -1038,6 +1038,177 @@ function PendingEventCard({
   );
 }
 
+function ClaimCard({
+  claim,
+  onApprove,
+  onReject,
+  claimLoading,
+}: {
+  claim: ListingClaim;
+  onApprove: (claim: ListingClaim) => void;
+  onReject: (id: string) => void;
+  claimLoading: string | null;
+}) {
+  const [showModal, setShowModal] = useState(false);
+
+  return (
+    <>
+      <div
+        className="bg-[#333333] border border-zinc-800/50 rounded-xl p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4 hover:border-[#FFE2A0]/20 transition-colors cursor-pointer group"
+        onClick={() => setShowModal(true)}
+      >
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-xs bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded-full font-medium">Claim Request</span>
+            <span className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] text-[#FFE2A0]/60 flex items-center gap-1">
+              <Eye size={10} /> View details
+            </span>
+          </div>
+          <p className="text-white font-semibold text-sm">{claim.listing_name}</p>
+          <p className="text-zinc-400 text-xs mt-0.5">By: {claim.user_email}</p>
+          {claim.note && <p className="text-zinc-400 text-xs mt-1 italic line-clamp-1">"{claim.note}"</p>}
+          <p className="text-zinc-600 text-[10px] mt-1">{new Date(claim.created_at).toLocaleDateString()}</p>
+        </div>
+        <div className="flex gap-2 shrink-0 w-full sm:w-auto" onClick={(e) => e.stopPropagation()}>
+          <button
+            onClick={() => onApprove(claim)}
+            disabled={claimLoading === claim.id}
+            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-green-600/80 hover:bg-green-500 disabled:opacity-40 text-white text-xs font-bold px-4 py-2 rounded-xl transition-all"
+          >
+            <CheckCircle size={14} /> Approve
+          </button>
+          <button
+            onClick={() => onReject(claim.id)}
+            disabled={claimLoading === claim.id}
+            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-red-700/80 hover:bg-red-600 disabled:opacity-40 text-white text-xs font-bold px-4 py-2 rounded-xl transition-all"
+          >
+            <XCircle size={14} /> Reject
+          </button>
+        </div>
+      </div>
+
+      {showModal && (
+        <ClaimDetailModal
+          claim={claim}
+          onClose={() => setShowModal(false)}
+          onApprove={onApprove}
+          onReject={onReject}
+          claimLoading={claimLoading}
+        />
+      )}
+    </>
+  );
+}
+
+// ── Claim Detail Modal ────────────────────────────────────────────────────────
+
+function ClaimDetailModal({
+  claim,
+  onClose,
+  onApprove,
+  onReject,
+  claimLoading,
+}: {
+  claim: ListingClaim;
+  onClose: () => void;
+  onApprove: (claim: ListingClaim) => void;
+  onReject: (id: string) => void;
+  claimLoading: string | null;
+}) {
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handler);
+    return () => { document.body.style.overflow = ''; window.removeEventListener('keydown', handler); };
+  }, [onClose]);
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[999] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-md bg-[#2a2a2a] rounded-2xl border border-zinc-700/50 shadow-2xl flex flex-col overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-700/50">
+          <div className="flex items-center gap-2">
+            <span className="text-xs bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded-full font-medium">Claim Request</span>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center bg-zinc-700/50 hover:bg-zinc-600 rounded-full transition-colors"
+          >
+            <X size={15} className="text-white" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="p-6 space-y-5">
+          <div>
+            <p className="text-[#FBFAF8]/40 text-[10px] uppercase tracking-wider font-semibold mb-1">Listing</p>
+            <h2 className="text-[#FBFAF8] font-['Playfair_Display'] font-bold text-xl">{claim.listing_name}</h2>
+          </div>
+
+          <div className="border-t border-white/10" />
+
+          <div className="space-y-3">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-lg bg-[#3a3a3a] flex items-center justify-center shrink-0">
+                <Mail size={14} className="text-[#FFE2A0]" />
+              </div>
+              <div>
+                <p className="text-[#FBFAF8]/40 text-[10px] uppercase tracking-wider font-semibold">Claimant Email</p>
+                <p className="text-[#FBFAF8] text-sm">{claim.user_email}</p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-lg bg-[#3a3a3a] flex items-center justify-center shrink-0">
+                <Clock size={14} className="text-[#FFE2A0]" />
+              </div>
+              <div>
+                <p className="text-[#FBFAF8]/40 text-[10px] uppercase tracking-wider font-semibold">Submitted</p>
+                <p className="text-[#FBFAF8] text-sm">{new Date(claim.created_at).toLocaleDateString('en-US', { month: 'long', day: '2-digit', year: 'numeric' })}</p>
+              </div>
+            </div>
+
+            {claim.note && (
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-lg bg-[#3a3a3a] flex items-center justify-center shrink-0">
+                  <FileText size={14} className="text-[#FFE2A0]" />
+                </div>
+                <div>
+                  <p className="text-[#FBFAF8]/40 text-[10px] uppercase tracking-wider font-semibold">Note from claimant</p>
+                  <p className="text-[#FBFAF8]/80 text-sm italic">"{claim.note}"</p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="border-t border-white/10 pt-2 flex gap-3">
+            <button
+              onClick={() => { onApprove(claim); onClose(); }}
+              disabled={claimLoading === claim.id}
+              className="flex-1 flex items-center justify-center gap-2 bg-green-600/80 hover:bg-green-500 disabled:opacity-40 text-white text-sm font-bold px-4 py-3 rounded-xl transition-all active:scale-95 border border-green-500/30 shadow-lg"
+            >
+              <CheckCircle size={16} /> Approve
+            </button>
+            <button
+              onClick={() => { onReject(claim.id); onClose(); }}
+              disabled={claimLoading === claim.id}
+              className="flex-1 flex items-center justify-center gap-2 bg-red-700/80 hover:bg-red-600 disabled:opacity-40 text-white text-sm font-bold px-4 py-3 rounded-xl transition-all active:scale-95 border border-red-600/30 shadow-lg"
+            >
+              <XCircle size={16} /> Reject
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 function AdminDashboard() {
@@ -1342,33 +1513,13 @@ function AdminDashboard() {
           ) : (
             <div className="grid gap-4">
               {claims.map(claim => (
-                <div key={claim.id} className="bg-[#333333] border border-zinc-800/50 rounded-xl p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded-full font-medium">Claim Request</span>
-                    </div>
-                    <p className="text-white font-semibold text-sm">{claim.listing_name}</p>
-                    <p className="text-zinc-400 text-xs mt-0.5">By: {claim.user_email}</p>
-                    {claim.note && <p className="text-zinc-400 text-xs mt-1 italic">"{claim.note}"</p>}
-                    <p className="text-zinc-600 text-[10px] mt-1">{new Date(claim.created_at).toLocaleDateString()}</p>
-                  </div>
-                  <div className="flex gap-2 shrink-0 w-full sm:w-auto">
-                    <button
-                      onClick={() => handleApproveClaim(claim)}
-                      disabled={claimLoading === claim.id}
-                      className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-green-600/80 hover:bg-green-500 disabled:opacity-40 text-white text-xs font-bold px-4 py-2 rounded-xl transition-all"
-                    >
-                      <CheckCircle size={14} /> Approve
-                    </button>
-                    <button
-                      onClick={() => handleRejectClaim(claim.id)}
-                      disabled={claimLoading === claim.id}
-                      className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-red-700/80 hover:bg-red-600 disabled:opacity-40 text-white text-xs font-bold px-4 py-2 rounded-xl transition-all"
-                    >
-                      <XCircle size={14} /> Reject
-                    </button>
-                  </div>
-                </div>
+                <ClaimCard
+                  key={claim.id}
+                  claim={claim}
+                  onApprove={handleApproveClaim}
+                  onReject={handleRejectClaim}
+                  claimLoading={claimLoading}
+                />
               ))}
             </div>
           )
