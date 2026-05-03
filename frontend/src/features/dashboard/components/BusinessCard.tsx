@@ -295,43 +295,47 @@ function BusinessCard({
   };
 
   const handleShare = useCallback(async (e: React.MouseEvent) => {
-  e.stopPropagation();
-  const shareUrl = `${window.location.origin}/home-page?listingId=${listing.id}`;
+    e.stopPropagation();
 
-  if (navigator.share && /Mobi|Android/i.test(navigator.userAgent)) {
-    supabase.from('listing_interactions').insert({ listing_id: listing.id, type: 'share' });
-    try {
-      await navigator.share({ title: listing.name, text: listing.description, url: shareUrl });
-    } catch {
-      // User cancelled
-    }
-  } else {
-    if (navigator.clipboard && window.isSecureContext) {
-      navigator.clipboard.writeText(shareUrl).then(() => {
-        setCopyFeedback(true);
-        setTimeout(() => setCopyFeedback(false), 2000);
-      }).catch(() => {
-        window.prompt('Copy this link:', shareUrl);
-      });
-    } else {
-      const input = document.createElement('input');
-      input.value = shareUrl;
-      input.style.cssText = 'position:fixed;opacity:0;top:0;left:0';
-      document.body.appendChild(input);
-      input.focus();
-      input.select();
-      const didCopy = document.execCommand('copy');
-      document.body.removeChild(input);
-      if (didCopy) {
-        setCopyFeedback(true);
-        setTimeout(() => setCopyFeedback(false), 2000);
-      } else {
-        window.prompt('Copy this link:', shareUrl);
+    // Use clean slug URL if available, fall back to query param for listings without a slug
+    const shareUrl = listing.slug
+      ? `${window.location.origin}/listing/${listing.slug}`
+      : `${window.location.origin}/home-page?listingId=${listing.id}`;
+
+    if (navigator.share && /Mobi|Android/i.test(navigator.userAgent)) {
+      supabase.from('listing_interactions').insert({ listing_id: listing.id, type: 'share' });
+      try {
+        await navigator.share({ title: listing.name, text: listing.description, url: shareUrl });
+      } catch {
+        // User cancelled
       }
+    } else {
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(shareUrl).then(() => {
+          setCopyFeedback(true);
+          setTimeout(() => setCopyFeedback(false), 2000);
+        }).catch(() => {
+          window.prompt('Copy this link:', shareUrl);
+        });
+      } else {
+        const input = document.createElement('input');
+        input.value = shareUrl;
+        input.style.cssText = 'position:fixed;opacity:0;top:0;left:0';
+        document.body.appendChild(input);
+        input.focus();
+        input.select();
+        const didCopy = document.execCommand('copy');
+        document.body.removeChild(input);
+        if (didCopy) {
+          setCopyFeedback(true);
+          setTimeout(() => setCopyFeedback(false), 2000);
+        } else {
+          window.prompt('Copy this link:', shareUrl);
+        }
+      }
+      supabase.from('listing_interactions').insert({ listing_id: listing.id, type: 'share' });
     }
-    supabase.from('listing_interactions').insert({ listing_id: listing.id, type: 'share' });
-  }
-}, [listing.id, listing.name, listing.description]);
+  }, [listing.id, listing.name, listing.description, listing.slug]);
 
   return (
     <>

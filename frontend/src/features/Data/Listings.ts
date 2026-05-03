@@ -17,6 +17,7 @@ export interface Listing {
   description: string;
   images: string[];
   verified: boolean;
+  slug?: string;
   phone?: string;
   email?: string;
   facebook?: string;
@@ -44,6 +45,7 @@ function mapRow(row: any): Listing {
     description: row.description,
     images: row.images,
     verified: row.verified,
+    slug: row.slug ?? undefined,
     phone: row.phone ?? undefined,
     email: row.email ?? undefined,
     facebook: row.facebook ?? undefined,
@@ -78,6 +80,16 @@ export async function getListingById(id: number): Promise<Listing | null> {
     .from('listings')
     .select('*')
     .eq('id', id)
+    .single();
+  if (error) return null;
+  return mapRow(data);
+}
+
+export async function getListingBySlug(slug: string): Promise<Listing | null> {
+  const { data, error } = await supabase
+    .from('listings')
+    .select('*')
+    .eq('slug', slug)
     .single();
   if (error) return null;
   return mapRow(data);

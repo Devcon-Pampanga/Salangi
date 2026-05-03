@@ -85,9 +85,7 @@ function Homepage() {
       .finally(() => setIsLoading(false));
   }, []);
 
-  // ── Added: deep link handler — runs once listings are loaded ──
-  // When someone opens a shared link like /home-page?listingId=42,
-  // this finds that listing, selects it, and scrolls it into view.
+  // ── Deep link handler: ?listingId= query param (legacy shared URLs) ──
   useEffect(() => {
     const listingId = searchParams.get('listingId');
     if (!listingId || !listings.length) return;
@@ -95,10 +93,8 @@ function Homepage() {
     const match = listings.find((l) => String(l.id) === listingId);
     if (!match) return;
 
-    // Select the listing (same as clicking the card)
     setSelectedListing(match);
 
-    // Scroll the card into view after a short delay to let the DOM settle
     setTimeout(() => {
       document.getElementById(`listing-card-${match.id}`)?.scrollIntoView({
         behavior: 'smooth',
@@ -106,12 +102,32 @@ function Homepage() {
       });
     }, 400);
 
-    // Clean ?listingId from the URL so it doesn't persist on refresh
     setSearchParams((prev) => {
       prev.delete('listingId');
       return prev;
     }, { replace: true });
   }, [listings, searchParams, setSearchParams]);
+
+  // ── Deep link handler: /listing/:slug (clean URLs via ListingSlugRedirect) ──
+  useEffect(() => {
+    const autoSelectId = location.state?.autoSelectId;
+    if (!autoSelectId || !listings.length) return;
+
+    const match = listings.find((l) => l.id === autoSelectId);
+    if (!match) return;
+
+    setSelectedListing(match);
+
+    setTimeout(() => {
+      document.getElementById(`listing-card-${match.id}`)?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      });
+    }, 400);
+
+    // Clear the state so a refresh doesn't re-trigger the scroll
+    window.history.replaceState({}, '', window.location.pathname);
+  }, [listings, location.state]);
 
   // ── Load saved listings ──
   useEffect(() => {
