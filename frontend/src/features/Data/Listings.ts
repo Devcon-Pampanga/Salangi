@@ -17,6 +17,7 @@ export interface Listing {
   description: string;
   images: string[];
   verified: boolean;
+  is_claimed?: boolean;
   slug?: string;
   phone?: string;
   email?: string;
@@ -45,6 +46,7 @@ function mapRow(row: any): Listing {
     description: row.description,
     images: row.images,
     verified: row.verified,
+    is_claimed: row.is_claimed ?? false,
     slug: row.slug ?? undefined,
     phone: row.phone ?? undefined,
     email: row.email ?? undefined,

@@ -18,6 +18,7 @@ import commentIcon from '@assets/icons/review-btn-default.svg';
 
 import ReviewItem from './ReviewItem';
 import ReviewForm from './ReviewForm';
+import ClaimBusinessButton from '@/features/business-side/components/ClaimBusinessButton';
 
 interface Review {
   id: number;
@@ -46,6 +47,7 @@ interface DetailedBusinessCardProps {
   reviewsLoading?: boolean;
   isVerified?: boolean;
   initialSaved?: boolean;
+  isClaimed?: boolean;        // ← new
   lat?: number;
   lng?: number;
   onToggleSave?: (id: number) => void;
@@ -179,6 +181,7 @@ function DetailedBusinessCard({
   reviewsLoading = false,
   isVerified = false,
   initialSaved = false,
+  isClaimed = false,          // ← new
   lat,
   lng,
   onToggleSave,
@@ -296,7 +299,6 @@ function DetailedBusinessCard({
         document.body
       )}
 
-      {/* ✅ FIX 1: added max-w-120 and mx-auto to match deployed */}
       <div className="w-full max-w-120 bg-[#333333] rounded-xl overflow-hidden shrink-0 mb-10 shadow-2xl border border-zinc-800/50 mx-auto">
         <div className="relative flex flex-col">
 
@@ -310,7 +312,6 @@ function DetailedBusinessCard({
             </button>
           </div>
 
-          {/* ✅ FIX 2: changed h-80 to h-72 to match deployed */}
           <div className="relative w-full h-72 overflow-hidden bg-zinc-800 group">
             {hasImages ? (
               <>
@@ -502,6 +503,16 @@ function DetailedBusinessCard({
                 </div>
               )}
             </div>
+
+            {/* ── Claim this business ── */}
+            <div className="mt-4 pt-4 border-t border-zinc-600/50">
+              <ClaimBusinessButton
+                listingId={listingId}
+                listingName={title}
+                isClaimed={isClaimed}
+              />
+            </div>
+
           </div>
         </div>
       </div>
