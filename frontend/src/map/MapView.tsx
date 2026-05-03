@@ -17,9 +17,13 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerShadow,
 });
 
+// ─── ORS API Key ──────────────────────────────────────────────────────────────
+
+const ORS_API_KEY = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImRjNGVmODljMTk1NDQxYjA4YjRiZjJiOTg1OTEzOWYyIiwiaCI6Im11cm11cjY0In0=";
+const ORS_BASE_URL = "https://api.heigit.org/v2/directions/driving-car";
+
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
-// Custom blue dot to represent the user's live location
 const userLocationIcon = L.divIcon({
   className: "",
   html: `
@@ -57,7 +61,7 @@ const selectedMarkerIcon = L.divIcon({
   popupAnchor: [1, -34],
 });
 
-// ─── Helpers (Math, Formatting & Safety) ──────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const isValidCoord = (coord: any): coord is number =>
   typeof coord === "number" && !isNaN(coord) && isFinite(coord);
@@ -74,15 +78,11 @@ const isMapVisible = (map: L.Map | null) => {
   return !!(container.offsetWidth || container.offsetHeight || container.getClientRects().length);
 };
 
-/**
- * Haversine formula: calculates the straight-line distance (in meters) between
- * two coordinates on the Earth's surface.
- */
 function haversineDistance(
   a: { lat: number; lng: number },
   b: { lat: number; lng: number }
 ): number {
-  const R = 6371000; // Earth's radius in meters
+  const R = 6371000;
   const toRad = (deg: number) => (deg * Math.PI) / 180;
   const dLat = toRad(b.lat - a.lat);
   const dLng = toRad(b.lng - a.lng);
@@ -134,12 +134,46 @@ function formatETA(seconds: number): string {
   return mins > 0 ? `${hrs} hr ${mins} min${mins !== 1 ? "s" : ""}` : `${hrs} hr`;
 }
 
+// ─── ORS Route Fetcher ────────────────────────────────────────────────────────
+
+async function fetchORSRoute(
+  from: { lat: number; lng: number },
+  to: { lat: number; lng: number }
+): Promise<{ coords: L.LatLng[]; totalDistance: number; totalDuration: number } | null> {
+  try {
+    const url = `${ORS_BASE_URL}?api_key=${ORS_API_KEY}&start=${from.lng},${from.lat}&end=${to.lng},${to.lat}`;
+    const res = await fetch(url, {
+      headers: { Accept: "application/json, application/geo+json" },
+    });
+    if (!res.ok) {
+      console.warn("ORS routing failed:", res.status, await res.text());
+      return null;
+    }
+    const data = await res.json();
+    const feature = data.features?.[0];
+    if (!feature) return null;
+
+    const coords: L.LatLng[] = feature.geometry.coordinates.map(
+      ([lng, lat]: [number, number]) => L.latLng(lat, lng)
+    );
+    const summary = feature.properties.summary;
+    return {
+      coords,
+      totalDistance: summary.distance,
+      totalDuration: summary.duration,
+    };
+  } catch (err) {
+    console.warn("ORS fetch error:", err);
+    return null;
+  }
+}
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const DEVIATION_THRESHOLD = 25; // If user strays >25m off path, recalculate
-const POSITION_THROTTLE_MS = 1500; // Throttle GPS updates
+const DEVIATION_THRESHOLD = 25;
+const POSITION_THROTTLE_MS = 1500;
 
-// ─── Responsive HUD styles injected once ──────────────────────────────────────
+// ─── HUD Styles ───────────────────────────────────────────────────────────────
 
 const HUD_STYLES = `
   .mapview-hud {
@@ -240,7 +274,6 @@ const MapView = ({
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markersRef = useRef<Map<number, L.Marker>>(new Map());
   const userMarkerRef = useRef<L.Marker | null>(null);
-  const routingControlRef = useRef<any>(null);
 
   const remainingPolylineRef = useRef<L.Polyline | null>(null);
   const completedPolylineRef = useRef<L.Polyline | null>(null);
@@ -252,6 +285,7 @@ const MapView = ({
   const watchIdRef = useRef<number | null>(null);
   const lastUpdateRef = useRef<number>(0);
   const isNavigatingRef = useRef<boolean>(false);
+  const isBuildingRouteRef = useRef<boolean>(false);
 
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [navInfo, setNavInfo] = useState<NavInfo | null>(null);
@@ -259,7 +293,6 @@ const MapView = ({
   const routerLocation = useLocation();
   const selectedFromRoute: Listing | undefined = routerLocation.state?.listing;
 
-  // Bubble navInfo up to parent
   useEffect(() => {
     onNavInfo?.(navInfo);
   }, [navInfo, onNavInfo]);
@@ -273,47 +306,29 @@ const MapView = ({
       style.textContent = HUD_STYLES;
       document.head.appendChild(style);
     }
-    return () => {
-      document.getElementById(id)?.remove();
-    };
+    return () => { document.getElementById(id)?.remove(); };
   }, []);
 
-  // ── Initialization ──────────────────────────────────────────────────────────
+  // ── Map Init ───────────────────────────────────────────────────────────────
   useEffect(() => {
     if (mapRef.current && !mapInstanceRef.current) {
-      const map = L.map(mapRef.current, {
-        zoomControl: false,
-      }).setView([15.145, 120.589], 13);
+      const map = L.map(mapRef.current, { zoomControl: false }).setView([15.145, 120.589], 13);
       mapInstanceRef.current = map;
 
       L.control.zoom({ position: "bottomright" }).addTo(map);
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: '&copy; OpenStreetMap contributors',
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
         maxZoom: 19,
       }).addTo(map);
 
-      // Inject CSS to hide routing panel
-      const styling = document.createElement('style');
-      styling.id = 'lrm-hide-panel';
-      styling.textContent = `.leaflet-routing-container { display: none !important; }`;
-      document.head.appendChild(styling);
-
-      // Visibility guards
-      const resizeObserver = new ResizeObserver(() => {
-        map.invalidateSize();
-      });
-      resizeObserver.observe(mapRef.current);
+      const resizeObserver = new ResizeObserver(() => { map.invalidateSize(); });
+      resizeObserver.observe(mapRef.current!);
 
       return () => {
         resizeObserver.disconnect();
-        document.getElementById('lrm-hide-panel')?.remove();
         if (watchIdRef.current !== null) {
           navigator.geolocation.clearWatch(watchIdRef.current);
           watchIdRef.current = null;
-        }
-        if (routingControlRef.current && mapInstanceRef.current) {
-          mapInstanceRef.current.removeControl(routingControlRef.current);
-          routingControlRef.current = null;
         }
         remainingPolylineRef.current?.remove();
         completedPolylineRef.current?.remove();
@@ -323,6 +338,7 @@ const MapView = ({
     }
   }, []);
 
+  // ── Update Route Progress ──────────────────────────────────────────────────
   const updateRouteProgress = useCallback(
     (pos: { lat: number; lng: number }, currentSpeed: number | null) => {
       const map = mapInstanceRef.current;
@@ -331,7 +347,6 @@ const MapView = ({
 
       const closestIdx = findClosestPointIndex(pos, coords);
 
-      // Draw Completed Path (Gray)
       const completedCoords = coords.slice(0, closestIdx + 1);
       if (completedPolylineRef.current) {
         completedPolylineRef.current.setLatLngs(completedCoords);
@@ -341,7 +356,6 @@ const MapView = ({
         }).addTo(map);
       }
 
-      // Draw Remaining Path (Blue)
       const remainingCoords = coords.slice(closestIdx);
       if (remainingPolylineRef.current) {
         remainingPolylineRef.current.setLatLngs(remainingCoords);
@@ -369,65 +383,44 @@ const MapView = ({
     []
   );
 
+  // ── Build Route via ORS ────────────────────────────────────────────────────
   const buildRoute = useCallback(
-    (from: { lat: number; lng: number }, to: { lat: number; lng: number }) => {
+    async (from: { lat: number; lng: number }, to: { lat: number; lng: number }) => {
       const map = mapInstanceRef.current;
-      if (!map) return;
+      if (!map || isBuildingRouteRef.current) return;
 
-      if (routingControlRef.current) {
-        map.removeControl(routingControlRef.current);
-        routingControlRef.current = null;
-      }
+      isBuildingRouteRef.current = true;
+
       remainingPolylineRef.current?.remove();
       completedPolylineRef.current?.remove();
+      remainingPolylineRef.current = null;
+      completedPolylineRef.current = null;
       routeCoordsRef.current = [];
 
-      const routing = (L as any).Routing.control({
-        waypoints: [L.latLng(from.lat, from.lng), L.latLng(to.lat, to.lng)],
-        router: (L as any).Routing.osrmv1({
-          serviceUrl: "https://router.project-osrm.org/route/v1",
-          profile: "bike",
-        }),
-        routeWhileDragging: false,
-        lineOptions: {
-          styles: [{ color: "transparent", weight: 0 }],
-          extendToWaypoints: false,
-          missingRouteTolerance: 0,
-        },
-        addWaypoints: false,
-        draggableWaypoints: false,
-        fitSelectedRoutes: false,
-        show: false,
-        createMarker: () => null,
+      const result = await fetchORSRoute(from, to);
+      isBuildingRouteRef.current = false;
+
+      if (!result) return;
+
+      routeCoordsRef.current = result.coords;
+      totalRouteDurationRef.current = result.totalDuration;
+      totalRouteDistanceRef.current = result.totalDistance;
+
+      remainingPolylineRef.current = L.polyline(result.coords, {
+        color: "#3B82F6", weight: 5, opacity: 0.9,
       }).addTo(map);
 
-      routing.on("routesfound", (e: any) => {
-        const route = e.routes[0];
-        if (!route) return;
-
-        routeCoordsRef.current = route.coordinates as L.LatLng[];
-        totalRouteDurationRef.current = route.summary.totalTime;
-        totalRouteDistanceRef.current = route.summary.totalDistance;
-
-        remainingPolylineRef.current?.remove();
-        remainingPolylineRef.current = L.polyline(routeCoordsRef.current, {
-          color: "#3B82F6", weight: 5, opacity: 0.9,
-        }).addTo(map);
-
-        setNavInfo({
-          distanceRemaining: formatDistance(totalRouteDistanceRef.current),
-          eta: formatETA(totalRouteDurationRef.current),
-        });
-
-        isNavigatingRef.current = true;
+      setNavInfo({
+        distanceRemaining: formatDistance(result.totalDistance),
+        eta: formatETA(result.totalDuration),
       });
 
-      routingControlRef.current = routing;
+      isNavigatingRef.current = true;
     },
     []
   );
 
-  // ── GPS Tracking ────────────────────────────────────────────────────────────
+  // ── GPS Tracking ───────────────────────────────────────────────────────────
   useEffect(() => {
     if (!navigator.geolocation) return;
 
@@ -441,11 +434,7 @@ const MapView = ({
         if (now - lastUpdateRef.current < POSITION_THROTTLE_MS) return;
         lastUpdateRef.current = now;
 
-        const rawLat = position.coords.latitude;
-        const rawLng = position.coords.longitude;
-        const liveSpeed = position.coords.speed;
-
-        const coords = validateLatLng(rawLat, rawLng);
+        const coords = validateLatLng(position.coords.latitude, position.coords.longitude);
         if (!coords) return;
 
         const currentPos = { lat: coords[0], lng: coords[1] };
@@ -467,7 +456,7 @@ const MapView = ({
         const activeTarget = selectedListing || selectedFromRoute;
 
         if (isNavigatingRef.current && routeCoordsRef.current.length > 0) {
-          updateRouteProgress(currentPos, liveSpeed);
+          updateRouteProgress(currentPos, position.coords.speed);
 
           const closestIdx = findClosestPointIndex(currentPos, routeCoordsRef.current);
           const distToRoute = haversineDistance(currentPos, {
@@ -480,7 +469,10 @@ const MapView = ({
           }
         }
       },
-      (error) => console.warn("Location watch error:", error),
+      (error) => {
+        if (error.code === error.PERMISSION_DENIED) return;
+        console.warn("Location watch error:", error.message);
+      },
       { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 }
     );
 
@@ -491,7 +483,7 @@ const MapView = ({
     };
   }, [selectedListing, selectedFromRoute, buildRoute, updateRouteProgress]);
 
-  // ── Initial Pan ─────────────────────────────────────────────────────────────
+  // ── Initial Pan ────────────────────────────────────────────────────────────
   useEffect(() => {
     try {
       const map = mapInstanceRef.current;
@@ -502,7 +494,7 @@ const MapView = ({
     } catch (e) { console.error(e); }
   }, [userLocation, selectedListing, selectedFromRoute]);
 
-  // ── Markers Loop ────────────────────────────────────────────────────────────
+  // ── Markers ────────────────────────────────────────────────────────────────
   useEffect(() => {
     try {
       const map = mapInstanceRef.current;
@@ -516,23 +508,23 @@ const MapView = ({
         if (!coords) return;
 
         const isSelected = selectedListing?.id === listing.id;
-        const icon = isSelected ? selectedMarkerIcon : defaultMarkerIcon;
-
-        const marker = L.marker(coords, { icon }).addTo(map);
+        const marker = L.marker(coords, {
+          icon: isSelected ? selectedMarkerIcon : defaultMarkerIcon,
+        }).addTo(map);
         marker.on("click", () => onSelect(listing));
         markersRef.current.set(listing.id, marker);
       });
     } catch (e) { console.error(e); }
   }, [listings]);
 
-  // ── Marker Icon Swap ────────────────────────────────────────────────────────
+  // ── Marker Icon Swap ───────────────────────────────────────────────────────
   useEffect(() => {
     markersRef.current.forEach((marker, id) => {
       marker.setIcon(selectedListing?.id === id ? selectedMarkerIcon : defaultMarkerIcon);
     });
   }, [selectedListing]);
 
-  // ── Fly To Selection ────────────────────────────────────────────────────────
+  // ── Fly To Selected ────────────────────────────────────────────────────────
   useEffect(() => {
     try {
       const map = mapInstanceRef.current;
@@ -542,7 +534,7 @@ const MapView = ({
     } catch (e) { console.error(e); }
   }, [selectedListing]);
 
-  // ── Routing Trigger ─────────────────────────────────────────────────────────
+  // ── Routing Trigger ────────────────────────────────────────────────────────
   useEffect(() => {
     const map = mapInstanceRef.current;
     const target = selectedListing || selectedFromRoute;
@@ -560,11 +552,10 @@ const MapView = ({
     buildRoute(userLocation, { lat: destCoords[0], lng: destCoords[1] });
 
     return () => {
-      if (routingControlRef.current && mapInstanceRef.current) {
-        mapInstanceRef.current.removeControl(routingControlRef.current);
-      }
       remainingPolylineRef.current?.remove();
       completedPolylineRef.current?.remove();
+      remainingPolylineRef.current = null;
+      completedPolylineRef.current = null;
       isNavigatingRef.current = false;
       setNavInfo(null);
     };

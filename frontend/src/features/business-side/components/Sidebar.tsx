@@ -5,6 +5,7 @@ import { ROUTES } from '../../../routes/paths';
 import { X, LogOut } from 'lucide-react';
 import { IoCalendarOutline } from "react-icons/io5";
 import { supabase } from '../../../lib/supabase';
+import NotificationBell from './NotificationBell';   // ← new
 
 interface SidebarProps {
   onClose?: () => void;
@@ -66,6 +67,8 @@ function Sidebar({ onClose }: SidebarProps) {
             )}
 
             <div className="px-4 py-6 flex flex-col flex-1">
+
+                {/* ── Top row: back button + bell + close ── */}
                 <div className="flex items-center justify-between mb-4 lg:mb-6">
                     <button
                         onClick={handleBackToHomepage}
@@ -73,15 +76,19 @@ function Sidebar({ onClose }: SidebarProps) {
                     >
                         ← Back to Homepage
                     </button>
-                    {onClose && (
-                        <button 
-                            onClick={onClose}
-                            className="lg:hidden p-2 text-white hover:text-[#FFE2A0] transition-colors"
-                        >
-                            <X size={24} />
-                        </button>
-                    )}
+                    <div className="flex items-center gap-2">
+                        <NotificationBell />
+                        {onClose && (
+                            <button
+                                onClick={onClose}
+                                className="lg:hidden p-2 text-white hover:text-[#FFE2A0] transition-colors"
+                            >
+                                <X size={24} />
+                            </button>
+                        )}
+                    </div>
                 </div>
+
                 <div className="mb-8">
                     <p className="font-['Playfair_Display'] text-[#FFE2A0] text-2xl font-semibold tracking-wide">Dashboard</p>
                 </div>
