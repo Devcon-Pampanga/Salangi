@@ -42,7 +42,6 @@ function Homepage() {
     navigate(ROUTES.SIGN_IN);
   };
 
-  // ── Smart redirect: go to dashboard if user already has a listing ──
   const handleListBusinessClick = async () => {
     setIsRedirecting(true);
     try {
@@ -51,13 +50,11 @@ function Homepage() {
         navigate(ROUTES.LIST_YOUR_BUSINESS);
         return;
       }
-
       const { data: userListings } = await supabase
         .from('listings')
         .select('id')
         .eq('user_id', user.id)
         .limit(1);
-
       if (userListings && userListings.length > 0) {
         navigate(ROUTES.DASHBOARD_OVERVIEW);
       } else {
@@ -175,13 +172,11 @@ function Homepage() {
         (rating >= filters.ratingRange.min && rating <= filters.ratingRange.max);
       return matchesCategory && matchesSearch && matchesRating;
     });
-
     if (filters.sortBy === 'az') {
       result = [...result].sort((a, b) => a.name.localeCompare(b.name));
     } else if (filters.sortBy === 'za') {
       result = [...result].sort((a, b) => b.name.localeCompare(a.name));
     }
-
     return result;
   }, [listings, activeCategory, searchQuery, filters, averageRatings]);
 
@@ -247,7 +242,7 @@ function Homepage() {
 
       <div className="relative z-10 h-full flex flex-col md:flex-row px-4 py-4 md:px-6 md:py-6 gap-4 md:gap-6 overflow-y-auto md:overflow-hidden">
 
-        {/* ── MOBILE TOP BAR & MENU ── */}
+        {/* ── MOBILE TOP BAR ── */}
         <div className="md:hidden flex items-center justify-between w-full shrink-0 relative z-50 order-first">
           <button
             onClick={() => setIsMobileMenuOpen(true)}
@@ -257,7 +252,7 @@ function Homepage() {
           </button>
         </div>
 
-        {/* Mobile Slide-Out Menu */}
+        {/* ── MOBILE SLIDE-OUT MENU ── */}
         {isMobileMenuOpen && createPortal(
           <div className="fixed inset-0 z-9999 bg-[#1A1A1A] p-6 flex flex-col gap-8 md:hidden">
             <div className="flex justify-between items-center shrink-0">
@@ -269,7 +264,6 @@ function Homepage() {
                 <X size={28} />
               </button>
             </div>
-
             <div className="flex flex-col gap-6 flex-1">
               <div className="flex flex-col gap-2">
                 <p className="text-[#FBFAF8]/50 text-xs font-semibold uppercase tracking-wider">Search Spots</p>
@@ -283,35 +277,33 @@ function Homepage() {
                   filters={filters}
                 />
               </div>
-
               <div className="h-px w-full bg-[#373737]/50" />
-
               <button
-                onClick={() => {
-                  setIsMobileMenuOpen(false);
-                  handleListBusinessClick();
-                }}
+                onClick={() => { setIsMobileMenuOpen(false); handleListBusinessClick(); }}
                 className="flex items-center justify-center gap-2 px-4 py-3.5 bg-[#FFE2A0] text-[#1A1A1A] rounded-xl font-bold text-md w-full shadow-lg active:scale-95 transition-all cursor-pointer"
               >
                 List Your Business
               </button>
-
+              <a href="https://forms.gle/h396M5kqkVXtQYhr5"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="flex items-center justify-center gap-3 px-4 py-3.5 bg-[#2D2D2D] text-[#FBFAF8]/60 hover:text-[#FFE2A0] border border-[#373737] rounded-xl font-semibold text-md w-full shadow-lg active:scale-95 transition-all"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-5 text-[#FFE2A0]">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
+                </svg>
+                Feedback
+              </a>
               <button
-                onClick={() => {
-                  setIsMobileMenuOpen(false);
-                  setIsSettingsOpen(true);
-                }}
+                onClick={() => { setIsMobileMenuOpen(false); setIsSettingsOpen(true); }}
                 className="flex items-center justify-center gap-3 px-4 py-3.5 bg-[#373737] text-[#FBFAF8] rounded-xl font-semibold text-md w-full shadow-lg active:scale-95 transition-all cursor-pointer"
               >
                 <Settings size={20} className="text-[#FFE2A0]" />
                 Settings
               </button>
-
               <button
-                onClick={() => {
-                  setIsMobileMenuOpen(false);
-                  handleLogout();
-                }}
+                onClick={() => { setIsMobileMenuOpen(false); handleLogout(); }}
                 className="flex items-center justify-center gap-3 px-4 py-3.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl font-semibold text-md w-full shadow-lg active:scale-95 transition-all cursor-pointer mt-auto"
               >
                 <LogOut size={20} className="opacity-90" />
@@ -378,6 +370,19 @@ function Homepage() {
               onFilterChange={setFilters}
               filters={filters}
             />
+
+            
+            <a  href="https://forms.gle/h396M5kqkVXtQYhr5"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 px-4 py-3 bg-[#2D2D2D] text-[#FBFAF8]/60 hover:text-[#FFE2A0] hover:bg-[#FFE2A0]/5 border border-[#373737] hover:border-[#FFE2A0]/20 rounded-lg text-xs font-semibold whitespace-nowrap transition-all"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-4">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
+              </svg>
+              Feedback
+            </a>
+
             <button
               onClick={handleListBusinessClick}
               className="flex items-center justify-center gap-2 px-4 py-3 bg-[#FFE2A0] text-[#1A1A1A] rounded-lg font-semibold text-sm whitespace-nowrap cursor-pointer hover:bg-[#f5d880] transition-colors w-full md:w-auto"
@@ -403,6 +408,7 @@ function Homepage() {
         <SettingsPage onClose={() => setIsSettingsOpen(false)} />,
         document.body
       )}
+
     </div>
   );
 }
