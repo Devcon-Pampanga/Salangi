@@ -15,45 +15,59 @@ function ResetPassword() {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    supabase.auth.onAuthStateChange((event) => {
+    // If there's no access_token in the URL hash, this isn't a valid recovery session
+    // Sign out to prevent auto-login bypass
+    const hash = window.location.hash;
+    if (!hash.includes('access_token')) {
+      supabase.auth.signOut();
+    }
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') {
-        // Recovery mode active
+        // Valid recovery session — stay on page
+      } else if (event === 'SIGNED_IN' && !window.location.hash.includes('access_token')) {
+        // Not a recovery flow, sign out to prevent bypassing
+        supabase.auth.signOut();
       }
     });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const validatePassword = (pw: string): string => {
-  if (pw.length < 8) return 'Password must be at least 8 characters.';
-  if (!/[a-z]/.test(pw)) return 'Password must include at least one lowercase letter.';
-  if (!/[A-Z]/.test(pw)) return 'Password must include at least one uppercase letter.';
-  if (!/[0-9]/.test(pw)) return 'Password must include at least one number.';
-  if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(pw)) return 'Password must include at least one special character.';
-  return '';
-};
+    if (pw.length < 8) return 'Password must be at least 8 characters.';
+    if (!/[a-z]/.test(pw)) return 'Password must include at least one lowercase letter.';
+    if (!/[A-Z]/.test(pw)) return 'Password must include at least one uppercase letter.';
+    if (!/[0-9]/.test(pw)) return 'Password must include at least one number.';
+    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(pw)) return 'Password must include at least one special character.';
+    return '';
+  };
 
-const handleResetPassword = async () => {
-  setError('');
-  const validationError = validatePassword(password);
-  if (validationError) {
-    setError(validationError);
-    return;
-  }
-  if (password !== confirmPassword) {
-    setError('Passwords do not match. Please try again.');
-    return;
-  }
-  setLoading(true);
-  try {
-    const { error: supabaseError } = await supabase.auth.updateUser({ password });
-    if (supabaseError) throw supabaseError;
-    setSuccess(true);
-    setTimeout(() => navigate('/sign-in'), 3000);
-  } catch (err: any) {
-    setError(err.message?.charAt(0).toUpperCase() + err.message?.slice(1) || 'Something went wrong. Please try again.');
-  } finally {
-    setLoading(false);
-  }
-};
+  const handleResetPassword = async () => {
+    setError('');
+    const validationError = validatePassword(password);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError('Passwords do not match. Please try again.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const { error: supabaseError } = await supabase.auth.updateUser({ password });
+      if (supabaseError) throw supabaseError;
+      // Sign out after successful password reset so user must log in fresh
+      await supabase.auth.signOut();
+      setSuccess(true);
+      setTimeout(() => navigate('/sign-in'), 3000);
+    } catch (err: any) {
+      setError(err.message?.charAt(0).toUpperCase() + err.message?.slice(1) || 'Something went wrong. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div
