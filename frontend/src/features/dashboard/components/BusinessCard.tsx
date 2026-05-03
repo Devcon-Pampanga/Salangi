@@ -26,8 +26,6 @@ interface BusinessCardProps {
   rating?: number;
 }
 
-// ── Hours formatter ───────────────────────────────────────────────────────────
-
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 function formatHours(hours: string): string {
@@ -56,13 +54,9 @@ function formatHours(hours: string): string {
   return timePart ? `${dayString}, ${timePart}` : dayString;
 }
 
-// ── Dedup helper ──────────────────────────────────────────────────────────────
-
 function dedupeImages(images: string[]): string[] {
   return [...new Set((images ?? []).filter(Boolean))];
 }
-
-// ── Swipe hook ────────────────────────────────────────────────────────────────
 
 function useSwipe(
   onSwipeLeft: () => void,
@@ -120,8 +114,6 @@ function useSwipe(
 
   return { ref, dragOffset };
 }
-
-// ── Lightbox ──────────────────────────────────────────────────────────────────
 
 interface LightboxProps {
   images: string[];
@@ -213,8 +205,6 @@ function Lightbox({ images, activeIndex, onClose, onPrev, onNext }: LightboxProp
   );
 }
 
-// ── No Image Placeholder ──────────────────────────────────────────────────────
-
 function NoImagePlaceholder({ name }: { name: string }) {
   return (
     <div className="w-full h-full flex flex-col items-center justify-center bg-[#2a2a2a] gap-3 text-[#FBFAF8]/20 group-hover:bg-[#2d2d2d] transition-colors">
@@ -226,8 +216,6 @@ function NoImagePlaceholder({ name }: { name: string }) {
     </div>
   );
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
 
 function BusinessCard({ 
   listing, 
@@ -244,7 +232,6 @@ function BusinessCard({
   const [imgError, setImgError] = useState(false);
   const [galleryImages, setGalleryImages] = useState<string[]>([]);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
-  // ── Added state: copy feedback tooltip ──
   const [copyFeedback, setCopyFeedback] = useState(false);
   const navigate = useNavigate();
 
@@ -300,48 +287,51 @@ function BusinessCard({
 
   const handleShowInMaps = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    await supabase.from('listing_interactions').insert({
+    supabase.from('listing_interactions').insert({
       listing_id: listing.id,
       type: 'directions',
     });
     navigate(ROUTES.LOCATION, { state: { listing } });
   };
 
-  // ── Added handler: share listing ──────────────────────────────────────────
   const handleShare = useCallback(async (e: React.MouseEvent) => {
-    e.stopPropagation();
+  e.stopPropagation();
+  const shareUrl = `${window.location.origin}/home-page?listingId=${listing.id}`;
 
-    const shareUrl = `${window.location.origin}/home-page?listingId=${listing.id}`;
-    const shareData = {
-      title: listing.name,
-      text: listing.description,
-      url: shareUrl,
-    };
-
-    // Track the interaction regardless of share method
-    await supabase.from('listing_interactions').insert({
-      listing_id: listing.id,
-      type: 'share',
-    });
-
-    if (navigator.share && navigator.canShare?.(shareData)) {
-      // Mobile: use native Web Share API
-      try {
-        await navigator.share(shareData);
-      } catch {
-        // User cancelled the share sheet — not an error worth surfacing
-      }
-    } else {
-      // Desktop: copy to clipboard + show tooltip feedback
-      try {
-        await navigator.clipboard.writeText(shareUrl);
+  if (navigator.share && /Mobi|Android/i.test(navigator.userAgent)) {
+    supabase.from('listing_interactions').insert({ listing_id: listing.id, type: 'share' });
+    try {
+      await navigator.share({ title: listing.name, text: listing.description, url: shareUrl });
+    } catch {
+      // User cancelled
+    }
+  } else {
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(shareUrl).then(() => {
         setCopyFeedback(true);
         setTimeout(() => setCopyFeedback(false), 2000);
-      } catch {
-        console.warn('Clipboard write failed:', shareUrl);
+      }).catch(() => {
+        window.prompt('Copy this link:', shareUrl);
+      });
+    } else {
+      const input = document.createElement('input');
+      input.value = shareUrl;
+      input.style.cssText = 'position:fixed;opacity:0;top:0;left:0';
+      document.body.appendChild(input);
+      input.focus();
+      input.select();
+      const didCopy = document.execCommand('copy');
+      document.body.removeChild(input);
+      if (didCopy) {
+        setCopyFeedback(true);
+        setTimeout(() => setCopyFeedback(false), 2000);
+      } else {
+        window.prompt('Copy this link:', shareUrl);
       }
     }
-  }, [listing.id, listing.name, listing.description]);
+    supabase.from('listing_interactions').insert({ listing_id: listing.id, type: 'share' });
+  }
+}, [listing.id, listing.name, listing.description]);
 
   return (
     <>
@@ -500,7 +490,6 @@ function BusinessCard({
             </div>
           </div>
 
-          {/* ── Updated JSX: action buttons ── */}
           <div className="flex gap-3 mt-auto">
             {isBusinessSide ? (
               <div className="flex gap-3 w-full">
@@ -525,7 +514,6 @@ function BusinessCard({
               </div>
             ) : (
               <div className="w-full flex gap-3">
-                {/* Show in maps button */}
                 <button
                   onClick={handleShowInMaps}
                   className="flex-1 flex items-center justify-center gap-2 px-4 py-3.5 bg-[#FFE2A0] text-[#222222] text-xs font-bold rounded-xl hover:bg-[#ffe8b5] transition-all active:scale-95 cursor-pointer shadow-lg"
@@ -534,7 +522,6 @@ function BusinessCard({
                   <span>Show in maps</span>
                 </button>
 
-                {/* Share button with copy feedback tooltip */}
                 <div className="relative">
                   <button
                     onClick={handleShare}
@@ -544,10 +531,20 @@ function BusinessCard({
                     <span>Share</span>
                   </button>
 
-                  {copyFeedback && (
-                    <div className="absolute -top-9 left-1/2 -translate-x-1/2 bg-[#222222] text-[#FFE2A0] text-[10px] font-bold px-3 py-1.5 rounded-lg border border-[#FFE2A0]/20 whitespace-nowrap shadow-xl pointer-events-none">
+                  {copyFeedback && createPortal(
+                    <div
+                      style={{
+                        position: 'fixed',
+                        bottom: '80px',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        zIndex: 99999,
+                      }}
+                      className="bg-[#222222] text-[#FFE2A0] text-[10px] font-bold px-3 py-1.5 rounded-lg border border-[#FFE2A0]/20 whitespace-nowrap shadow-xl pointer-events-none"
+                    >
                       Link copied!
-                    </div>
+                    </div>,
+                    document.body
                   )}
                 </div>
               </div>
