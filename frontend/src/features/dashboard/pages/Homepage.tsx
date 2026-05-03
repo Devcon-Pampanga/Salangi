@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { ROUTES } from '../../../routes/paths';
 import { useAuth } from '@/context/authContext';
@@ -19,6 +19,9 @@ function Homepage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { role, session } = useAuth();
+
+  // ── Added: read ?listingId= from the shared URL ──
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [listings, setListings]               = useState<Listing[]>([]);
   const [isLoading, setIsLoading]             = useState(true);
@@ -71,6 +74,7 @@ function Homepage() {
     }
   };
 
+  // ── Load listings + ratings ──
   useEffect(() => {
     Promise.all([getListings(), getAverageRatings()])
       .then(([listingsData, ratingsData]) => {
@@ -81,6 +85,35 @@ function Homepage() {
       .finally(() => setIsLoading(false));
   }, []);
 
+  // ── Added: deep link handler — runs once listings are loaded ──
+  // When someone opens a shared link like /home-page?listingId=42,
+  // this finds that listing, selects it, and scrolls it into view.
+  useEffect(() => {
+    const listingId = searchParams.get('listingId');
+    if (!listingId || !listings.length) return;
+
+    const match = listings.find((l) => String(l.id) === listingId);
+    if (!match) return;
+
+    // Select the listing (same as clicking the card)
+    setSelectedListing(match);
+
+    // Scroll the card into view after a short delay to let the DOM settle
+    setTimeout(() => {
+      document.getElementById(`listing-card-${match.id}`)?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      });
+    }, 400);
+
+    // Clean ?listingId from the URL so it doesn't persist on refresh
+    setSearchParams((prev) => {
+      prev.delete('listingId');
+      return prev;
+    }, { replace: true });
+  }, [listings, searchParams, setSearchParams]);
+
+  // ── Load saved listings ──
   useEffect(() => {
     const fetchSaves = async () => {
       try {
@@ -163,7 +196,7 @@ function Homepage() {
       {/* ── Redirect loading overlay ── */}
       {isRedirecting && createPortal(
         <div
-          className="fixed inset-0 z-[9999] flex flex-col items-center justify-center gap-6"
+          className="fixed inset-0 z-9999 flex flex-col items-center justify-center gap-6"
           style={{ backgroundColor: '#1A1A1A' }}
         >
           <div
@@ -279,8 +312,8 @@ function Homepage() {
             <h1 className="font-['Playfair_Display'] text-6xl md:text-3xl leading-tight mt-4 md:mt-0 text-[#FFE2A0]">
               Salangi
             </h1>
-            <p className  = "mb-5 text-lg font-['Playfair_Display'] tracking-wide">
-              Bring <span className = "text-[#FFE2A0]">light</span> to my <span className = "text-[#FFE2A0]"> home! </span>
+            <p className="mb-5 text-lg font-['Playfair_Display'] tracking-wide">
+              Bring <span className="text-[#FFE2A0]">light</span> to my <span className="text-[#FFE2A0]"> home! </span>
             </p>
             <CategoryFilters
               activeCategory={activeCategory}
@@ -318,7 +351,7 @@ function Homepage() {
         </div>
 
         {/* ── RIGHT COLUMN ── */}
-       <div className="hidden md:flex flex-col flex-none md:flex-1 w-full overflow-visible min-w-0 min-h-0 relative z-50 order-1 md:order-2 space-y-4 md:space-y-0">
+        <div className="hidden md:flex flex-col flex-none md:flex-1 w-full overflow-visible min-w-0 min-h-0 relative z-50 order-1 md:order-2 space-y-4 md:space-y-0">
           <div className="flex flex-col md:flex-row items-stretch md:items-center justify-end gap-3 shrink-0">
             <SearchBar
               placeholder="Explore local spots"
