@@ -471,6 +471,7 @@ function Locationpage() {
               reviews={reviews}
               reviewsLoading={reviewsLoading}
               initialSaved={savedIds.includes(selectedListing.id)}
+              isClaimed={selectedListing.is_claimed ?? false}
               onToggleSave={toggleSave}
               onReviewAdded={() => fetchReviews(selectedListing.id)}
             />

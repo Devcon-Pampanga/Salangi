@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/authContext";
 import { useNavigate } from "react-router-dom";
@@ -19,13 +19,37 @@ export default function ClaimBusinessButton({
   const navigate = useNavigate();
   const user = session?.user;
 
-  const [open, setOpen] = useState(false);
+   const [open, setOpen] = useState(false);
   const [note, setNote] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
+  const [isPending, setIsPending] = useState(false);
+
+  useEffect(() => {
+    if (!user || isClaimed) return;
+    supabase
+      .from("listing_claims")
+      .select("id")
+      .eq("listing_id", listingId)
+      .eq("user_id", user.id)
+      .eq("status", "pending")
+      .maybeSingle()
+      .then(({ data }) => setIsPending(!!data));
+  }, [listingId, user?.id, isClaimed]);
 
   // Don't render if already claimed
   if (isClaimed) return null;
+
+    if (isPending) {
+    return (
+      <div className="flex items-center gap-2 text-xs text-amber-400/80">
+        <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        Claim pending approval
+      </div>
+    );
+  }
 
   const handleSubmit = async () => {
     if (!user) return;

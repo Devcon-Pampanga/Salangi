@@ -1068,11 +1068,18 @@ function AdminDashboard() {
     if (!listingsRes.error && listingsRes.data) setListings(listingsRes.data);
     if (!eventsRes.error && eventsRes.data) setEvents(eventsRes.data);
     if (!claimsRes.error && claimsRes.data) {
-      setClaims(claimsRes.data.map((c: any) => ({
-        ...c,
-        listing_name: c.listings?.name ?? 'Unknown',
-        user_email: c.profiles?.email ?? c.user_id,
-      })));
+      const claimsWithEmail = await Promise.all(
+        claimsRes.data.map(async (c: any) => {
+          const { data: emailData } = await supabase
+            .rpc('get_user_email', { user_id: c.user_id });
+          return {
+            ...c,
+            listing_name: c.listings?.name ?? 'Unknown',
+            user_email: emailData ?? c.user_id,
+          };
+        })
+      );
+      setClaims(claimsWithEmail);
     }
     setLoading(false);
   };
@@ -1124,8 +1131,13 @@ function AdminDashboard() {
     if (error) { showToast('Failed to approve claim.', 'error'); }
     else {
       await supabase.from('listing_claims').update({ status: 'approved' }).eq('id', claim.id);
-      // Upgrade user role to business
       await supabase.from('profiles').update({ role: 'business' }).eq('id', claim.user_id);
+      await supabase.from('notifications').insert({
+        owner_id: claim.user_id,
+        type: 'claim_approved',
+        message: `Your claim for "${claim.listing_name}" has been approved. You're now the owner!`,
+        is_read: false,
+      });
       showToast('Claim approved! User upgraded to business.', 'success');
       setClaims(prev => prev.filter(c => c.id !== claim.id));
     }
@@ -1134,9 +1146,21 @@ function AdminDashboard() {
 
   const handleRejectClaim = async (id: string) => {
     setClaimLoading(id);
+    const claim = claims.find(c => c.id === id);
     const { error } = await supabase.from('listing_claims').update({ status: 'rejected' }).eq('id', id);
     if (error) showToast('Failed to reject claim.', 'error');
-    else { showToast('Claim rejected.', 'success'); setClaims(prev => prev.filter(c => c.id !== id)); }
+    else {
+      if (claim) {
+        await supabase.from('notifications').insert({
+          owner_id: claim.user_id,
+          type: 'claim_rejected',
+          message: `Your claim for "${claim.listing_name}" was not approved. Contact us if you have questions.`,
+          is_read: false,
+        });
+      }
+      showToast('Claim rejected.', 'success');
+      setClaims(prev => prev.filter(c => c.id !== id));
+    }
     setClaimLoading(null);
   };
 
