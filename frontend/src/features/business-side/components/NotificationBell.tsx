@@ -110,7 +110,7 @@ const NotificationBell = () => {
 
       {/* Dropdown panel */}
       {isOpen && (
-        <div className="absolute left-full top-0 ml-2 w-72 bg-[#2D2D2D] border border-[#444444] rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-left-2 duration-200">
+        <div className="fixed lg:absolute top-12 left-4 lg:left-full lg:top-0 lg:ml-2 w-[calc(100vw-2rem)] lg:w-72 max-h-[70vh] flex flex-col bg-[#2D2D2D] border border-[#444444] rounded-2xl shadow-2xl z-[9999] overflow-hidden animate-in fade-in duration-200">
           <div className="px-4 py-3 border-b border-[#444444] flex items-center justify-between">
             <span className="text-white text-sm font-semibold">Notifications</span>
             {notifications.length > 0 && (
