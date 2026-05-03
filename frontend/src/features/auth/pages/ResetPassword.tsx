@@ -22,28 +22,38 @@ function ResetPassword() {
     });
   }, []);
 
-  const handleResetPassword = async () => {
-    setError('');
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters.');
-      return;
-    }
-    if (password !== confirmPassword) {
-      setError('Passwords do not match. Please try again.');
-      return;
-    }
-    setLoading(true);
-    try {
-      const { error: supabaseError } = await supabase.auth.updateUser({ password });
-      if (supabaseError) throw supabaseError;
-      setSuccess(true);
-      setTimeout(() => navigate('/sign-in'), 3000);
-    } catch (err: any) {
-      setError(err.message?.charAt(0).toUpperCase() + err.message?.slice(1) || 'Something went wrong. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const validatePassword = (pw: string): string => {
+  if (pw.length < 8) return 'Password must be at least 8 characters.';
+  if (!/[a-z]/.test(pw)) return 'Password must include at least one lowercase letter.';
+  if (!/[A-Z]/.test(pw)) return 'Password must include at least one uppercase letter.';
+  if (!/[0-9]/.test(pw)) return 'Password must include at least one number.';
+  if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(pw)) return 'Password must include at least one special character.';
+  return '';
+};
+
+const handleResetPassword = async () => {
+  setError('');
+  const validationError = validatePassword(password);
+  if (validationError) {
+    setError(validationError);
+    return;
+  }
+  if (password !== confirmPassword) {
+    setError('Passwords do not match. Please try again.');
+    return;
+  }
+  setLoading(true);
+  try {
+    const { error: supabaseError } = await supabase.auth.updateUser({ password });
+    if (supabaseError) throw supabaseError;
+    setSuccess(true);
+    setTimeout(() => navigate('/sign-in'), 3000);
+  } catch (err: any) {
+    setError(err.message?.charAt(0).toUpperCase() + err.message?.slice(1) || 'Something went wrong. Please try again.');
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div
@@ -107,7 +117,7 @@ function ResetPassword() {
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={e => setPassword(e.target.value)}
-                    placeholder="Min. 6 characters"
+                    placeholder="Min. 8 characters"
                     className="w-full bg-[#2E2E2E] text-white placeholder-gray-500 px-4 py-3 rounded-lg outline-none focus:ring-1 focus:ring-[#FFE2A0] border-none"
                   />
                   <button
