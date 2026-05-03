@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 import {
   CheckCircle, XCircle, LogOut, MapPin, Clock,
   ChevronLeft, ChevronRight, X, ZoomIn, CalendarDays,
-  Phone, Globe, Facebook, Mail, FileText, Eye, Lock, User,
+  Phone, Globe, Facebook, Mail, FileText, Eye, Lock, User, Plus, Loader2,
 } from 'lucide-react';
 import { ROUTES } from '../../../routes/paths';
 import { useAdminGuard } from '../../../hooks/useAdminGuard';
@@ -55,6 +55,126 @@ interface PendingEvent {
   created_at: string;
   lat?: number | null;
   lng?: number | null;
+}
+
+interface ListingClaim {
+  id: string;
+  listing_id: number;
+  user_id: string;
+  status: 'pending' | 'approved' | 'rejected';
+  note: string | null;
+  created_at: string;
+  listing_name?: string;
+  user_email?: string;
+}
+
+// ── Create Listing Modal ──────────────────────────────────────────────────────
+
+const CATEGORIES = ['Food & Drinks', 'Shops', 'Services', 'Activities', 'Stay', 'Community'];
+
+function CreateListingModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+  const [form, setForm] = useState({
+    name: '', category: CATEGORIES[0], location: '', description: '',
+    hours: '', phone: '', email: '', facebook: '', website: '',
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const set = (key: string, value: string) => setForm(prev => ({ ...prev, [key]: value }));
+
+  const handleSubmit = async () => {
+    if (!form.name.trim() || !form.location.trim()) {
+      setError('Name and location are required.'); return;
+    }
+    setSaving(true);
+    const { error: dbError } = await supabase.from('listings').insert({
+      name: form.name.trim(),
+      category: form.category,
+      location: form.location.trim(),
+      description: form.description.trim(),
+      hours: form.hours.trim(),
+      phone: form.phone.trim() || null,
+      email: form.email.trim() || null,
+      facebook: form.facebook.trim() || null,
+      website: form.website.trim() || null,
+      verified: true,
+      is_claimed: false,
+      claim_status: 'unclaimed',
+    });
+    setSaving(false);
+    if (dbError) { setError(dbError.message); return; }
+    onCreated();
+    onClose();
+  };
+
+  const Field = ({ label, k, type = 'text', placeholder = '' }: { label: string; k: string; type?: string; placeholder?: string }) => (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-xs font-medium text-zinc-400">{label}</label>
+      <input
+        type={type}
+        value={(form as any)[k]}
+        onChange={e => set(k, e.target.value)}
+        placeholder={placeholder}
+        className="bg-[#2a2a2a] border border-zinc-700 rounded-xl px-3 py-2 text-sm text-white placeholder-zinc-600 outline-none focus:border-[#FFE2A0]/60 transition-all"
+      />
+    </div>
+  );
+
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-[#2D2D2D] border border-zinc-700 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-700">
+          <h2 className="font-[Playfair_Display] text-[#FFE2A0] text-xl">Create Listing</h2>
+          <button onClick={onClose} className="text-zinc-400 hover:text-white transition-colors"><X size={20} /></button>
+        </div>
+        <div className="p-6 flex flex-col gap-4">
+          <Field label="Business Name *" k="name" placeholder="e.g. Holy Rosary Parish" />
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-medium text-zinc-400">Category</label>
+            <select
+              value={form.category}
+              onChange={e => set('category', e.target.value)}
+              className="bg-[#2a2a2a] border border-zinc-700 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-[#FFE2A0]/60 transition-all"
+            >
+              {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+          <Field label="Location *" k="location" placeholder="e.g. Angeles City, Pampanga" />
+          <Field label="Hours" k="hours" placeholder="e.g. 8:00 AM - 9:00 PM" />
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-medium text-zinc-400">Description</label>
+            <textarea
+              value={form.description}
+              onChange={e => set('description', e.target.value)}
+              placeholder="Brief description of the business..."
+              rows={3}
+              className="bg-[#2a2a2a] border border-zinc-700 rounded-xl px-3 py-2 text-sm text-white placeholder-zinc-600 outline-none focus:border-[#FFE2A0]/60 transition-all resize-none"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Phone" k="phone" placeholder="+63 912 345 6789" />
+            <Field label="Email" k="email" type="email" placeholder="business@email.com" />
+          </div>
+          <Field label="Facebook URL" k="facebook" placeholder="https://facebook.com/..." />
+          <Field label="Website URL" k="website" placeholder="https://..." />
+          {error && <p className="text-red-400 text-xs">{error}</p>}
+          <div className="flex gap-3 pt-2">
+            <button onClick={onClose} className="flex-1 py-2.5 rounded-xl bg-zinc-700 text-white text-sm font-semibold hover:bg-zinc-600 transition-all">
+              Cancel
+            </button>
+            <button
+              onClick={handleSubmit}
+              disabled={saving}
+              className="flex-1 py-2.5 rounded-xl bg-[#FFE2A0] text-[#1a1a1a] text-sm font-bold hover:bg-[#f5d880] disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+            >
+              {saving ? 'Creating...' : 'Create Listing'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
 }
 
 // ── Mini Map ──────────────────────────────────────────────────────────────────
@@ -923,13 +1043,16 @@ function PendingEventCard({
 function AdminDashboard() {
   useAdminGuard();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'listings' | 'events'>('listings');
+  const [activeTab, setActiveTab] = useState<'listings' | 'events' | 'claims'>('listings');
   const [listings, setListings] = useState<Listing[]>([]);
   const [events, setEvents] = useState<PendingEvent[]>([]);
+  const [claims, setClaims] = useState<ListingClaim[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
+  const [claimLoading, setClaimLoading] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [lightbox, setLightbox] = useState<string | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   useEffect(() => {
     fetchAll();
@@ -937,12 +1060,20 @@ function AdminDashboard() {
 
   const fetchAll = async () => {
     setLoading(true);
-    const [listingsRes, eventsRes] = await Promise.all([
+    const [listingsRes, eventsRes, claimsRes] = await Promise.all([
       supabase.from('listings').select('*').eq('verified', false).order('created_at', { ascending: false }),
       supabase.from('events').select('*').eq('verified', false).order('created_at', { ascending: false }),
+      supabase.from('listing_claims').select('*, listings(name)').eq('status', 'pending').order('created_at', { ascending: false }),
     ]);
     if (!listingsRes.error && listingsRes.data) setListings(listingsRes.data);
     if (!eventsRes.error && eventsRes.data) setEvents(eventsRes.data);
+    if (!claimsRes.error && claimsRes.data) {
+      setClaims(claimsRes.data.map((c: any) => ({
+        ...c,
+        listing_name: c.listings?.name ?? 'Unknown',
+        user_email: c.profiles?.email ?? c.user_id,
+      })));
+    }
     setLoading(false);
   };
 
@@ -983,13 +1114,39 @@ function AdminDashboard() {
     setActionLoading(null);
   };
 
+  const handleApproveClaim = async (claim: ListingClaim) => {
+    setClaimLoading(claim.id);
+    const { error } = await supabase.from('listings').update({
+      is_claimed: true,
+      claimed_by: claim.user_id,
+      claim_status: 'claimed',
+    }).eq('id', claim.listing_id);
+    if (error) { showToast('Failed to approve claim.', 'error'); }
+    else {
+      await supabase.from('listing_claims').update({ status: 'approved' }).eq('id', claim.id);
+      // Upgrade user role to business
+      await supabase.from('profiles').update({ role: 'business' }).eq('id', claim.user_id);
+      showToast('Claim approved! User upgraded to business.', 'success');
+      setClaims(prev => prev.filter(c => c.id !== claim.id));
+    }
+    setClaimLoading(null);
+  };
+
+  const handleRejectClaim = async (id: string) => {
+    setClaimLoading(id);
+    const { error } = await supabase.from('listing_claims').update({ status: 'rejected' }).eq('id', id);
+    if (error) showToast('Failed to reject claim.', 'error');
+    else { showToast('Claim rejected.', 'success'); setClaims(prev => prev.filter(c => c.id !== id)); }
+    setClaimLoading(null);
+  };
+
   const handleLogout = async () => {
     sessionStorage.removeItem('admin_auth');
     await supabase.auth.signOut();
     navigate(ROUTES.SIGN_IN);
   };
 
-  const activeCount = activeTab === 'listings' ? listings.length : events.length;
+  const activeCount = activeTab === 'listings' ? listings.length : activeTab === 'events' ? events.length : claims.length;
 
   return (
     <div className="min-h-screen bg-[#2a2a2a] text-[#FBFAF8]">
@@ -1026,12 +1183,18 @@ function AdminDashboard() {
             <span className="text-[#FBFAF8]/60 text-[10px] sm:text-xs">Events</span>
             <span className="text-[#FFE2A0] text-xs sm:text-sm font-bold ml-auto">{events.length}</span>
           </div>
+          <div className="flex-1 flex items-center gap-2 bg-[#333333] border border-zinc-800/50 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 min-w-[140px]">
+            <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+            <span className="text-[#FBFAF8]/60 text-[10px] sm:text-xs">Claims</span>
+            <span className="text-[#FFE2A0] text-xs sm:text-sm font-bold ml-auto">{claims.length}</span>
+          </div>
         </div>
 
-        {/* Tabs */}
-        <div className="flex gap-1.5 sm:gap-2 bg-[#3a3a3a] border border-[#4d4d4d] rounded-xl p-1.5 sm:p-2 w-full sm:w-fit mb-8">
-          {(['listings', 'events'] as const).map((tab) => {
-            const count = tab === 'listings' ? listings.length : events.length;
+        {/* Tabs + Create button */}
+        <div className="flex flex-wrap items-center gap-3 mb-8">
+          <div className="flex gap-1.5 sm:gap-2 bg-[#3a3a3a] border border-[#4d4d4d] rounded-xl p-1.5 sm:p-2 flex-1 sm:flex-none">
+          {(['listings', 'events', 'claims'] as const).map((tab) => {
+            const count = tab === 'listings' ? listings.length : tab === 'events' ? events.length : claims.length;
             const isActive = activeTab === tab;
             return (
               <button
@@ -1054,6 +1217,13 @@ function AdminDashboard() {
               </button>
             );
           })}
+          </div>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-[#FFE2A0] text-[#1a1a1a] text-sm font-bold rounded-xl hover:bg-[#f5d880] transition-all"
+          >
+            <Plus size={16} /> Create Listing
+          </button>
         </div>
 
         {/* Section header */}
@@ -1061,7 +1231,7 @@ function AdminDashboard() {
           <div className="flex items-center gap-3">
             <h2 className="font-['Playfair_Display'] text-white text-xl font-semibold">
               Pending{' '}
-              <span className="text-[#FFE2A0]">{activeTab === 'listings' ? 'Listings' : 'Events'}</span>
+              <span className="text-[#FFE2A0]">{activeTab === 'listings' ? 'Listings' : activeTab === 'events' ? 'Events' : 'Claims'}</span>
             </h2>
             <span className="text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-medium">
               {activeCount} pending
@@ -1109,7 +1279,7 @@ function AdminDashboard() {
               ))}
             </div>
           )
-        ) : (
+        ) : activeTab === 'events' ? (
           events.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 text-center space-y-4">
               <div className="bg-[#474133] p-5 rounded-full border border-[#5a5241] shadow-inner">
@@ -1134,8 +1304,59 @@ function AdminDashboard() {
               ))}
             </div>
           )
+        ) : (
+          claims.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-24 text-center space-y-4">
+              <div className="bg-[#474133] p-5 rounded-full border border-[#5a5241] shadow-inner">
+                <CheckCircle size={36} className="text-[#FFE2A0] opacity-60" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-white text-lg font-semibold font-['Playfair_Display'] tracking-wide">No pending claims!</h3>
+                <p className="text-[#FBFAF8]/40 text-sm">All claim requests have been reviewed.</p>
+              </div>
+            </div>
+          ) : (
+            <div className="grid gap-4">
+              {claims.map(claim => (
+                <div key={claim.id} className="bg-[#333333] border border-zinc-800/50 rounded-xl p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded-full font-medium">Claim Request</span>
+                    </div>
+                    <p className="text-white font-semibold text-sm">{claim.listing_name}</p>
+                    <p className="text-zinc-400 text-xs mt-0.5">By: {claim.user_email}</p>
+                    {claim.note && <p className="text-zinc-400 text-xs mt-1 italic">"{claim.note}"</p>}
+                    <p className="text-zinc-600 text-[10px] mt-1">{new Date(claim.created_at).toLocaleDateString()}</p>
+                  </div>
+                  <div className="flex gap-2 shrink-0 w-full sm:w-auto">
+                    <button
+                      onClick={() => handleApproveClaim(claim)}
+                      disabled={claimLoading === claim.id}
+                      className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-green-600/80 hover:bg-green-500 disabled:opacity-40 text-white text-xs font-bold px-4 py-2 rounded-xl transition-all"
+                    >
+                      <CheckCircle size={14} /> Approve
+                    </button>
+                    <button
+                      onClick={() => handleRejectClaim(claim.id)}
+                      disabled={claimLoading === claim.id}
+                      className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-red-700/80 hover:bg-red-600 disabled:opacity-40 text-white text-xs font-bold px-4 py-2 rounded-xl transition-all"
+                    >
+                      <XCircle size={14} /> Reject
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
         )}
       </div>
+
+      {showCreateModal && (
+        <CreateListingModal
+          onClose={() => setShowCreateModal(false)}
+          onCreated={() => showToast('Listing created successfully!', 'success')}
+        />
+      )}
 
       {/* Toast */}
       {toast && (
