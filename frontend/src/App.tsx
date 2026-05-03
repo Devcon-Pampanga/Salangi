@@ -25,6 +25,7 @@ import EventsPage from './features/dashboard/pages/EventsPage'
 import Locationpage from './features/dashboard/pages/Locationpage'
 import Savepage from './features/dashboard/pages/Savepage'
 import MapView from './map/MapView'
+import ListingSlugRedirect from './features/dashboard/pages/ListingSlugRedirect'
 
 import Signin from './features/auth/pages/Signin'
 import Register from './features/auth/pages/Register'
@@ -146,11 +147,12 @@ function AppRoutes() {
         }
       >
         <Route index element={<Navigate to={ROUTES.HOME} replace />} />
-        <Route path={ROUTES.HOME}        element={<Homepage />}    />
-        <Route path={ROUTES.EVENTS_PAGE} element={<EventsPage />}  />
-        <Route path={ROUTES.LOCATION}    element={<Locationpage />}/>
-        <Route path={ROUTES.SAVE}        element={<Savepage />}    />
-        <Route path={ROUTES.MAP}         element={<MapView />}     />
+        <Route path={ROUTES.HOME}        element={<Homepage />}      />
+        <Route path={ROUTES.EVENTS_PAGE} element={<EventsPage />}    />
+        <Route path={ROUTES.LOCATION}    element={<Locationpage />}  />
+        <Route path={ROUTES.SAVE}        element={<Savepage />}      />
+        <Route path={ROUTES.MAP}         element={<MapView />}       />
+        <Route path="/listing/:slug"     element={<ListingSlugRedirect />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
