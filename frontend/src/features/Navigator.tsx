@@ -269,6 +269,7 @@ export function Navigator() {
       <LoginBottomSheet
         isOpen={isLoginSheetOpen}
         onClose={() => setIsLoginSheetOpen(false)}
+        reason="settings"
         copy={{
           title: "Sign in to access settings",
           body: "Create a free account or sign in to manage your preferences and account settings.",

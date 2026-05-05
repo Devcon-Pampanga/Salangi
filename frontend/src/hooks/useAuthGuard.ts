@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react';
 import { useAuth } from '@/context/authContext';
 
-export type GuardReason = 'save' | 'review' | 'profile' | 'saved-list' | 'generic';
+export type GuardReason = 'save' | 'review' | 'profile' | 'saved-list' | 'settings'| 'generic';
 
 export interface AuthGuardSheetProps {
   isOpen: boolean;
@@ -28,6 +28,10 @@ const REASON_COPY: Record<GuardReason, { title: string; body: string }> = {
   'saved-list': {
     title: 'Your saved spots',
     body: 'Sign in to see all the businesses you have bookmarked.',
+  },
+  settings: {
+    title: 'Account settings',
+    body: 'Sign in to manage your preferences and account settings.',
   },
   generic: {
     title: 'Sign in to continue',
