@@ -137,14 +137,7 @@ function AppRoutes() {
       </Route>
 
       {/* Main Application Layout */}
-      <Route
-        path="/"
-        element={
-          <ProtectedRoute session={session} role={role} redirectPath={ROUTES.SIGN_IN}>
-            <Navigator />
-          </ProtectedRoute>
-        }
-      >
+      <Route path="/" element={<Navigator />}>
         <Route index element={<Navigate to={ROUTES.HOME} replace />} />
         <Route path={ROUTES.HOME}        element={<Homepage />}    />
         <Route path={ROUTES.EVENTS_PAGE} element={<EventsPage />}  />
