@@ -4,6 +4,7 @@ import { Settings, LogOut } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import SettingsPage from './settings/pages/SettingsPage';
 import { ROUTES } from '../routes/paths';
+import LoginBottomSheet from '@/features/dashboard/components/LoginBottomSheet';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/authContext';
 
@@ -63,6 +64,7 @@ export function Navigator() {
   const { session } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isLoginSheetOpen, setIsLoginSheetOpen] = useState(false);
   const [scrollTo, setScrollTo] = useState<'upgrade' | null>(null);
 
   // Check for search params to open settings
@@ -144,6 +146,15 @@ export function Navigator() {
     navigate(ROUTES.SIGN_IN);
   };
 
+  const handleSettingsClick = () => {
+    setIsMenuOpen(false);
+    if (!session) {
+      setIsLoginSheetOpen(true);
+    } else {
+      setIsSettingsOpen(true);
+    }
+  };
+
   const AvatarButton = ({ onClick, className }: { onClick?: () => void; className?: string }) => (
     <button
       onClick={onClick}
@@ -222,7 +233,7 @@ export function Navigator() {
               <div className="h-px bg-zinc-700/50 my-1 mx-2" />
 
               <button
-                onClick={() => { setIsMenuOpen(false); setIsSettingsOpen(true); }}
+                onClick={handleSettingsClick}
                 className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-[#3D3D3D] transition-colors cursor-pointer text-[#FBFAF8]/90 hover:text-white"
               >
                 <Settings size={18} className="opacity-70" />
@@ -254,6 +265,16 @@ export function Navigator() {
         />,
         document.body
       )}
+
+      <LoginBottomSheet
+        isOpen={isLoginSheetOpen}
+        onClose={() => setIsLoginSheetOpen(false)}
+        reason="settings"
+        copy={{
+          title: "Sign in to access settings",
+          body: "Create a free account or sign in to manage your preferences and account settings.",
+        }}
+      />
     </div>
   );
 }
