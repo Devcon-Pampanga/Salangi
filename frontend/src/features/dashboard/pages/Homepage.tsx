@@ -369,7 +369,7 @@ function Homepage() {
               filters={filters}
             />
             <button
-              onClick={handleListBusinessClick}
+              onClick={() => guard('save', handleListBusinessClick)}
               className="flex items-center justify-center gap-2 px-4 py-3 bg-[#FFE2A0] text-[#1A1A1A] rounded-lg font-semibold text-sm whitespace-nowrap cursor-pointer hover:bg-[#f5d880] transition-colors w-full md:w-auto"
             >
               List Your Business
