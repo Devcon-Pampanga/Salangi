@@ -382,28 +382,6 @@ function ListingDetailModal({
                     <Lock size={12} className="text-amber-400" />
                     <p className="text-amber-400 text-[10px] uppercase tracking-wider font-bold">Private Info — Admin Only</p>
                   </div>
-                  {listing.phone && (
-                    <div className="flex items-center gap-3">
-                      <div className="w-7 h-7 rounded-lg bg-[#3a3a3a] flex items-center justify-center shrink-0">
-                        <Phone size={12} className="text-[#FFE2A0]" />
-                      </div>
-                      <div>
-                        <p className="text-[#FBFAF8]/40 text-[10px] uppercase tracking-wider font-semibold">Phone</p>
-                        <p className="text-[#FBFAF8] text-sm">{listing.phone}</p>
-                      </div>
-                    </div>
-                  )}
-                  {listing.email && (
-                    <div className="flex items-center gap-3">
-                      <div className="w-7 h-7 rounded-lg bg-[#3a3a3a] flex items-center justify-center shrink-0">
-                        <Mail size={12} className="text-[#FFE2A0]" />
-                      </div>
-                      <div>
-                        <p className="text-[#FBFAF8]/40 text-[10px] uppercase tracking-wider font-semibold">Email</p>
-                        <p className="text-[#FBFAF8] text-sm">{listing.email}</p>
-                      </div>
-                    </div>
-                  )}
                 </div>
               </>
             )}

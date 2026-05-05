@@ -23,6 +23,7 @@ import CategoryFilters from '../components/CategoryFilters';
 import { Menu, X, Settings, LogOut, User } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import SettingsPage from '../../settings/pages/SettingsPage';
+import SurpriseMe from '../components/SurpriseMe';   // ← NEW
 
 // ── NEW IMPORTS ──────────────────────────────────────────────────────────────
 import { useAuthGuard } from '@/hooks/useAuthGuard';
@@ -48,6 +49,7 @@ function Homepage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen]   = useState(false);
   const [isRedirecting, setIsRedirecting]     = useState(false);
+  const [isSurpriseMeOpen, setIsSurpriseMeOpen] = useState(false);  // ← NEW
 
   // ── Auth guard ─────────────────────────────────────────────────────────────
   const { isGuest, guard, sheetProps } = useAuthGuard();
@@ -309,6 +311,17 @@ function Homepage() {
 
               <div className="h-px w-full bg-[#373737]/50" />
 
+              {/* ── MOBILE: Surprise Me button ── */}
+              <button
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  setIsSurpriseMeOpen(true);
+                }}
+                className="flex items-center justify-center gap-2 px-4 py-3.5 bg-[#2a2a2a] text-[#FFE2A0] border border-[#FFE2A0]/20 rounded-xl font-bold text-md w-full shadow-lg active:scale-95 transition-all cursor-pointer"
+              >
+                <span>💎</span> Surprise me
+              </button>
+
               <button
                 onClick={() => { setIsMobileMenuOpen(false); handleListBusinessClick(); }}
                 className="flex items-center justify-center gap-2 px-4 py-3.5 bg-[#FFE2A0] text-[#1A1A1A] rounded-xl font-bold text-md w-full shadow-lg active:scale-95 transition-all cursor-pointer"
@@ -363,8 +376,16 @@ function Homepage() {
             <CategoryFilters
               activeCategory={activeCategory}
               onCategoryChange={handleCategoryChange}
-              className="mb-5"
+              className="mb-3"
             />
+
+            {/* ── DESKTOP: Surprise Me button ── */}
+            <button
+              onClick={() => setIsSurpriseMeOpen(true)}
+              className="flex items-center gap-2 mb-5 px-4 py-2 bg-[#2a2a2a] hover:bg-[#333333] text-[#FFE2A0] border border-[#FFE2A0]/20 hover:border-[#FFE2A0]/40 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
+            >
+              <span>💎</span> Surprise me
+            </button>
           </div>
 
           <div className="flex-none md:flex-1 md:overflow-y-auto flex flex-col gap-4 md:gap-6 pb-24 md:pb-10 pr-1 md:pr-2 pl-1 pt-1 no-scrollbar">
@@ -442,8 +463,21 @@ function Homepage() {
         document.body,
       )}
 
+<<<<<<< HEAD
       {/* ── Login bottom sheet — rendered last so it sits above everything ── */}
       <LoginBottomSheet {...sheetProps} />
+=======
+      {/* ── Surprise Me modal ── */}
+      {isSurpriseMeOpen && (
+        <SurpriseMe
+          userId={session?.user?.id ?? null}
+          savedIds={savedIds}
+          onClose={() => setIsSurpriseMeOpen(false)}
+          onToggleSave={toggleSave}
+        />
+      )}
+
+>>>>>>> origin/feat/surprise-me
     </div>
   );
 }
