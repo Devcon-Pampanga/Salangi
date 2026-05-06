@@ -1,5 +1,20 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import starIcon from '@assets/icons/star-icon.svg';
+import { supabase } from '@/lib/supabase';
+
+const COOLDOWN_DAYS = 3;
+
+function getTimeRemaining(lastDate: string): string {
+  const last = new Date(lastDate).getTime();
+  const remaining = last + COOLDOWN_DAYS * 24 * 60 * 60 * 1000 - Date.now();
+  if (remaining <= 0) return '';
+  const days = Math.floor(remaining / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((remaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+  if (days > 0) return `${days}d ${hours}h`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
+}
 
 interface ReviewFormProps {
   onSubmit: (rating: number, comment: string) => void;
@@ -11,6 +26,32 @@ function ReviewForm({ onSubmit, onCancel, submitting = false }: ReviewFormProps)
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [comment, setComment] = useState('');
+  const [cooldownRemaining, setCooldownRemaining] = useState<string | null>(null);
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    const checkCooldown = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setChecking(false); return; }
+
+      const cutoff = new Date(Date.now() - COOLDOWN_DAYS * 24 * 60 * 60 * 1000).toISOString();
+      const { data } = await supabase
+        .from('reviews')
+        .select('created_at')
+        .eq('user_id', user.id)
+        .gte('created_at', cutoff)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (data) {
+        const remaining = getTimeRemaining(data.created_at);
+        if (remaining) setCooldownRemaining(remaining);
+      }
+      setChecking(false);
+    };
+    checkCooldown();
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -18,6 +59,42 @@ function ReviewForm({ onSubmit, onCancel, submitting = false }: ReviewFormProps)
     if (!comment.trim()) { alert('Please enter a comment.'); return; }
     onSubmit(rating, comment);
   };
+
+  if (checking) {
+    return (
+      <div className="mt-8 p-6 bg-[#2D2D2D] rounded-xl border border-zinc-700 shadow-xl animate-in fade-in duration-300">
+        <div className="flex items-center justify-center py-6">
+          <div className="w-5 h-5 border-2 border-zinc-600 border-t-[#FFE2A0] rounded-full animate-spin" />
+        </div>
+      </div>
+    );
+  }
+
+  if (cooldownRemaining) {
+    return (
+      <div className="mt-8 p-6 bg-[#2D2D2D] rounded-xl border border-zinc-700 shadow-xl animate-in fade-in slide-in-from-top-4 duration-300">
+        <div className="flex flex-col items-center gap-3 py-4 text-center">
+          <div className="w-10 h-10 rounded-full bg-zinc-700 flex items-center justify-center">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFE2A0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12 6 12 12 16 14"/>
+            </svg>
+          </div>
+          <p className="text-sm font-semibold text-[#FBFAF8]">You've already left a review</p>
+          <p className="text-xs text-zinc-400">
+            You can submit another review in{' '}
+            <span className="text-[#FFE2A0] font-medium">{cooldownRemaining}</span>
+          </p>
+          <button
+            onClick={onCancel}
+            className="mt-2 text-xs text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer"
+          >
+            Dismiss
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mt-8 p-6 bg-[#2D2D2D] rounded-xl border border-zinc-700 shadow-xl animate-in fade-in slide-in-from-top-4 duration-300">
