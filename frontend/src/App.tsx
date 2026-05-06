@@ -20,6 +20,7 @@ import Settings from './features/business-side/components/Settings'
 
 // Feature Components - Main Side
 import Navigator from './features/Navigator'
+import InterestPage from './features/dashboard/pages/onboarding/InterestPage'
 import Homepage from './features/dashboard/pages/Homepage'
 import EventsPage from './features/dashboard/pages/EventsPage'
 import Locationpage from './features/dashboard/pages/Locationpage'
@@ -46,7 +47,7 @@ function AuthCallback() {
   const navigate = useNavigate()
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) navigate('/home-page')
+      if (session) navigate(ROUTES.INTERESTS);
       else navigate('/sign-in')
     })
   }, [navigate]);
@@ -65,7 +66,7 @@ function AdminRedirectOrHome({ session }: { session: Session }) {
       .eq('user_id', session.user.id)
       .single()
       .then(({ data }) => {
-        setTarget(data?.is_admin ? ROUTES.ADMIN_DASHBOARD : ROUTES.HOME);
+        setTarget(data?.is_admin ? ROUTES.ADMIN_DASHBOARD : ROUTES.INTERESTS);
       });
   }, [session]);
 
@@ -81,7 +82,7 @@ function AppRoutes() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#111111] flex flex-col items-center justify-center text-white">
-        <div className="text-2xl font-bold mb-4 animate-pulse">Loading Salangi...</div>
+        <div className="text-2xl font-semibold mb-4 animate-pulse">Loading Salangi...</div>
       </div>
     );
   }
@@ -136,7 +137,19 @@ function AppRoutes() {
         <Route path={ROUTES.DASHBOARD_REL.SETTINGS}     element={<Settings />}    />
       </Route>
 
-      {/* Main Application Layout */}
+      {/* DEV ONLY — remove pag ready na*/}
+      <Route path="/dev/interests" element={<InterestPage />} />
+
+      <Route 
+        path={ROUTES.INTERESTS} 
+        element={
+          <ProtectedRoute session={session} role={role} redirectPath={ROUTES.SIGN_IN}>
+            <InterestPage />
+          </ProtectedRoute>
+        } 
+      />
+
+      {/* Main Application Layout (Protected, WITH Navigator) */}
       <Route
         path="/"
         element={

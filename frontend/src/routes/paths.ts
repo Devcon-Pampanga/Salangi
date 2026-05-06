@@ -29,6 +29,7 @@ export const ROUTES = {
 
   HOME: '/home-page',
   HOME_PAGE: '/home-page',
+  INTERESTS: '/Interests',
   LOCATION: '/location-page',
   SAVE: '/save-page',
   EVENTS_PAGE: '/events-page',

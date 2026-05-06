@@ -163,7 +163,7 @@ function Homepage() {
       {/* ── Redirect loading overlay ── */}
       {isRedirecting && createPortal(
         <div
-          className="fixed inset-0 z-[9999] flex flex-col items-center justify-center gap-6"
+          className="fixed inset-0 z-9999 flex flex-col items-center justify-center gap-6"
           style={{ backgroundColor: '#1A1A1A' }}
         >
           <div
