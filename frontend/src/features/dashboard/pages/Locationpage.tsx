@@ -451,7 +451,7 @@ function Locationpage() {
         </div>
 
         {/* Sidebar header */}
-        <div className="flex items-center justify-between px-4 py-3 shrink-0 border-b border-zinc-800/60 md:border-b-0 md:pt-4">
+        <div className="flex items-center justify-between px-4 py-3 shrink-0 border-b border-zinc-800/60 md:border-b-0 md:pt-20">
           <button
             onClick={handleCloseSidebar}
             className="hidden md:flex items-center gap-2 text-[#FBFAF8]/50 hover:text-[#FBFAF8] transition-colors text-sm"
