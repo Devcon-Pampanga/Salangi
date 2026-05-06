@@ -7,6 +7,8 @@ import { ROUTES } from '../routes/paths';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/authContext';
 import BetaBadge from '@/components/BetaBadge';
+import { useAuthGuard } from '@/hooks/useAuthGuard';
+import LoginBottomSheet from './dashboard/components/LoginBottomSheet';
 
 // icons
 import homeBtn from '@assets/icons/home-btn-default.svg';
@@ -88,6 +90,7 @@ export function Navigator() {
   const navigate = useNavigate();
   const location = useLocation();
   const { session } = useAuth();
+  const { guard, sheetProps } = useAuthGuard();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [scrollTo, setScrollTo] = useState<'upgrade' | null>(null);
@@ -217,7 +220,10 @@ export function Navigator() {
               <div className="h-px bg-zinc-700/50 my-1 mx-2" />
 
               <button
-                onClick={() => { setIsMenuOpen(false); setIsSettingsOpen(true); }}
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  guard('settings', () => setIsSettingsOpen(true));
+                }}
                 className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-[#3D3D3D] transition-colors cursor-pointer text-[#FBFAF8]/90 hover:text-white"
               >
                 <Settings size={18} className="opacity-70" />
@@ -258,6 +264,9 @@ export function Navigator() {
         <SettingsPage onClose={handleCloseSettings} scrollTo={scrollTo} />,
         document.body
       )}
+
+      <LoginBottomSheet {...sheetProps} />
+
     </div>
   );
 }
