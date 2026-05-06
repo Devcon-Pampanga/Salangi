@@ -311,29 +311,16 @@ function Homepage() {
 
               {/* Settings — guarded */}
               <button
-<<<<<<< HEAD
-                onClick={() => { setIsMobileMenuOpen(false); setIsSettingsOpen(true); }}
-=======
                 onClick={() => {
                   setIsMobileMenuOpen(false);
                   guard('profile', () => setIsSettingsOpen(true));
                 }}
->>>>>>> origin/feat/guestsignin
                 className="flex items-center justify-center gap-3 px-4 py-3.5 bg-[#373737] text-[#FBFAF8] rounded-xl font-semibold text-md w-full shadow-lg active:scale-95 transition-all cursor-pointer"
               >
                 <Settings size={20} className="text-[#FFE2A0]" />
                 Settings
               </button>
 
-<<<<<<< HEAD
-              <button
-                onClick={() => { setIsMobileMenuOpen(false); handleLogout(); }}
-                className="flex items-center justify-center gap-3 px-4 py-3.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl font-semibold text-md w-full shadow-lg active:scale-95 transition-all cursor-pointer mt-auto"
-              >
-                <LogOut size={20} className="opacity-90" />
-                Log out
-              </button>
-=======
               {isGuest ? (
                 /* Guest: show sign-in prompt instead of log-out */
                 <button
@@ -352,7 +339,6 @@ function Homepage() {
                   Log out
                 </button>
               )}
->>>>>>> origin/feat/guestsignin
             </div>
           </div>,
           document.body,
@@ -376,16 +362,10 @@ function Homepage() {
 
           <div className="flex-none md:flex-1 md:overflow-y-auto flex flex-col gap-4 md:gap-6 pb-24 md:pb-10 pr-1 md:pr-2 pl-1 pt-1 no-scrollbar">
             {isLoading ? (
-<<<<<<< HEAD
               // ↓ Skeleton cards — same gap/layout as the real list
               Array.from({ length: 3 }).map((_, i) => (
                 <SkeletonCard key={i} />
               ))
-=======
-              <div className="flex flex-col items-center justify-center py-20 text-center">
-                <p className="text-[#FBFAF8]/50 text-sm animate-pulse">Loading listings…</p>
-              </div>
->>>>>>> origin/feat/guestsignin
             ) : filteredListings.length > 0 ? (
               filteredListings.map((listing: Listing) => (
                 <BusinessCard
