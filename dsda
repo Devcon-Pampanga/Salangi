@@ -1,0 +1,71 @@
+[1mdiff --cc frontend/src/features/Navigator.tsx[m
+[1mindex 1a5de66,b83854e..0000000[m
+[1m--- a/frontend/src/features/Navigator.tsx[m
+[1m+++ b/frontend/src/features/Navigator.tsx[m
+[36m@@@ -64,10 -89,8 +90,9 @@@[m [mexport function Navigator() [m
+    const { session } = useAuth();[m
+    const [isMenuOpen, setIsMenuOpen] = useState(false);[m
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);[m
+[32m +  const [isLoginSheetOpen, setIsLoginSheetOpen] = useState(false);[m
+    const [scrollTo, setScrollTo] = useState<'upgrade' | null>(null);[m
+  [m
+[31m-   // Check for search params to open settings[m
+    useEffect(() => {[m
+      const params = new URLSearchParams(location.search);[m
+      const settingsParam = params.get('settings');[m
+[36m@@@ -146,28 -170,6 +172,31 @@@[m
+      navigate(ROUTES.SIGN_IN);[m
+    };[m
+  [m
+[32m++<<<<<<< HEAD[m
+[32m +  const handleSettingsClick = () => {[m
+[32m +    setIsMenuOpen(false);[m
+[32m +    if (!session) {[m
+[32m +      setIsLoginSheetOpen(true);[m
+[32m +    } else {[m
+[32m +      setIsSettingsOpen(true);[m
+[32m +    }[m
+[32m +  };[m
+[32m +[m
+[32m +  const AvatarButton = ({ onClick, className }: { onClick?: () => void; className?: string }) => ([m
+[32m +    <button[m
+[32m +      onClick={onClick}[m
+[32m +      className={`h-11 w-11 md:h-14 md:w-14 bg-[#2E2E2E] rounded-lg cursor-pointer flex items-center justify-center overflow-hidden transition-all hover:bg-[#222222] ${className}`}[m
+[32m +    >[m
+[32m +      {displayName.avatarUrl ? ([m
+[32m +        <img src={displayName.avatarUrl} alt="avatar" className="w-full h-full object-cover" />[m
+[32m +      ) : ([m
+[32m +        <p className="font-['Playfair-Display'] text-[#FFE2A0] text-xl">{initials}</p>[m
+[32m +      )}[m
+[32m +    </button>[m
+[32m +  );[m
+[32m +[m
+[32m++=======[m
+[32m++>>>>>>> origin/feat/google-auth-callback[m
+    return ([m
+      <div className="flex flex-col-reverse md:flex-row h-screen overflow-hidden">[m
+  [m
+[36m@@@ -259,22 -251,9 +278,19 @@@[m
+        </main>[m
+  [m
+        {isSettingsOpen && createPortal([m
+[31m-         <SettingsPage[m
+[31m-           onClose={handleCloseSettings}[m
+[31m-           scrollTo={scrollTo}[m
+[31m-         />,[m
+[32m+         <SettingsPage onClose={handleCloseSettings} scrollTo={scrollTo} />,[m
+          document.body[m
+        )}[m
+[32m +[m
+[32m +      <LoginBottomSheet[m
+[32m +        isOpen={isLoginSheetOpen}[m
+[32m +        onClose={() => setIsLoginSheetOpen(false)}[m
+[32m +        reason="settings"[m
+[32m +        copy={{[m
+[32m +          title: "Sign in to access settings",[m
+[32m +          body: "Create a free account or sign in to manage your preferences and account settings.",[m
+[32m +        }}[m
+[32m +      />[m
+      </div>[m
+    );[m
+  }[m
