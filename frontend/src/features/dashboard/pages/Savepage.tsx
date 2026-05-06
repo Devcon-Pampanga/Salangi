@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/authContext';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
 import LoginBottomSheet from '../components/LoginBottomSheet';
+import SkeletonCard from '../components/SkeletonCard';
 import search from '@assets/icons/search-btn-default.svg';
 
 import BusinessCard from '../components/BusinessCard';
@@ -122,8 +123,10 @@ function Savepage() {
 
           <div className="flex-1 overflow-y-auto no-scrollbar z-10">
             {isLoading ? (
-              <div className="flex items-center justify-center h-full opacity-40">
-                <p className="text-sm animate-pulse">Loading saved spots...</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 pb-20 w-full">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <SkeletonCard key={i} />
+                ))}
               </div>
 
             ) : isGuest ? (
