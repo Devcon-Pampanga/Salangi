@@ -32,7 +32,7 @@ function Homepage() {
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
   const [savedIds, setSavedIds]               = useState<number[]>([]);
   const [averageRatings, setAverageRatings]   = useState<Record<number, number>>({});
-  const [filters, setFilters]                 = useState<FilterOptions>({ ratingRange: null, sortBy: 'default' });
+  const [filters, setFilters]                 = useState<FilterOptions>({ ratingRange: null, sortBy: 'default', openNow: false, nearMe: false });
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen]   = useState(false);
   const [isRedirecting, setIsRedirecting]     = useState(false);

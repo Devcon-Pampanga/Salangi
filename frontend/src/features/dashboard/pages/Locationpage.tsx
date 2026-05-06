@@ -50,7 +50,7 @@ function Locationpage() {
   const [listings, setListings] = useState<Listing[]>([]);
   const [averageRatings, setAverageRatings] = useState<Record<number, number>>({});
   const [searchQuery, setSearchQuery] = useState('');
-  const [filters, setFilters] = useState<FilterOptions>({ ratingRange: null, sortBy: 'default' });
+  const [filters, setFilters] = useState<FilterOptions>({ ratingRange: null, sortBy: 'default', openNow: false, nearMe: false });
 
   const [selectedListing, setSelectedListing] = useState<Listing | null>(
     incomingListing ?? null

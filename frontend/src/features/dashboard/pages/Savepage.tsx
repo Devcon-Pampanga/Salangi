@@ -23,7 +23,7 @@ function Savepage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [savedIds, setSavedIds]       = useState<number[]>([]);
   const [averageRatings, setAverageRatings] = useState<Record<number, number>>({});
-  const [filters, setFilters]         = useState<FilterOptions>({ ratingRange: null, sortBy: 'default' });
+  const [filters, setFilters]         = useState<FilterOptions>({ ratingRange: null, sortBy: 'default', openNow: false, nearMe: false });
 
   useEffect(() => {
     const fetchData = async () => {
