@@ -20,6 +20,7 @@ import commentIcon from '@assets/icons/review-btn-default.svg';
 
 import ReviewItem from './ReviewItem';
 import ReviewForm from './ReviewForm';
+import ClaimBusinessButton from '@/features/business-side/components/ClaimBusinessButton';
 
 interface Review {
   id: number;
@@ -48,6 +49,7 @@ interface DetailedBusinessCardProps {
   reviewsLoading?: boolean;
   isVerified?: boolean;
   initialSaved?: boolean;
+  isClaimed?: boolean;        // ← new
   lat?: number;
   lng?: number;
   onToggleSave?: (id: number) => void;
@@ -181,6 +183,7 @@ function DetailedBusinessCard({
   reviewsLoading = false,
   isVerified = false,
   initialSaved = false,
+  isClaimed = false,          // ← new
   lat,
   lng,
   onToggleSave,
@@ -505,6 +508,16 @@ function DetailedBusinessCard({
                 </div>
               )}
             </div>
+
+            {/* ── Claim this business ── */}
+            <div className="mt-4 pt-4 border-t border-zinc-600/50">
+              <ClaimBusinessButton
+                listingId={listingId}
+                listingName={title}
+                isClaimed={isClaimed}
+              />
+            </div>
+
           </div>
         </div>
       </div>

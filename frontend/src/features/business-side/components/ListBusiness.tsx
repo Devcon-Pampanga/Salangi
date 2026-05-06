@@ -407,6 +407,9 @@ function ListBusiness() {
           government_id: governmentIdPath,
           selfie_verification: selfiePath,
           user_id: user?.id ?? null,
+          is_claimed: user ? true : false,
+          claimed_by: user?.id ?? null,
+          claim_status: user ? 'claimed' : 'unclaimed',
         })
         .select('id, name')
         .single();

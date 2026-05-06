@@ -99,6 +99,18 @@ function Locationpage() {
   // ── Load gallery images when selected listing changes ────────────────────
   useEffect(() => {
     if (!selectedListing) return;
+    supabase
+      .from('listings')
+      .select('*')
+      .eq('id', selectedListing.id)
+      .single()
+      .then(({ data }) => {
+        if (data) setSelectedListing(prev => prev ? { ...prev, is_claimed: data.is_claimed ?? false } : prev);
+      });
+  }, [selectedListing?.id]);
+
+  useEffect(() => {
+    if (!selectedListing) return;
 
     const fetchGalleryImages = async () => {
       const { data } = await supabase
@@ -471,6 +483,7 @@ function Locationpage() {
               reviews={reviews}
               reviewsLoading={reviewsLoading}
               initialSaved={savedIds.includes(selectedListing.id)}
+              isClaimed={selectedListing.is_claimed ?? false}
               onToggleSave={toggleSave}
               onReviewAdded={() => fetchReviews(selectedListing.id)}
             />

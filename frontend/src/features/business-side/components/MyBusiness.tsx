@@ -27,7 +27,7 @@ const MyBusiness = () => {
     const [deletingId, setDeletingId] = useState<number | null>(null);
     const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
 
-    // ─── Fetch user's listings ────────────────────────────────────────────────
+    // ─── Fetch user's claimed listings only ───────────────────────────────────
     const fetchListings = async () => {
         if (!user?.id) return;
         setLoading(true);
@@ -36,7 +36,8 @@ const MyBusiness = () => {
         const { data, error: fetchError } = await supabase
             .from("listings")
             .select("*")
-            .eq("user_id", user.id)
+            .eq("claimed_by", user.id)        // ← owner guard
+            .eq("claim_status", "claimed")    // ← only approved claims
             .order("created_at", { ascending: false });
 
         if (fetchError) {
@@ -220,13 +221,22 @@ const MyBusiness = () => {
                     </div>
                 )}
 
+                {/* Empty state — no approved claimed listing yet */}
                 {!loading && !error && listings.length === 0 && (
                     <div className="flex flex-col items-center justify-center h-48 text-center gap-3">
                         <div className="bg-[#474133] p-4 rounded-full border border-[#5a5241]">
                             <HiOutlineOfficeBuilding className="size-8 text-[#FFE2A0]" />
                         </div>
-                        <p className="text-white font-semibold">No listings yet</p>
-                        <p className="text-[#a0a0a0] text-sm">Click "List Business" to add your first listing.</p>
+                        <p className="text-white font-semibold">No claimed listing found</p>
+                        <p className="text-[#a0a0a0] text-sm">
+                            Your claim may still be under review, or you haven't claimed a listing yet.
+                        </p>
+                        <button
+                            onClick={() => navigate(ROUTES.HOME)}
+                            className="mt-2 px-4 py-2 bg-[#5a5241] border border-[#FFE2A0] text-[#FFE2A0] text-sm rounded-lg hover:bg-[#857657] transition-all"
+                        >
+                            Browse listings to claim
+                        </button>
                     </div>
                 )}
 
