@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/authContext";
 import { useNavigate } from "react-router-dom";
 import { ROUTES } from "@/routes/paths";
+import LoginBottomSheet from "../../dashboard/components/LoginBottomSheet";
 
 interface ClaimBusinessButtonProps {
   listingId: number;
@@ -18,8 +19,8 @@ export default function ClaimBusinessButton({
   const { session } = useAuth();
   const navigate = useNavigate();
   const user = session?.user;
-
-   const [open, setOpen] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
+  const [open, setOpen] = useState(false);
   const [note, setNote] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
@@ -109,15 +110,24 @@ export default function ClaimBusinessButton({
     <>
       {/* ── Trigger ── */}
       {!user ? (
-        <button
-          onClick={() => navigate(ROUTES.SIGN_IN)}
-          className="flex items-center gap-2 text-xs text-[#FBFAF8]/50 hover:text-[#FFE2A0] transition-colors"
-        >
-          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-          </svg>
-          Log in to claim this business
-        </button>
+        <>
+          <button
+            onClick={() => setShowLogin(true)}
+            className="flex items-center gap-2 text-xs text-[#FBFAF8]/50 hover:text-[#FFE2A0] transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+            </svg>
+            Log in to claim this business
+          </button>
+          <LoginBottomSheet
+            isOpen={showLogin}
+            reason="generic"
+            onClose={() => setShowLogin(false)}
+            copy={{ title: "Log in to claim this business", body: "Sign in or create a free account to claim ownership of this listing." }}
+          />
+        </>
+
       ) : (
         <button
           onClick={() => setOpen(true)}
