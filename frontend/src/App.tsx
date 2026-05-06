@@ -46,14 +46,28 @@ import AdminDashboard from './features/admin/pages/AdminDashboard'
 function AuthCallback() {
   const navigate = useNavigate()
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) navigate('/home-page')
-      else navigate('/sign-in')
-    })
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!session) {
+        navigate('/sign-in');
+        return;
+      }
+
+      const { data } = await supabase
+        .from('users')
+        .select('is_admin')
+        .eq('user_id', session.user.id)
+        .single();
+
+      if (data?.is_admin) {
+        navigate(ROUTES.ADMIN_DASHBOARD);
+      } else {
+        navigate(ROUTES.HOME);
+      }
+    });
   }, [navigate]);
+
   return <div className="min-h-screen bg-[#111111] flex items-center justify-center text-white">Loading...</div>
 }
-
 // ─── Admin redirect helper ────────────────────────────────────────────────────
 
 function AdminRedirectOrHome({ session }: { session: Session }) {
