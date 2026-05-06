@@ -174,7 +174,6 @@ const MyBusiness = () => {
                 <div className="mt-12 mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div className="flex items-center gap-3">
                         <h2 className="text-[#FFE2A0] text-xl font-['Playfair_Display'] font-semibold">Your Listings</h2>
-                        {/* Summary counts */}
                         <div className="flex items-center gap-2">
                             <span className="text-xs bg-green-600/20 text-green-400 border border-green-600/30 px-2 py-0.5 rounded-full font-medium">
                                 {listings.filter(l => l.verified).length} Approved
@@ -204,10 +203,11 @@ const MyBusiness = () => {
 
                 {/* States */}
                 {loading && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-6">
-                    {[0, 1, 2].map((i) => <SkeletonCard key={i} />)}
-                </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-6">
+                        {[0, 1, 2].map((i) => <SkeletonCard key={i} />)}
+                    </div>
                 )}
+
                 {!loading && error && (
                     <div className="flex flex-col items-center justify-center h-48 gap-3">
                         <p className="text-red-400 text-sm">{error}</p>
@@ -233,7 +233,7 @@ const MyBusiness = () => {
                 {!loading && !error && listings.length > 0 && (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-6 items-stretch">
                         {filteredListings.map((listing) => (
-                            <div key={listing.id} className="relative">
+                            <div key={listing.id} className="relative flex flex-col w-full max-w-120">
 
                                 {/* ── Status badge ─────────────────────────── */}
                                 {listing.verified ? (
@@ -263,13 +263,11 @@ const MyBusiness = () => {
                                     onViewAnalytics={() => navigate(ROUTES.DASHBOARD_ANALYTICS)}
                                 />
 
-
-
                                 {/* ── Delete trigger button ─────────────────── */}
                                 {confirmDeleteId !== listing.id && (
                                     <button
                                         onClick={() => setConfirmDeleteId(listing.id)}
-                                        className="absolute top-3 right-3 z-20 p-2 bg-red-600 hover:bg-red-700 rounded-full text-white transition-all shadow-lg"
+                                        className="absolute top-10 right-3 z-20 p-2 bg-red-600 hover:bg-red-700 rounded-full text-white transition-all shadow-lg"
                                         title="Delete listing"
                                     >
                                         <svg xmlns="http://www.w3.org/2000/svg" className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
