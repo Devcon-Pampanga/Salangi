@@ -4,7 +4,6 @@ import { Settings, LogOut } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import SettingsPage from './settings/pages/SettingsPage';
 import { ROUTES } from '../routes/paths';
-import LoginBottomSheet from '@/features/dashboard/components/LoginBottomSheet';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/authContext';
 
@@ -56,7 +55,33 @@ const NavItem = ({ to, defaultIcon, activeIcon, alt, isEnd = false }: NavItemPro
   );
 };
 
+// Reusable avatar with imgFailed fallback
+interface AvatarProps {
+  avatarUrl: string | null;
+  initials: string;
+  className?: string;
+  textClassName?: string;
+}
 
+const Avatar = ({ avatarUrl, initials, className = '', textClassName = '' }: AvatarProps) => {
+  const [imgFailed, setImgFailed] = useState(false);
+  const showInitials = !avatarUrl || imgFailed;
+
+  return (
+    <div className={`overflow-hidden flex items-center justify-center ${className}`}>
+      {!showInitials ? (
+        <img
+          src={avatarUrl!}
+          alt="avatar"
+          className="w-full h-full object-cover"
+          onError={() => setImgFailed(true)}
+        />
+      ) : (
+        <span className={`font-bold text-[#FFE2A0] ${textClassName}`}>{initials}</span>
+      )}
+    </div>
+  );
+};
 
 export function Navigator() {
   const navigate = useNavigate();
@@ -64,10 +89,8 @@ export function Navigator() {
   const { session } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isLoginSheetOpen, setIsLoginSheetOpen] = useState(false);
   const [scrollTo, setScrollTo] = useState<'upgrade' | null>(null);
 
-  // Check for search params to open settings
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const settingsParam = params.get('settings');
@@ -77,7 +100,6 @@ export function Navigator() {
     }
   }, [location.search]);
 
-  // Function to handle closing settings and clearing query params
   const handleCloseSettings = () => {
     setIsSettingsOpen(false);
     setScrollTo(null);
@@ -89,6 +111,7 @@ export function Navigator() {
     }
     refreshUser();
   };
+
   const menuRef = useRef<HTMLDivElement>(null);
   const [displayName, setDisplayName] = useState({
     firstName: '',
@@ -102,7 +125,8 @@ export function Navigator() {
       const user = session?.user;
       if (!user) return;
 
-      if (!user.email_confirmed_at) {
+      const isGoogleUser = user.app_metadata?.provider === 'google';
+      if (!isGoogleUser && !user.email_confirmed_at) {
         await supabase.auth.signOut();
         navigate('/sign-in');
         return;
@@ -131,12 +155,12 @@ export function Navigator() {
     refreshUser();
   }, [refreshUser]);
 
-  const initials = displayName.firstName && displayName.lastName
-    ? `${displayName.firstName[0]}${displayName.lastName[0]}`.toUpperCase()
+  const initials = displayName.firstName
+    ? `${displayName.firstName[0]}${displayName.lastName?.[0] ?? ''}`.toUpperCase()
     : '?';
 
-  const fullName = displayName.firstName && displayName.lastName
-    ? `${displayName.firstName} ${displayName.lastName}`
+  const fullName = displayName.firstName
+    ? `${displayName.firstName}${displayName.lastName ? ' ' + displayName.lastName : ''}`
     : 'Guest';
 
   const handleLogout = async () => {
@@ -146,33 +170,11 @@ export function Navigator() {
     navigate(ROUTES.SIGN_IN);
   };
 
-  const handleSettingsClick = () => {
-    setIsMenuOpen(false);
-    if (!session) {
-      setIsLoginSheetOpen(true);
-    } else {
-      setIsSettingsOpen(true);
-    }
-  };
-
-  const AvatarButton = ({ onClick, className }: { onClick?: () => void; className?: string }) => (
-    <button
-      onClick={onClick}
-      className={`h-11 w-11 md:h-14 md:w-14 bg-[#2E2E2E] rounded-lg cursor-pointer flex items-center justify-center overflow-hidden transition-all hover:bg-[#222222] ${className}`}
-    >
-      {displayName.avatarUrl ? (
-        <img src={displayName.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
-      ) : (
-        <p className="font-['Playfair-Display'] text-[#FFE2A0] text-xl">{initials}</p>
-      )}
-    </button>
-  );
-
   return (
     <div className="flex flex-col-reverse md:flex-row h-screen overflow-hidden">
 
       {/* Sidebar / Bottom Nav */}
-      <div className="bg-[#373737] fixed bottom-0 left-0 right-0 w-full h-18 md:static md:w-20 md:h-full p-2 md:p-3 flex flex-row md:flex-col justify-between items-center shrink-0 z-50">
+      <div className="bg-[#373737] w-full h-18 md:w-20 md:h-full p-2 md:p-3 flex flex-row md:flex-col justify-between items-center shrink-0 relative z-50">
         <div className="hidden md:block">
           <button
             onClick={() => navigate('/home-page')}
@@ -183,31 +185,10 @@ export function Navigator() {
         </div>
 
         <div className="flex flex-row md:flex-col items-center justify-center gap-6 md:gap-8 w-full md:w-auto px-4 md:px-0">
-          <NavItem
-            to={ROUTES.HOME}
-            defaultIcon={homeBtn}
-            activeIcon={homeBtnSelected}
-            alt="Home"
-            isEnd
-          />
-          <NavItem
-            to={ROUTES.LOCATION}
-            defaultIcon={locBtn}
-            activeIcon={locBtnSelected}
-            alt="Location"
-          />
-          <NavItem
-            to={ROUTES.SAVE}
-            defaultIcon={saveBtn}
-            activeIcon={saveBtnSelected}
-            alt="Save"
-          />
-          <NavItem
-            to={ROUTES.EVENTS_PAGE}
-            defaultIcon={eventsBtn}
-            activeIcon={eventsBtnSelected}
-            alt="Events"
-          />
+          <NavItem to={ROUTES.HOME} defaultIcon={homeBtn} activeIcon={homeBtnSelected} alt="Home" isEnd />
+          <NavItem to={ROUTES.LOCATION} defaultIcon={locBtn} activeIcon={locBtnSelected} alt="Location" />
+          <NavItem to={ROUTES.SAVE} defaultIcon={saveBtn} activeIcon={saveBtnSelected} alt="Save" />
+          <NavItem to={ROUTES.EVENTS_PAGE} defaultIcon={eventsBtn} activeIcon={eventsBtnSelected} alt="Events" />
         </div>
 
         <div className="relative pr-4 md:pr-0 hidden md:block">
@@ -216,14 +197,14 @@ export function Navigator() {
               ref={menuRef}
               className="absolute bottom-16 md:bottom-18 right-4 md:-right-4 md:translate-x-full w-64 bg-[#2D2D2D] rounded-2xl shadow-2xl border border-zinc-700/50 py-3 px-3 z-50 flex flex-col gap-1 transition-all"
             >
+              {/* Dropdown user info */}
               <div className="flex items-center gap-3 p-2 py-3">
-                <div className="h-8 w-8 rounded-full overflow-hidden bg-[#222222] flex items-center justify-center shrink-0">
-                  {displayName.avatarUrl ? (
-                    <img src={displayName.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
-                  ) : (
-                    <span className="text-[#FFE2A0] text-xs font-bold">{initials}</span>
-                  )}
-                </div>
+                <Avatar
+                  avatarUrl={displayName.avatarUrl}
+                  initials={initials}
+                  className="h-8 w-8 rounded-full bg-[#222222] shrink-0"
+                  textClassName="text-xs"
+                />
                 <div className="flex flex-col overflow-hidden">
                   <p className="text-[#FBFAF8] text-sm font-semibold truncate">{fullName}</p>
                   <p className="text-gray-400 text-xs truncate">{displayName.email}</p>
@@ -233,7 +214,7 @@ export function Navigator() {
               <div className="h-px bg-zinc-700/50 my-1 mx-2" />
 
               <button
-                onClick={handleSettingsClick}
+                onClick={() => { setIsMenuOpen(false); setIsSettingsOpen(true); }}
                 className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-[#3D3D3D] transition-colors cursor-pointer text-[#FBFAF8]/90 hover:text-white"
               >
                 <Settings size={18} className="opacity-70" />
@@ -250,31 +231,29 @@ export function Navigator() {
             </div>
           )}
 
-          <AvatarButton onClick={() => setIsMenuOpen(!isMenuOpen)} />
+          {/* Nav avatar button */}
+          <button
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            className="h-11 w-11 md:h-14 md:w-14 bg-[#2E2E2E] rounded-lg cursor-pointer flex items-center justify-center overflow-hidden transition-all hover:bg-[#222222]"
+          >
+            <Avatar
+              avatarUrl={displayName.avatarUrl}
+              initials={initials}
+              className="w-full h-full"
+              textClassName="text-xl"
+            />
+          </button>
         </div>
       </div>
 
-      <main className="flex-1 bg-[#1E1E1E] overflow-hidden pb-18 md:pb-0">
+      <main className="flex-1 bg-[#1E1E1E] overflow-hidden">
         <Outlet />
       </main>
 
       {isSettingsOpen && createPortal(
-        <SettingsPage
-          onClose={handleCloseSettings}
-          scrollTo={scrollTo}
-        />,
+        <SettingsPage onClose={handleCloseSettings} scrollTo={scrollTo} />,
         document.body
       )}
-
-      <LoginBottomSheet
-        isOpen={isLoginSheetOpen}
-        onClose={() => setIsLoginSheetOpen(false)}
-        reason="settings"
-        copy={{
-          title: "Sign in to access settings",
-          body: "Create a free account or sign in to manage your preferences and account settings.",
-        }}
-      />
     </div>
   );
 }
