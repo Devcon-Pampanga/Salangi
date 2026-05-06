@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, Image as ImageIcon, X, ZoomIn } from 'lucide-react';
 import { supabase } from '@/lib/supabase'; 
 import { useAuth } from '@/context/authContext';
+import { useAuthGuard } from '@/hooks/useAuthGuard';
+import LoginBottomSheet from './LoginBottomSheet';
 import { createPortal } from 'react-dom';
 import locBtnSelected from '@assets/icons/map-btn-active.svg';
 import locBtn from '@assets/icons/direction-btn.svg';
@@ -185,6 +187,7 @@ function DetailedBusinessCard({
   onReviewAdded,
 }: DetailedBusinessCardProps) {
   const { session } = useAuth();
+  const { guard, sheetProps } = useAuthGuard();
   const [isSaved, setIsSaved] = useState(initialSaved);
   const allImages = dedupeImages(images);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -223,23 +226,25 @@ function DetailedBusinessCard({
 
   const handleToggleSave = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (onToggleSave) {
-      onToggleSave(listingId);
-      setIsSaved(prev => !prev);
-    } else {
-      try {
-        const user = session?.user;
-        if (!user) return;
-        if (isSaved) {
-          await supabase.from('saves').delete().eq('user_id', user.id).eq('listing_id', listingId);
-        } else {
-          await supabase.from('saves').insert({ user_id: user.id, listing_id: listingId });
-        }
+    guard('save', async () => {
+      if (onToggleSave) {
+        onToggleSave(listingId);
         setIsSaved(prev => !prev);
-      } catch (error) {
-        console.warn("Error toggling save:", error);
+      } else {
+        try {
+          const user = session?.user;
+          if (!user) return;
+          if (isSaved) {
+            await supabase.from('saves').delete().eq('user_id', user.id).eq('listing_id', listingId);
+          } else {
+            await supabase.from('saves').insert({ user_id: user.id, listing_id: listingId });
+          }
+          setIsSaved(prev => !prev);
+        } catch (error) {
+          console.warn("Error toggling save:", error);
+        }
       }
-    }
+    });
   };
 
   const handleGetDirections = async () => {
@@ -296,7 +301,6 @@ function DetailedBusinessCard({
         document.body
       )}
 
-      {/* ✅ FIX 1: added max-w-120 and mx-auto to match deployed */}
       <div className="w-full max-w-120 bg-[#333333] rounded-xl overflow-hidden shrink-0 mb-10 shadow-2xl border border-zinc-800/50 mx-auto">
         <div className="relative flex flex-col">
 
@@ -310,7 +314,6 @@ function DetailedBusinessCard({
             </button>
           </div>
 
-          {/* ✅ FIX 2: changed h-80 to h-72 to match deployed */}
           <div className="relative w-full h-72 overflow-hidden bg-zinc-800 group">
             {hasImages ? (
               <>
@@ -494,7 +497,7 @@ function DetailedBusinessCard({
               ) : (
                 <div className="flex justify-end">
                   <button
-                    onClick={() => setIsAddingReview(true)}
+                    onClick={() => guard('review', () => setIsAddingReview(true))}
                     className="flex items-center gap-2 bg-[#FFE2A0] text-[#373737] px-4 py-2 rounded-lg text-xs hover:brightness-110 transition-all active:scale-95 shadow-lg cursor-pointer"
                   >
                     <span><img src={commentIcon} alt="comment" /></span> Leave a review
@@ -505,6 +508,9 @@ function DetailedBusinessCard({
           </div>
         </div>
       </div>
+
+      {/* ✅ LOGIN BOTTOM SHEET — triggers on save & review for guests */}
+      <LoginBottomSheet {...sheetProps} />
     </>
   );
 }
