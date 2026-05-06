@@ -6,6 +6,7 @@ import { useAuth } from '@/context/authContext';
 import BusinessCard from '../components/BusinessCard';
 import MapView from '../../../map/MapView';
 import SearchBar from '../components/SearchBar';
+import SkeletonCard from '../components/SkeletonCard';
 import type { FilterOptions } from '../components/SearchBar';
 import { getListings, getAverageRatings, CATEGORIES } from '../../Data/Listings';
 import type { Listing, Category } from '../../Data/Listings';
@@ -324,9 +325,11 @@ function Homepage() {
 
           <div className="flex-none md:flex-1 md:overflow-y-auto flex flex-col gap-4 md:gap-6 pb-10 pr-1 md:pr-2 pl-1 pt-1 no-scrollbar">
             {isLoading ? (
-              <div className="flex flex-col items-center justify-center py-20 text-center">
-                <p className="text-[#FBFAF8]/50 text-sm animate-pulse">Loading listings...</p>
-              </div>
+                <>
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <SkeletonCard key={i} />
+                  ))}
+                </>
             ) : filteredListings.length > 0 ? (
               filteredListings.map((listing: Listing) => (
                 <BusinessCard
