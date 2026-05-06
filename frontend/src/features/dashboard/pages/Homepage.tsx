@@ -7,6 +7,8 @@ import BusinessCard from '../components/BusinessCard';
 import MapView from '../../../map/MapView';
 import SearchBar from '../components/SearchBar';
 import SkeletonCard from '../components/SkeletonCard';
+import { useAuthGuard } from '@/hooks/useAuthGuard';
+import LoginBottomSheet from '../components/LoginBottomSheet';
 import type { FilterOptions } from '../components/SearchBar';
 import { getListings, getAverageRatings, CATEGORIES } from '../../Data/Listings';
 import type { Listing, Category } from '../../Data/Listings';
@@ -15,12 +17,13 @@ import CategoryFilters from '../components/CategoryFilters';
 import { Menu, X, Settings, LogOut } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import SettingsPage from '../../settings/pages/SettingsPage';
-import SurpriseMe from '../components/SurpriseMe';   // ← NEW
+import SurpriseMe from '../components/SurpriseMe';
 
 function Homepage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { role, session } = useAuth();
+  const { guard, sheetProps } = useAuthGuard();
 
   const [listings, setListings]               = useState<Listing[]>([]);
   const [isLoading, setIsLoading]             = useState(true);
@@ -33,7 +36,7 @@ function Homepage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen]   = useState(false);
   const [isRedirecting, setIsRedirecting]     = useState(false);
-  const [isSurpriseMeOpen, setIsSurpriseMeOpen] = useState(false);  // ← NEW
+  const [isSurpriseMeOpen, setIsSurpriseMeOpen] = useState(false);
 
   const handleLogout = async () => {
     localStorage.removeItem('token');
@@ -43,7 +46,7 @@ function Homepage() {
   };
 
   // ── Handle Google OAuth redirect ──────────────────────────────────────────
-   const oauthHandled = useRef(false);
+  const oauthHandled = useRef(false);
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session?.user && !oauthHandled.current) {
@@ -51,7 +54,6 @@ function Homepage() {
         const user = session.user;
         const meta = user.user_metadata;
 
-        // Write to localStorage so the rest of the app can read it
         localStorage.setItem('user', JSON.stringify({
           user_id:     user.id,
           first_name:  meta?.first_name ?? meta?.full_name?.split(' ')[0] ?? '',
@@ -60,7 +62,6 @@ function Homepage() {
           profile_pic: meta?.avatar_url ?? null,
         }));
 
-        // Upsert into users table so new Google users get a row
         await supabase.from('users').upsert({
           user_id:     user.id,
           first_name:  meta?.first_name ?? meta?.full_name?.split(' ')[0] ?? '',
@@ -77,14 +78,14 @@ function Homepage() {
 
   // ── Smart redirect: go to dashboard if user already has a listing ──
   const handleListBusinessClick = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      guard('generic', () => navigate(ROUTES.LIST_YOUR_BUSINESS));
+      return;
+    }
+
     setIsRedirecting(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        navigate(ROUTES.LIST_YOUR_BUSINESS);
-        return;
-      }
-
       const { data: userListings } = await supabase
         .from('listings')
         .select('id')
@@ -326,8 +327,8 @@ function Homepage() {
             <h1 className="font-['Playfair_Display'] text-6xl md:text-3xl leading-tight mt-4 md:mt-0 text-[#FFE2A0]">
               Salangi
             </h1>
-            <p className  = "mb-5 text-lg font-['Playfair_Display'] tracking-wide">
-              Bring <span className = "text-[#FFE2A0]">light</span> to my <span className = "text-[#FFE2A0]"> home! </span>
+            <p className="mb-5 text-lg font-['Playfair_Display'] tracking-wide">
+              Bring <span className="text-[#FFE2A0]">light</span> to my <span className="text-[#FFE2A0]"> home! </span>
             </p>
             <CategoryFilters
               activeCategory={activeCategory}
@@ -346,11 +347,11 @@ function Homepage() {
 
           <div className="flex-none md:flex-1 md:overflow-y-auto flex flex-col gap-4 md:gap-6 pb-10 pr-1 md:pr-2 pl-1 pt-1 no-scrollbar">
             {isLoading ? (
-                <>
-                  {Array.from({ length: 4 }).map((_, i) => (
-                    <SkeletonCard key={i} />
-                  ))}
-                </>
+              <>
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <SkeletonCard key={i} />
+                ))}
+              </>
             ) : filteredListings.length > 0 ? (
               filteredListings.map((listing: Listing) => (
                 <BusinessCard
@@ -375,7 +376,7 @@ function Homepage() {
         </div>
 
         {/* ── RIGHT COLUMN ── */}
-       <div className="hidden md:flex flex-col flex-none md:flex-1 w-full overflow-visible min-w-0 min-h-0 relative z-50 order-1 md:order-2 space-y-4 md:space-y-0">
+        <div className="hidden md:flex flex-col flex-none md:flex-1 w-full overflow-visible min-w-0 min-h-0 relative z-50 order-1 md:order-2 space-y-4 md:space-y-0">
           <div className="flex flex-col md:flex-row items-stretch md:items-center justify-end gap-3 shrink-0">
             <SearchBar
               placeholder="Explore local spots"
@@ -421,6 +422,9 @@ function Homepage() {
           onToggleSave={toggleSave}
         />
       )}
+
+      {/* ── Login bottom sheet for guest actions ── */}
+      <LoginBottomSheet {...sheetProps} />
 
     </div>
   );
