@@ -20,6 +20,9 @@ app.add_middleware(
         "http://localhost:5173",
         "http://127.0.0.1:5173",
         frontend_url,
+        # Ensure both www and non-www are covered
+        frontend_url.replace("https://www.", "https://"),
+        frontend_url.replace("https://", "https://www."),
     ],
     allow_credentials=True,
     allow_methods=["*"],
