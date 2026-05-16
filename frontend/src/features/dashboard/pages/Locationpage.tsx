@@ -283,7 +283,7 @@ function Locationpage() {
       <div className={`absolute top-0 left-0 right-0 z-40 flex items-center gap-2 px-4 py-4 pointer-events-none ${sidebarOpen ? 'md:left-500px' : 'md:left-0'}`}>
         <button
           onClick={() => navigate(-1)}
-          className="pointer-events-auto flex items-center justify-center w-10 h-10 rounded-full bg-[#2D2D2D]/90 hover:bg-[#3D3D3D] backdrop-blur-sm transition-colors cursor-pointer shrink-0 shadow-lg"
+          className={`pointer-events-auto flex items-center justify-center w-10 h-10 rounded-full bg-[#2D2D2D]/90 hover:bg-[#3D3D3D] backdrop-blur-sm transition-colors cursor-pointer shrink-0 shadow-lg ${sidebarOpen ? 'hidden' : 'flex'}`}
         >
           <img src={search} width="18" alt="back" />
         </button>
