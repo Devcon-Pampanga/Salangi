@@ -12,7 +12,6 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
-# Get allow_origins from env or fallback to local
 frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
 app.add_middleware(
@@ -20,8 +19,9 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+        "https://salangi.online",
+        "https://www.salangi.online",
         frontend_url,
-        # Ensure both www and non-www are covered
         frontend_url.replace("https://www.", "https://"),
         frontend_url.replace("https://", "https://www."),
     ],
