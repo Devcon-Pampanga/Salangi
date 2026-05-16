@@ -81,20 +81,20 @@ def upgrade_supabase_role(user_id: str) -> bool:
     Returns True on success, raises HTTPException on failure.
     """
     try:
-        # Supabase REST API: PATCH /rest/v1/profiles?id=eq.<user_id>
-        url     = f"{SUPABASE_URL}/rest/v1/profiles?id=eq.{user_id}"
-        payload = json.dumps({"role": "business"}).encode("utf-8")
+        # Supabase REST API: upsert so users with no profiles row get one created
+        url     = f"{SUPABASE_URL}/rest/v1/profiles"
+        payload = json.dumps({"id": user_id, "role": "business"}).encode("utf-8")
 
         req = urllib.request.Request(
             url,
             data=payload,
-            method="PATCH",
+            method="POST",
             headers={
                 "Content-Type":  "application/json",
                 "apikey":         SUPABASE_SERVICE_ROLE_KEY,
                 "Authorization":  f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
-                # Ask Supabase to return the updated row so we can verify it
-                "Prefer":         "return=representation",
+                # on conflict (id already exists) update the role column only
+                "Prefer":         "return=representation,resolution=merge-duplicates",
             },
         )
 
@@ -102,11 +102,10 @@ def upgrade_supabase_role(user_id: str) -> bool:
             body = json.loads(res.read().decode("utf-8"))
             print(f"✅ Role upgraded for user {user_id}: {body}")
 
-            # body is a list of updated rows — empty means no row matched
             if not body:
                 raise HTTPException(
                     status_code=400,
-                    detail="Role upgrade failed — no matching profile row found.",
+                    detail="Role upgrade failed — upsert returned no rows.",
                 )
 
             updated_role = body[0].get("role")

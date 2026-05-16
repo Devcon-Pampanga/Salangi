@@ -52,46 +52,7 @@ def decode_token(token: str) -> dict | None:
         return None
 
 
-def get_supabase_user_id(token: str) -> str | None:
-    try:
-        jwks = _get_jwks()
-        if not jwks:
-            print("❌ Could not fetch JWKS")
-            return None
 
-        # Get kid from token header
-        header = json.loads(base64.urlsafe_b64decode(
-            token.split(".")[0] + "=="
-        ))
-        kid = header.get("kid")
-
-        # Find matching key
-        key = None
-        for k in jwks.get("keys", []):
-            if k.get("kid") == kid:
-                key = k
-                break
-
-        if not key:
-            print(f"❌ No matching key found for kid: {kid}")
-            return None
-
-        from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePublicKey
-        from jwt.algorithms import ECAlgorithm
-
-        public_key = ECAlgorithm.from_jwk(json.dumps(key))
-        payload = pyjwt.decode(
-            token,
-            public_key,
-            algorithms=["ES256"],
-            options={"verify_aud": False},
-        )
-        print(f"✅ Token decoded, user_id: {payload.get('sub')}")
-        return payload.get("sub")
-
-    except Exception as e:
-        print(f"❌ JWT decode error: {e}")
-        return None
 
 
 def generate_verification_token(email: str) -> str:
@@ -109,11 +70,16 @@ def confirm_verification_token(token: str, expiration=86400):
 
 
 # ── Supabase JWT (ES256 with JWKS) ───────────────────────────────────────────
+_jwks_cache: dict | None = None  # Cache JWKS to avoid a network hit on every request
+
 def decode_supabase_token(token: str) -> dict | None:
+    global _jwks_cache
     try:
-        jwks_url = f"https://{SUPABASE_PROJECT_REF}.supabase.co/auth/v1/.well-known/jwks.json"
-        with urllib.request.urlopen(jwks_url) as response:
-            jwks = json.loads(response.read())
+        if _jwks_cache is None:
+            jwks_url = f"https://{SUPABASE_PROJECT_REF}.supabase.co/auth/v1/.well-known/jwks.json"
+            with urllib.request.urlopen(jwks_url) as response:
+                _jwks_cache = json.loads(response.read())
+        jwks = _jwks_cache
 
         header = pyjwt.get_unverified_header(token)
         kid = header.get("kid")
