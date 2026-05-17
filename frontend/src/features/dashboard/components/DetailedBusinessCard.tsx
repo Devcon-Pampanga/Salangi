@@ -288,9 +288,14 @@ function DetailedBusinessCard({
   // ── Sightengine text moderation ───────────────────────────────────────────
   const isTextSafe = async (text: string): Promise<boolean> => {
     try {
-      const { data, error } = await supabase.functions.invoke('moderate-text', { body: { text } });
-      if (error) return true; // fail open
-      return data?.safe === true;
+      const timeout = new Promise<boolean>((resolve) => setTimeout(() => resolve(true), 3000));
+      const check = supabase.functions.invoke('moderate-text', { body: { text } })
+        .then(({ data, error }) => {
+          if (error) return true;
+          return data?.safe === true;
+        })
+        .catch(() => true);
+      return await Promise.race([check, timeout]);
     } catch {
       return true;
     }
