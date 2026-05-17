@@ -8,6 +8,7 @@ import BusinessCard from "../../dashboard/components/BusinessCard";
 import EditListingModal from "./EditListingModal";
 import type { Listing } from "../../Data/Listings";
 import { supabase } from "../../../lib/supabase";
+import SkeletonCard from "../../dashboard/components/SkeletonCard";
 import { useAuth } from "../../../hooks/useAuth";
 
 const MyBusiness = () => {
@@ -26,7 +27,7 @@ const MyBusiness = () => {
     const [deletingId, setDeletingId] = useState<number | null>(null);
     const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
 
-    // ─── Fetch user's listings ────────────────────────────────────────────────
+    // ─── Fetch user's claimed listings only ───────────────────────────────────
     const fetchListings = async () => {
         if (!user?.id) return;
         setLoading(true);
@@ -35,7 +36,8 @@ const MyBusiness = () => {
         const { data, error: fetchError } = await supabase
             .from("listings")
             .select("*")
-            .eq("user_id", user.id)
+            .eq("claimed_by", user.id)        // ← owner guard
+            .eq("claim_status", "claimed")    // ← only approved claims
             .order("created_at", { ascending: false });
 
         if (fetchError) {
@@ -173,7 +175,6 @@ const MyBusiness = () => {
                 <div className="mt-12 mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div className="flex items-center gap-3">
                         <h2 className="text-[#FFE2A0] text-xl font-['Playfair_Display'] font-semibold">Your Listings</h2>
-                        {/* Summary counts */}
                         <div className="flex items-center gap-2">
                             <span className="text-xs bg-green-600/20 text-green-400 border border-green-600/30 px-2 py-0.5 rounded-full font-medium">
                                 {listings.filter(l => l.verified).length} Approved
@@ -203,12 +204,8 @@ const MyBusiness = () => {
 
                 {/* States */}
                 {loading && (
-                    <div className="flex items-center justify-center h-48 text-[#a0a0a0]">
-                        <svg className="animate-spin h-6 w-6 mr-3 text-[#FFE2A0]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                        </svg>
-                        Loading your listings...
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-6">
+                        {[0, 1, 2].map((i) => <SkeletonCard key={i} />)}
                     </div>
                 )}
 
@@ -224,20 +221,29 @@ const MyBusiness = () => {
                     </div>
                 )}
 
+                {/* Empty state — no approved claimed listing yet */}
                 {!loading && !error && listings.length === 0 && (
                     <div className="flex flex-col items-center justify-center h-48 text-center gap-3">
                         <div className="bg-[#474133] p-4 rounded-full border border-[#5a5241]">
                             <HiOutlineOfficeBuilding className="size-8 text-[#FFE2A0]" />
                         </div>
-                        <p className="text-white font-semibold">No listings yet</p>
-                        <p className="text-[#a0a0a0] text-sm">Click "List Business" to add your first listing.</p>
+                        <p className="text-white font-semibold">No claimed listing found</p>
+                        <p className="text-[#a0a0a0] text-sm">
+                            Your claim may still be under review, or you haven't claimed a listing yet.
+                        </p>
+                        <button
+                            onClick={() => navigate(ROUTES.HOME)}
+                            className="mt-2 px-4 py-2 bg-[#5a5241] border border-[#FFE2A0] text-[#FFE2A0] text-sm rounded-lg hover:bg-[#857657] transition-all"
+                        >
+                            Browse listings to claim
+                        </button>
                     </div>
                 )}
 
                 {!loading && !error && listings.length > 0 && (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-6 items-stretch">
                         {filteredListings.map((listing) => (
-                            <div key={listing.id} className="relative">
+                            <div key={listing.id} className="relative flex flex-col w-full max-w-120">
 
                                 {/* ── Status badge ─────────────────────────── */}
                                 {listing.verified ? (
@@ -267,13 +273,11 @@ const MyBusiness = () => {
                                     onViewAnalytics={() => navigate(ROUTES.DASHBOARD_ANALYTICS)}
                                 />
 
-
-
                                 {/* ── Delete trigger button ─────────────────── */}
                                 {confirmDeleteId !== listing.id && (
                                     <button
                                         onClick={() => setConfirmDeleteId(listing.id)}
-                                        className="absolute top-3 right-3 z-20 p-2 bg-red-600 hover:bg-red-700 rounded-full text-white transition-all shadow-lg"
+                                        className="absolute top-10 right-3 z-20 p-2 bg-red-600 hover:bg-red-700 rounded-full text-white transition-all shadow-lg"
                                         title="Delete listing"
                                     >
                                         <svg xmlns="http://www.w3.org/2000/svg" className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

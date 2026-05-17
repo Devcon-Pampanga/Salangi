@@ -21,6 +21,7 @@ interface BusinessCardProps {
   isSelected: boolean;
   isSaved: boolean;
   onToggleSave: (id: number) => void;
+  onReview?: (id: number) => void;
   isBusinessSide?: boolean;
   onEdit?: (listing: Listing) => void;
   onDelete?: (id: number) => void;
@@ -224,7 +225,8 @@ function BusinessCard({
   onSelect, 
   isSelected, 
   isSaved, 
-  onToggleSave, 
+  onToggleSave,
+  onReview,
   isBusinessSide,
   onEdit,
   onViewAnalytics,

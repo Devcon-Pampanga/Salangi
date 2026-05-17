@@ -20,7 +20,11 @@ interface Review {
   date: string;
   rating: number;
   comment: string;
+  helpfulCount: number;
+  ownerReply?: string | null;
+  ownerRepliedAt?: string | null;
   profilePic?: string;
+  images?: string[];
 }
 
 const DEFAULT_LISTING: Listing = {
@@ -46,7 +50,7 @@ function Locationpage() {
   const [listings, setListings] = useState<Listing[]>([]);
   const [averageRatings, setAverageRatings] = useState<Record<number, number>>({});
   const [searchQuery, setSearchQuery] = useState('');
-  const [filters, setFilters] = useState<FilterOptions>({ ratingRange: null, sortBy: 'default' });
+  const [filters, setFilters] = useState<FilterOptions>({ ratingRange: null, sortBy: 'default', openNow: false, nearMe: false });
 
   const [selectedListing, setSelectedListing] = useState<Listing | null>(
     incomingListing ?? null
@@ -99,6 +103,18 @@ function Locationpage() {
   // ── Load gallery images when selected listing changes ────────────────────
   useEffect(() => {
     if (!selectedListing) return;
+    supabase
+      .from('listings')
+      .select('*')
+      .eq('id', selectedListing.id)
+      .single()
+      .then(({ data }) => {
+        if (data) setSelectedListing(prev => prev ? { ...prev, is_claimed: data.is_claimed ?? false } : prev);
+      });
+  }, [selectedListing?.id]);
+
+  useEffect(() => {
+    if (!selectedListing) return;
 
     const fetchGalleryImages = async () => {
       const { data } = await supabase
@@ -134,10 +150,9 @@ function Locationpage() {
     try {
       const { data: reviewData, error: reviewError } = await supabase
         .from('reviews')
-        .select('id, listing_id, user_id, rating, comment, created_at')
+        .select('id, listing_id, user_id, rating, comment, created_at, helpful_count, owner_reply, owner_replied_at, images') 
         .eq('listing_id', listingId)
         .order('created_at', { ascending: false });
-
       if (reviewError) { console.error('reviews error:', reviewError); return; }
       if (!reviewData || reviewData.length === 0) { setReviews([]); return; }
 
@@ -167,7 +182,11 @@ function Locationpage() {
           }),
           rating: r.rating,
           comment: r.comment,
+          helpfulCount: r.helpful_count ?? 0,
+           ownerReply: r.owner_reply ?? null,  
+          ownerRepliedAt: r.owner_replied_at ?? null,
           profilePic: u?.profile_pic ?? null,
+           images: r.images ?? [],
         };
       });
 
@@ -432,7 +451,7 @@ function Locationpage() {
         </div>
 
         {/* Sidebar header */}
-        <div className="flex items-center justify-between px-4 py-3 shrink-0 border-b border-zinc-800/60 md:border-b-0 md:pt-4">
+        <div className="flex items-center justify-between px-4 py-3 shrink-0 border-b border-zinc-800/60 md:border-b-0 md:pt-20">
           <button
             onClick={handleCloseSidebar}
             className="hidden md:flex items-center gap-2 text-[#FBFAF8]/50 hover:text-[#FBFAF8] transition-colors text-sm"
@@ -471,6 +490,7 @@ function Locationpage() {
               reviews={reviews}
               reviewsLoading={reviewsLoading}
               initialSaved={savedIds.includes(selectedListing.id)}
+              isClaimed={selectedListing.is_claimed ?? false}
               onToggleSave={toggleSave}
               onReviewAdded={() => fetchReviews(selectedListing.id)}
             />

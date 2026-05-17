@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, Image as ImageIcon, X, ZoomIn } from 'lucide-react';
 import { supabase } from '@/lib/supabase'; 
 import { useAuth } from '@/context/authContext';
+import { useAuthGuard } from '@/hooks/useAuthGuard';
+import LoginBottomSheet from './LoginBottomSheet';
 import { createPortal } from 'react-dom';
 import locBtnSelected from '@assets/icons/map-btn-active.svg';
 import locBtn from '@assets/icons/direction-btn.svg';
@@ -15,9 +17,11 @@ import facebookIcon from '@assets/icons/fb-icon.svg';
 import websiteIcon from '@assets/icons/web-icon.svg';
 import starIcon from '@assets/icons/star-icon.svg';
 import commentIcon from '@assets/icons/review-btn-default.svg';
+import { isOpenNow } from '@/utils/isOpenNow';
 
 import ReviewItem from './ReviewItem';
 import ReviewForm from './ReviewForm';
+import ClaimBusinessButton from '@/features/business-side/components/ClaimBusinessButton';
 
 interface Review {
   id: number;
@@ -26,7 +30,11 @@ interface Review {
   date: string;
   rating: number;
   comment: string;
+  helpfulCount: number;
+  ownerReply?: string | null;
+  ownerRepliedAt?: string | null;
   profilePic?: string;
+  images?: string[]; // ← ADDED
 }
 
 interface DetailedBusinessCardProps {
@@ -46,6 +54,7 @@ interface DetailedBusinessCardProps {
   reviewsLoading?: boolean;
   isVerified?: boolean;
   initialSaved?: boolean;
+  isClaimed?: boolean;        // ← new
   lat?: number;
   lng?: number;
   onToggleSave?: (id: number) => void;
@@ -179,12 +188,14 @@ function DetailedBusinessCard({
   reviewsLoading = false,
   isVerified = false,
   initialSaved = false,
+  isClaimed = false,          // ← new
   lat,
   lng,
   onToggleSave,
   onReviewAdded,
 }: DetailedBusinessCardProps) {
   const { session } = useAuth();
+  const { guard, sheetProps } = useAuthGuard();
   const [isSaved, setIsSaved] = useState(initialSaved);
   const allImages = dedupeImages(images);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -193,14 +204,45 @@ function DetailedBusinessCard({
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
   const [reviewError, setReviewError] = useState<string | null>(null);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [sortBy, setSortBy] = useState<'helpful' | 'recent' | 'rating'>('helpful');
+  const [isOwner, setIsOwner] = useState(false);
 
   const hasImages = allImages.length > 0;
+  const open = isOpenNow(hours);
+
+  const sortedReviews = [...reviews].sort((a, b) => {
+    if (sortBy === 'helpful') {
+      if (b.helpfulCount !== a.helpfulCount) return b.helpfulCount - a.helpfulCount;
+      return new Date(b.date).getTime() - new Date(a.date).getTime();
+    }
+    if (sortBy === 'recent') return new Date(b.date).getTime() - new Date(a.date).getTime();
+    if (sortBy === 'rating') {
+      if (b.rating !== a.rating) return b.rating - a.rating;
+      return new Date(b.date).getTime() - new Date(a.date).getTime();
+    }
+    return 0;
+  });
 
   useEffect(() => {
     supabase.from('listing_interactions').insert({
       listing_id: listingId,
       type: 'view',
     });
+  }, [listingId]);
+
+  useEffect(() => {
+    const checkOwnership = async () => {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) return;
+      const { data } = await supabase
+        .from('listings')
+        .select('id')
+        .eq('id', listingId)
+        .eq('user_id', authUser.id)
+        .maybeSingle();
+      setIsOwner(!!data);
+    };
+    checkOwnership();
   }, [listingId]);
 
   const nextImage = (e: React.MouseEvent) => {
@@ -223,23 +265,25 @@ function DetailedBusinessCard({
 
   const handleToggleSave = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (onToggleSave) {
-      onToggleSave(listingId);
-      setIsSaved(prev => !prev);
-    } else {
-      try {
-        const user = session?.user;
-        if (!user) return;
-        if (isSaved) {
-          await supabase.from('saves').delete().eq('user_id', user.id).eq('listing_id', listingId);
-        } else {
-          await supabase.from('saves').insert({ user_id: user.id, listing_id: listingId });
-        }
+    guard('save', async () => {
+      if (onToggleSave) {
+        onToggleSave(listingId);
         setIsSaved(prev => !prev);
-      } catch (error) {
-        console.warn("Error toggling save:", error);
+      } else {
+        try {
+          const user = session?.user;
+          if (!user) return;
+          if (isSaved) {
+            await supabase.from('saves').delete().eq('user_id', user.id).eq('listing_id', listingId);
+          } else {
+            await supabase.from('saves').insert({ user_id: user.id, listing_id: listingId });
+          }
+          setIsSaved(prev => !prev);
+        } catch (error) {
+          console.warn("Error toggling save:", error);
+        }
       }
-    }
+    });
   };
 
   const handleGetDirections = async () => {
@@ -251,7 +295,8 @@ function DetailedBusinessCard({
     window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
   };
 
-  const handleAddReview = async (rating: number, comment: string) => {
+  // ← UPDATED: now accepts images[] and saves them to the reviews row
+  const handleAddReview = async (rating: number, comment: string, images: string[]) => {
     setSubmitting(true);
     setReviewError(null);
     try {
@@ -266,6 +311,7 @@ function DetailedBusinessCard({
         user_id: user.id,
         rating,
         comment,
+        images, // ← ADDED
       });
       if (error) throw error;
       setIsAddingReview(false);
@@ -296,7 +342,6 @@ function DetailedBusinessCard({
         document.body
       )}
 
-      {/* ✅ FIX 1: added max-w-120 and mx-auto to match deployed */}
       <div className="w-full max-w-120 bg-[#333333] rounded-xl overflow-hidden shrink-0 mb-10 shadow-2xl border border-zinc-800/50 mx-auto">
         <div className="relative flex flex-col">
 
@@ -310,7 +355,6 @@ function DetailedBusinessCard({
             </button>
           </div>
 
-          {/* ✅ FIX 2: changed h-80 to h-72 to match deployed */}
           <div className="relative w-full h-72 overflow-hidden bg-zinc-800 group">
             {hasImages ? (
               <>
@@ -401,6 +445,16 @@ function DetailedBusinessCard({
               <div className="flex items-center gap-2">
                 <img src={timeIcon} width="14" alt="hours" className="opacity-70" />
                 <span className="text-[#FBFAF8]/50 text-xs font-medium">{formatHours(hours)}</span>
+                {/* ── Open / Closed badge ── */}
+                {hours && (
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                    open
+                      ? 'bg-green-500/20 text-green-400'
+                      : 'bg-red-500/20 text-red-400'
+                  }`}>
+                    {open ? 'Open' : 'Closed'}
+                  </span>
+                )}
               </div>
             </div>
 
@@ -469,17 +523,47 @@ function DetailedBusinessCard({
               </div>
             </div>
 
-            {/* Review List */}
+            {/* Sort bar + Review List */}
             {reviewsLoading ? (
               <p className="text-sm text-zinc-500 animate-pulse">Loading reviews...</p>
             ) : reviews.length === 0 ? (
               <p className="text-sm text-zinc-500">No reviews yet. Be the first!</p>
             ) : (
-              <div className="space-y-12 mt-4">
-                {reviews.map((review) => (
-                  <ReviewItem key={review.id} {...review} />
-                ))}
-              </div>
+              <>
+                {reviews.length > 1 && (
+                  <div className="flex items-center gap-2 mb-6 flex-wrap">
+                    <span className="text-xs text-zinc-500">Sort by</span>
+                    {(['helpful', 'recent', 'rating'] as const).map((option) => (
+                      <button
+                        key={option}
+                        onClick={() => setSortBy(option)}
+                        className={`text-xs px-3 py-1.5 rounded-full border transition-all cursor-pointer
+                          ${sortBy === option
+                            ? 'bg-[#FFE2A0]/10 border-[#FFE2A0]/50 text-[#FFE2A0]'
+                            : 'border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200'
+                          }`}
+                      >
+                        {option === 'helpful' ? 'Most helpful' : option === 'recent' ? 'Most recent' : 'Top rated'}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <div className="space-y-12">
+                  {sortedReviews.map((review) => (
+                    <ReviewItem
+                      key={review.id}
+                      {...review}
+                      images={review.images ?? []}
+                      reviewId={review.id}
+                      helpfulCount={review.helpfulCount}
+                      ownerReply={review.ownerReply}
+                      isOwner={isOwner}
+                      onVote={onReviewAdded}
+                      onReplyAdded={onReviewAdded}
+                    />
+                  ))}
+                </div>
+              </>
             )}
 
             {/* Review Form / Button */}
@@ -487,6 +571,7 @@ function DetailedBusinessCard({
               {reviewError && <p className="text-red-400 text-sm mb-3">{reviewError}</p>}
               {isAddingReview ? (
                 <ReviewForm
+                  businessId={listingId}
                   onSubmit={handleAddReview}
                   onCancel={() => { setIsAddingReview(false); setReviewError(null); }}
                   submitting={submitting}
@@ -494,7 +579,7 @@ function DetailedBusinessCard({
               ) : (
                 <div className="flex justify-end">
                   <button
-                    onClick={() => setIsAddingReview(true)}
+                    onClick={() => guard('review', () => setIsAddingReview(true))}
                     className="flex items-center gap-2 bg-[#FFE2A0] text-[#373737] px-4 py-2 rounded-lg text-xs hover:brightness-110 transition-all active:scale-95 shadow-lg cursor-pointer"
                   >
                     <span><img src={commentIcon} alt="comment" /></span> Leave a review
@@ -502,9 +587,22 @@ function DetailedBusinessCard({
                 </div>
               )}
             </div>
+
+            {/* ── Claim this business ── */}
+            <div className="mt-4 pt-4 border-t border-zinc-600/50">
+              <ClaimBusinessButton
+                listingId={listingId}
+                listingName={title}
+                isClaimed={isClaimed}
+              />
+            </div>
+
           </div>
         </div>
       </div>
+
+      {/* ✅ LOGIN BOTTOM SHEET — triggers on save & review for guests */}
+      <LoginBottomSheet {...sheetProps} />
     </>
   );
 }

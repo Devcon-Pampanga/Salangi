@@ -1,11 +1,14 @@
-import { useState, useMemo, useEffect } from 'react';
-import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { useState, useMemo, useEffect, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { ROUTES } from '../../../routes/paths';
 import { useAuth } from '@/context/authContext';
 import BusinessCard from '../components/BusinessCard';
 import MapView from '../../../map/MapView';
 import SearchBar from '../components/SearchBar';
+import SkeletonCard from '../components/SkeletonCard';
+import { useAuthGuard } from '@/hooks/useAuthGuard';
+import LoginBottomSheet from '../components/LoginBottomSheet';
 import type { FilterOptions } from '../components/SearchBar';
 import { getListings, getAverageRatings, CATEGORIES } from '../../Data/Listings';
 import type { Listing, Category } from '../../Data/Listings';
@@ -14,14 +17,13 @@ import CategoryFilters from '../components/CategoryFilters';
 import { Menu, X, Settings, LogOut } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import SettingsPage from '../../settings/pages/SettingsPage';
+import SurpriseMe from '../components/SurpriseMe';
 
 function Homepage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { role, session } = useAuth();
-
-  // ── Added: read ?listingId= from the shared URL ──
-  const [searchParams, setSearchParams] = useSearchParams();
+  const { guard, sheetProps } = useAuthGuard();
 
   const [listings, setListings]               = useState<Listing[]>([]);
   const [isLoading, setIsLoading]             = useState(true);
@@ -30,10 +32,11 @@ function Homepage() {
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
   const [savedIds, setSavedIds]               = useState<number[]>([]);
   const [averageRatings, setAverageRatings]   = useState<Record<number, number>>({});
-  const [filters, setFilters]                 = useState<FilterOptions>({ ratingRange: null, sortBy: 'default' });
+  const [filters, setFilters]                 = useState<FilterOptions>({ ratingRange: null, sortBy: 'default', openNow: false, nearMe: false });
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen]   = useState(false);
   const [isRedirecting, setIsRedirecting]     = useState(false);
+  const [isSurpriseMeOpen, setIsSurpriseMeOpen] = useState(false);
 
   const handleLogout = async () => {
     localStorage.removeItem('token');
@@ -42,16 +45,47 @@ function Homepage() {
     navigate(ROUTES.SIGN_IN);
   };
 
+  // ── Handle Google OAuth redirect ──────────────────────────────────────────
+  const oauthHandled = useRef(false);
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user && !oauthHandled.current) {
+        oauthHandled.current = true;
+        const user = session.user;
+        const meta = user.user_metadata;
+
+        localStorage.setItem('user', JSON.stringify({
+          user_id:     user.id,
+          first_name:  meta?.first_name ?? meta?.full_name?.split(' ')[0] ?? '',
+          last_name:   meta?.last_name  ?? meta?.full_name?.split(' ')[1] ?? '',
+          email:       user.email,
+          profile_pic: meta?.avatar_url ?? null,
+        }));
+
+        await supabase.from('users').upsert({
+          user_id:     user.id,
+          first_name:  meta?.first_name ?? meta?.full_name?.split(' ')[0] ?? '',
+          last_name:   meta?.last_name  ?? meta?.full_name?.split(' ')[1] ?? '',
+          email:       user.email,
+          profile_pic: meta?.avatar_url ?? null,
+          is_admin:    false,
+        }, { onConflict: 'user_id', ignoreDuplicates: false });
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
   // ── Smart redirect: go to dashboard if user already has a listing ──
   const handleListBusinessClick = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      guard('generic', () => navigate(ROUTES.LIST_YOUR_BUSINESS));
+      return;
+    }
+
     setIsRedirecting(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        navigate(ROUTES.LIST_YOUR_BUSINESS);
-        return;
-      }
-
       const { data: userListings } = await supabase
         .from('listings')
         .select('id')
@@ -74,7 +108,6 @@ function Homepage() {
     }
   };
 
-  // ── Load listings + ratings ──
   useEffect(() => {
     Promise.all([getListings(), getAverageRatings()])
       .then(([listingsData, ratingsData]) => {
@@ -85,51 +118,6 @@ function Homepage() {
       .finally(() => setIsLoading(false));
   }, []);
 
-  // ── Deep link handler: ?listingId= query param (legacy shared URLs) ──
-  useEffect(() => {
-    const listingId = searchParams.get('listingId');
-    if (!listingId || !listings.length) return;
-
-    const match = listings.find((l) => String(l.id) === listingId);
-    if (!match) return;
-
-    setSelectedListing(match);
-
-    setTimeout(() => {
-      document.getElementById(`listing-card-${match.id}`)?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'center',
-      });
-    }, 400);
-
-    setSearchParams((prev) => {
-      prev.delete('listingId');
-      return prev;
-    }, { replace: true });
-  }, [listings, searchParams, setSearchParams]);
-
-  // ── Deep link handler: /listing/:slug (clean URLs via ListingSlugRedirect) ──
-  useEffect(() => {
-    const autoSelectId = location.state?.autoSelectId;
-    if (!autoSelectId || !listings.length) return;
-
-    const match = listings.find((l) => l.id === autoSelectId);
-    if (!match) return;
-
-    setSelectedListing(match);
-
-    setTimeout(() => {
-      document.getElementById(`listing-card-${match.id}`)?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'center',
-      });
-    }, 400);
-
-    // Clear the state so a refresh doesn't re-trigger the scroll
-    window.history.replaceState({}, '', window.location.pathname);
-  }, [listings, location.state]);
-
-  // ── Load saved listings ──
   useEffect(() => {
     const fetchSaves = async () => {
       try {
@@ -212,7 +200,7 @@ function Homepage() {
       {/* ── Redirect loading overlay ── */}
       {isRedirecting && createPortal(
         <div
-          className="fixed inset-0 z-9999 flex flex-col items-center justify-center gap-6"
+          className="fixed inset-0 z-[9999] flex flex-col items-center justify-center gap-6"
           style={{ backgroundColor: '#1A1A1A' }}
         >
           <div
@@ -286,6 +274,17 @@ function Homepage() {
 
               <div className="h-px w-full bg-[#373737]/50" />
 
+              {/* ── MOBILE: Surprise Me button ── */}
+              <button
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  setIsSurpriseMeOpen(true);
+                }}
+                className="flex items-center justify-center gap-2 px-4 py-3.5 bg-[#2a2a2a] text-[#FFE2A0] border border-[#FFE2A0]/20 rounded-xl font-bold text-md w-full shadow-lg active:scale-95 transition-all cursor-pointer"
+              >
+                <span>💎</span> Surprise me
+              </button>
+
               <button
                 onClick={() => {
                   setIsMobileMenuOpen(false);
@@ -334,15 +333,25 @@ function Homepage() {
             <CategoryFilters
               activeCategory={activeCategory}
               onCategoryChange={handleCategoryChange}
-              className="mb-5"
+              className="mb-3"
             />
+
+            {/* ── DESKTOP: Surprise Me button ── */}
+            <button
+              onClick={() => setIsSurpriseMeOpen(true)}
+              className="flex items-center gap-2 mb-5 px-4 py-2 bg-[#2a2a2a] hover:bg-[#333333] text-[#FFE2A0] border border-[#FFE2A0]/20 hover:border-[#FFE2A0]/40 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
+            >
+              <span>💎</span> Surprise me
+            </button>
           </div>
 
-          <div className="flex-none md:flex-1 md:overflow-y-auto flex flex-col gap-4 md:gap-6 pb-24 md:pb-10 pr-1 md:pr-2 pl-1 pt-1 no-scrollbar">
+          <div className="flex-none md:flex-1 md:overflow-y-auto flex flex-col gap-4 md:gap-6 pb-10 pr-1 md:pr-2 pl-1 pt-1 no-scrollbar">
             {isLoading ? (
-              <div className="flex flex-col items-center justify-center py-20 text-center">
-                <p className="text-[#FBFAF8]/50 text-sm animate-pulse">Loading listings...</p>
-              </div>
+              <>
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <SkeletonCard key={i} />
+                ))}
+              </>
             ) : filteredListings.length > 0 ? (
               filteredListings.map((listing: Listing) => (
                 <BusinessCard
@@ -378,6 +387,19 @@ function Homepage() {
               onFilterChange={setFilters}
               filters={filters}
             />
+
+            <a
+              href="https://forms.gle/h396M5kqkVXtQYhr5"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 px-4 py-3 bg-[#2D2D2D] text-[#FBFAF8]/60 hover:text-[#FFE2A0] hover:bg-[#FFE2A0]/5 border border-[#373737] hover:border-[#FFE2A0]/20 rounded-lg text-xs font-semibold whitespace-nowrap transition-all"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-4">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
+              </svg>
+              Feedback
+            </a>
+
             <button
               onClick={handleListBusinessClick}
               className="flex items-center justify-center gap-2 px-4 py-3 bg-[#FFE2A0] text-[#1A1A1A] rounded-lg font-semibold text-sm whitespace-nowrap cursor-pointer hover:bg-[#f5d880] transition-colors w-full md:w-auto"
@@ -403,6 +425,20 @@ function Homepage() {
         <SettingsPage onClose={() => setIsSettingsOpen(false)} />,
         document.body
       )}
+
+      {/* ── Surprise Me modal ── */}
+      {isSurpriseMeOpen && (
+        <SurpriseMe
+          userId={session?.user?.id ?? null}
+          savedIds={savedIds}
+          onClose={() => setIsSurpriseMeOpen(false)}
+          onToggleSave={toggleSave}
+        />
+      )}
+
+      {/* ── Login bottom sheet for guest actions ── */}
+      <LoginBottomSheet {...sheetProps} />
+
     </div>
   );
 }
