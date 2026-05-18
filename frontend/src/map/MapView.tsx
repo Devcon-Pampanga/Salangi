@@ -20,6 +20,7 @@ L.Icon.Default.mergeOptions({
 // ─── Geoapify API Configuration ──────────────────────────────────────────────
 
 const GEOAPIFY_API_KEY = import.meta.env.VITE_GEOAPIFY_API_KEY;
+console.log("API Key loaded:", GEOAPIFY_API_KEY);
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
